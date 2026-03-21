@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+
+const APP_NAME = import.meta.env.VITE_APP_NAME || 'TutoTuto';
 import { PDFFileRecord, getAppSettings, saveAppSettings } from '../../utils/indexedDB';
 import { getPlatformInfo } from '../../utils/storageManager';
 import GradingHistory from './GradingHistory';
@@ -247,7 +249,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
 
       if (permission === 'granted') {
         // テスト通知を送信
-        new Notification('TutoTuto', {
+        new Notification(APP_NAME, {
           body: '通知が有効になりました！時間切れの際にお知らせします。',
           icon: '/pwa-192x192.png'
         });
@@ -1084,7 +1086,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
         <div className="admin-header">
           {/* 開発モードと本番モードでパスを切り替え */}
           <div className="logo-container">
-            <span className="logo-text">TutoTuto</span>
+            <span className="logo-text">{APP_NAME}</span>
           </div>
 
           {/* タブ切り替え */}
@@ -1336,7 +1338,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                   src={import.meta.env.DEV
                     ? `/icons/${import.meta.env.MODE}/logo.png`
                     : `${import.meta.env.BASE_URL}logo.png`}
-                  alt="TutoTuto Storage"
+                  alt={`${APP_NAME} Storage`}
                   style={{ width: '44px', height: '44px', objectFit: 'contain' }}
                 />
               </button>
@@ -1663,7 +1665,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
               textDecoration: 'underline'
             }}
           >
-            TutoTutoについて
+            {APP_NAME}について
           </button>
           <button
             onClick={() => setShowContact(true)}
@@ -1713,7 +1715,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
           fontSize: '11px',
           color: '#95a5a6'
         }}>
-          © 2026 TutoTuto
+          © 2026 {APP_NAME}
         </div>
       </footer >
 
