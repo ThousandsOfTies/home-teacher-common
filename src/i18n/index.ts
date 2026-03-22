@@ -20,6 +20,10 @@ export const i18nReady = i18n
         },
         interpolation: {
             escapeValue: false
+        },
+        initImmediate: false,
+        react: {
+            useSuspense: false
         }
     });
 
