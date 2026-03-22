@@ -1,6 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import HttpBackend from 'i18next-http-backend';
+import ja from './locales/ja.json';
+import en from './locales/en.json';
 
 const getInitialLanguage = () => {
     const saved = localStorage.getItem('language');
@@ -8,19 +9,18 @@ const getInitialLanguage = () => {
     return navigator.language.startsWith('ja') ? 'ja' : 'en';
 };
 
-export const i18nReady = i18n
-    .use(HttpBackend) // HTTP経由で翻訳ファイルを読み込む
-    .use(initReactI18next) // react-i18nextを初期化
+i18n
+    .use(initReactI18next)
     .init({
-        lng: getInitialLanguage(), // ブラウザの言語設定に基づいて初期値を設定
-        fallbackLng: 'ja', // フォールバック言語
-        backend: {
-            loadPath: import.meta.env.BASE_URL + 'locales/{{lng}}/translation.json' // 翻訳ファイルのパス
+        lng: getInitialLanguage(),
+        fallbackLng: 'ja',
+        resources: {
+            ja: { translation: ja },
+            en: { translation: en },
         },
         interpolation: {
-            escapeValue: false // Reactは既にXSS対策済み
+            escapeValue: false
         }
     });
 
 export default i18n;
-
