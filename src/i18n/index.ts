@@ -8,7 +8,7 @@ const getInitialLanguage = () => {
     return navigator.language.startsWith('ja') ? 'ja' : 'en';
 };
 
-i18n
+export const i18nReady = i18n
     .use(HttpBackend) // HTTP経由で翻訳ファイルを読み込む
     .use(initReactI18next) // react-i18nextを初期化
     .init({
