@@ -9,7 +9,7 @@ const getInitialLanguage = () => {
     return navigator.language.startsWith('ja') ? 'ja' : 'en';
 };
 
-i18n
+export const i18nReady = i18n
     .use(initReactI18next)
     .init({
         lng: getInitialLanguage(),
