@@ -4,6 +4,7 @@ import PDFCanvas, { PDFCanvasHandle } from './components/PDFCanvas'
 import { DrawingPath, DrawingCanvas, useDrawing, useZoomPan, doPathsIntersect, isScratchPattern, useLassoSelection, DrawingCanvasHandle } from '@thousands-of-ties/drawing-common'
 import { RENDER_SCALE } from '../../constants/pdf'
 import './StudyPanel.css'
+import { ICON_SVG } from '../../constants/icons'
 
 interface PDFPaneProps {
     pdfRecord: PDFFileRecord
@@ -542,8 +543,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 position: 'relative',
                 touchAction: 'none',
                 maxHeight: '100vh',
-                // パン中はgrabbing、Ctrl押下中はgrab（全モード共通）
-                cursor: isPanning ? 'grabbing' : (isCtrlPressed ? 'grab' : 'default')
+                // パン中はgrabbing、Ctrl押下中はgrab、ペン中はpenCursor、それ以外はdefault
+                cursor: isPanning ? 'grabbing' : (isCtrlPressed ? 'grab' : (tool === 'pen' ? ICON_SVG.penCursor(color) : 'default'))
             }}
             onPointerDown={(e) => {
                 // タッチはonTouchStartで処理、ペンはここで処理
@@ -1211,10 +1212,12 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                                 }
                             }}
                             title="画面に合わせる"
-                            style={{ marginBottom: '8px' }}
+                             style={{ marginBottom: '8px', borderRadius: '4px' }}
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                {/* Expansion Crosshair (Centered and Bold) */}
+                                <path d="M12 2v20M2 12h20" />
+                                <path d="M9 4l3-3 3 3M9 20l3 3 3-3M4 9l-3 3 3 3M20 9l3 3-3 3" />
                             </svg>
                         </button>
 
@@ -1225,10 +1228,9 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             disabled={pageNum <= 1}
                             title="前の10ページ"
                         >
-                            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '0.6' }}>
-                                <span>▲</span>
-                                <span>▲</span>
-                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M17 11l-5-5-5 5M17 17l-5-5-5 5" />
+                            </svg>
                         </button>
 
                         {/* Prev 1 */}
@@ -1238,7 +1240,9 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             disabled={pageNum <= 1}
                             title="前のページ"
                         >
-                            <span>▲</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M18 15l-6-6-6 6" />
+                            </svg>
                         </button>
 
                         {/* Slider */}
@@ -1274,7 +1278,9 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             disabled={pageNum >= numPages}
                             title="次のページ"
                         >
-                            <span>▼</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M6 9l6 6 6-6" />
+                            </svg>
                         </button>
 
                         {/* Next 10 */}
@@ -1284,10 +1290,9 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             disabled={pageNum >= numPages}
                             title="次の10ページ"
                         >
-                            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '0.6' }}>
-                                <span>▼</span>
-                                <span>▼</span>
-                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M7 13l5 5 5-5M7 7l5 5 5-5" />
+                            </svg>
                         </button>
 
                         {/* Indicator */}
