@@ -15,6 +15,7 @@ import PrivacyPolicy from '../legal/PrivacyPolicy';
 import TermsOfService from '../legal/TermsOfService';
 import About from '../legal/About';
 import Contact from '../legal/Contact';
+import SpecifiedCommercialTransactions from '../legal/SpecifiedCommercialTransactions';
 import { ParentSettings } from '../parent/ParentSettings';
 import { useAuth } from '../../contexts/AuthContext';
 import { auth } from '../../lib/firebase';
@@ -84,6 +85,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
   const [showTermsOfService, setShowTermsOfService] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showContact, setShowContact] = useState(false);
+  const [showSpecifiedCommercialTransactions, setShowSpecifiedCommercialTransactions] = useState(false);
   const [showParentSettings, setShowParentSettings] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
@@ -1709,6 +1711,20 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
           >
             利用規約
           </button>
+          <button
+            onClick={() => setShowSpecifiedCommercialTransactions(true)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#7f8c8d',
+              cursor: 'pointer',
+              padding: 0,
+              fontSize: '13px',
+              textDecoration: 'underline'
+            }}
+          >
+            特定商取引法に基づく表記
+          </button>
         </div>
         <div style={{
           marginTop: '8px',
@@ -1753,6 +1769,13 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
       {
         showContact && (
           <Contact onClose={() => setShowContact(false)} />
+        )
+      }
+
+      {/* 特定商取引法に基づく表記モーダル */}
+      {
+        showSpecifiedCommercialTransactions && (
+          <SpecifiedCommercialTransactions onClose={() => setShowSpecifiedCommercialTransactions(false)} />
         )
       }
     </>
