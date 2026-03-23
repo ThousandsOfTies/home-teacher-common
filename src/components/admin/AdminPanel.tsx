@@ -21,6 +21,8 @@ import { auth } from '../../lib/firebase';
 import { FaEarthAmericas } from 'react-icons/fa6';
 import { FaRegEdit } from 'react-icons/fa';
 import { IoIosFolderOpen, IoMdSettings } from 'react-icons/io';
+import { FiEdit2 } from 'react-icons/fi';
+import { BiEraser } from 'react-icons/bi';
 import { ImFilePdf } from 'react-icons/im';
 import { VscDatabase } from 'react-icons/vsc';
 import { MdNewReleases, MdStorage, MdHistory, MdNotificationsNone } from 'react-icons/md';
@@ -743,13 +745,9 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
               <ul style={{ margin: '0 0 12px 0', paddingLeft: '1em', listStyle: 'none', color: '#7f8c8d', fontSize: '14px', lineHeight: '1.8' }}>
                 <li>{t('howToUse.step3.line1')}</li>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    {ICON_SVG.pen(true, '#000000')}
-                  </span>
+                  <FiEdit2 size={16} color='#000000' />
                   <strong>{t('howToUse.step3.line2Pen')}</strong>{t('howToUse.step3.line2Write')}
-                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    {ICON_SVG.eraser(true)}
-                  </span>
+                  <BiEraser size={16} />
                   <strong>{t('howToUse.step3.line2Eraser')}</strong>{t('howToUse.step3.line2Erase')}
                 </li>
                 <li>{t('howToUse.step3.line3')}</li>
