@@ -1575,7 +1575,9 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                   title="リンクと通知の設定"
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <MdNotificationsNone size={24} />
+                    <span style={{ display: 'inline-flex', width: '24px', height: '24px', flexShrink: 0 }}>
+                      <MdNotificationsNone size={24} />
+                    </span>
                     <span>Links & Notification</span>
                   </div>
                   <span style={{ fontSize: '20px', opacity: 0.5 }}>↗</span>
