@@ -8,7 +8,8 @@
         },
         "step2": {
             "title": "2️⃣SNSアクセス許可を設定する",
-            "line1": "⚙️ Adminタブ → ❤️ Links & Notification",
+            "line1Admin": "Adminタブ →",
+            "line1Links": "Links & Notification",
             "line2": "SNS利用時間制限を設定（5分〜60分）",
             "line3": "採点後、設定した時間だけSNSリンクが有効になります"
         },
@@ -24,7 +25,7 @@
         },
         "step4": {
             "title": "4️⃣ AIで採点する",
-            "line1": "✅ 採点",
+            "line1": "採点",
             "line1Tap": "ボタンをタップ",
             "line2": "採点したい範囲をドラッグで選択",
             "line3": "「採点する」ボタンで送信",
@@ -33,9 +34,9 @@
         },
         "step5": {
             "title": "5️⃣ その他の機能",
-            "history": "🕒 History - 採点履歴を確認",
-            "storage": "💾 Storage - データ使用状況を確認",
-            "delete": "🗑️ ゴミ箱アイコン - PDFを削除"
+            "history": "History - 採点履歴を確認",
+            "storage": "Storage - データ使用状況を確認",
+            "delete": "ゴミ箱アイコン - PDFを削除"
         },
         "closeButton": "閉じる"
     },
