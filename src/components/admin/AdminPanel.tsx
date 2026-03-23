@@ -23,7 +23,7 @@ import { FaRegEdit } from 'react-icons/fa';
 import { IoIosFolderOpen, IoMdSettings } from 'react-icons/io';
 import { ImFilePdf } from 'react-icons/im';
 import { VscDatabase } from 'react-icons/vsc';
-import { MdNewReleases, MdStorage } from 'react-icons/md';
+import { MdNewReleases, MdStorage, MdHistory, MdNotificationsNone } from 'react-icons/md';
 import { ICON_SVG } from '../../constants/icons';
 import { useTranslation } from 'react-i18next';
 import { getSubjects, SubjectInfo, SubjectsResponse } from '../../services/api';
@@ -1483,7 +1483,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                   title="採点履歴を表示"
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '24px' }}>🕒</span>
+                    <MdHistory size={24} />
                     <span>History</span>
                   </div>
                   <span style={{ fontSize: '20px', opacity: 0.5 }}>↗</span>
@@ -1575,7 +1575,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                   title="リンクと通知の設定"
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '24px' }}>❤️</span>
+                    <MdNotificationsNone size={24} />
                     <span>Links & Notification</span>
                   </div>
                   <span style={{ fontSize: '20px', opacity: 0.5 }}>↗</span>
