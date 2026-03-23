@@ -21,11 +21,11 @@ import { auth } from '../../lib/firebase';
 import { FaEarthAmericas } from 'react-icons/fa6';
 import { FaRegEdit } from 'react-icons/fa';
 import { IoIosFolderOpen, IoMdSettings } from 'react-icons/io';
-import { FiEdit2 } from 'react-icons/fi';
+import { FiEdit2, FiHardDrive, FiTrash2 } from 'react-icons/fi';
 import { BiEraser } from 'react-icons/bi';
 import { ImFilePdf } from 'react-icons/im';
 import { VscDatabase } from 'react-icons/vsc';
-import { MdNewReleases, MdStorage, MdHistory, MdNotificationsNone } from 'react-icons/md';
+import { MdNewReleases, MdHistory, MdNotificationsNone } from 'react-icons/md';
 import { ICON_SVG } from '../../constants/icons';
 import { useTranslation } from 'react-i18next';
 import { getSubjects, SubjectInfo, SubjectsResponse } from '../../services/api';
@@ -779,9 +779,15 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                 {t('howToUse.step5.title')}
               </h4>
               <ul style={{ margin: 0, paddingLeft: '1em', listStyle: 'none', color: '#7f8c8d', fontSize: '14px', lineHeight: '1.8' }}>
-                <li>{t('howToUse.step5.history')}</li>
-                <li>{t('howToUse.step5.storage')}</li>
-                <li>{t('howToUse.step5.delete')}</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <MdHistory size={16} />{t('howToUse.step5.history')}
+                </li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FiHardDrive size={16} />{t('howToUse.step5.storage')}
+                </li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FiTrash2 size={16} />{t('howToUse.step5.delete')}
+                </li>
               </ul>
             </div>
 
@@ -1523,7 +1529,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                       title="ストレージ詳細を表示"
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <MdStorage size={24} />
+                        <FiHardDrive size={24} />
                         <span>Storage</span>
                       </div>
                       <span style={{ fontSize: '20px', opacity: 0.5 }}>↗</span>
