@@ -23,6 +23,7 @@ import { FaRegEdit } from 'react-icons/fa';
 import { IoIosFolderOpen, IoMdSettings } from 'react-icons/io';
 import { ImFilePdf } from 'react-icons/im';
 import { VscDatabase } from 'react-icons/vsc';
+import { MdNewReleases, MdStorage } from 'react-icons/md';
 import { ICON_SVG } from '../../constants/icons';
 import { useTranslation } from 'react-i18next';
 import { getSubjects, SubjectInfo, SubjectsResponse } from '../../services/api';
@@ -1113,7 +1114,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                 gap: '8px'
               }}
             >
-              <span style={{ fontSize: '20px' }}>🖊️</span>
+              <FaRegEdit size={20} />
               Study
             </button>
             <button
@@ -1134,7 +1135,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                 position: 'relative'
               }}
             >
-              <span style={{ fontSize: '20px' }}>⚙️</span>
+              <IoMdSettings size={20} />
               Admin
               {hasUpdate && (
                 <span style={{
@@ -1416,7 +1417,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                   boxShadow: '0 2px 4px rgba(230, 126, 34, 0.2)'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '24px' }}>✨</span>
+                    <MdNewReleases size={24} color="#e67e22" />
                     <div>
                       <h3 style={{ margin: '0 0 4px 0', color: '#d35400', fontSize: '16px', fontWeight: 'bold' }}>
                         New Version Available!
@@ -1524,7 +1525,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                       title="ストレージ詳細を表示"
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span style={{ fontSize: '24px' }}>💾</span>
+                        <MdStorage size={24} />
                         <span>Storage</span>
                       </div>
                       <span style={{ fontSize: '20px', opacity: 0.5 }}>↗</span>
