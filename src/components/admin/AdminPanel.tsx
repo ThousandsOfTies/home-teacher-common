@@ -25,7 +25,7 @@ import { FiEdit2, FiHardDrive, FiTrash2, FiCheckCircle } from 'react-icons/fi';
 import { BiEraser } from 'react-icons/bi';
 import { ImFilePdf } from 'react-icons/im';
 import { VscDatabase } from 'react-icons/vsc';
-import { MdNewReleases, MdHistory, MdNotificationsNone } from 'react-icons/md';
+import { MdNewReleases, MdHistory, MdNotificationsNone, MdAccessTime } from 'react-icons/md';
 import { ICON_SVG } from '../../constants/icons';
 import { useTranslation } from 'react-i18next';
 import { getSubjects, SubjectInfo, SubjectsResponse } from '../../services/api';
@@ -425,7 +425,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                     alignItems: 'center',
                     gap: '6px'
                   }}>
-                    <span>⏱️</span>
+                    <MdAccessTime size={16} />
                     <span>{t('snsSettings.timeLimit')}</span>
                   </label>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
@@ -510,7 +510,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                     alignItems: 'center',
                     gap: '6px'
                   }}>
-                    <span>🔔</span>
+                    <MdNotificationsNone size={16} />
                     <span>{t('snsSettings.notificationEnable')}</span>
                   </label>
 
