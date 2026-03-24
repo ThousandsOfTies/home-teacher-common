@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { MdSmartphone } from 'react-icons/md'
 import { GradingHistoryRecord, getAllGradingHistory, deleteGradingHistory, SNSUsageHistoryRecord, getSNSUsageHistory } from '../../utils/indexedDB'
 import './GradingHistory.css'
 import { useTranslation } from 'react-i18next'
@@ -138,7 +139,7 @@ const GradingHistory = ({ onClose, onSelectHistory }: GradingHistoryProps) => {
                 <span className="result-badge incorrect" style={{ width: '20px', height: '20px', fontSize: '12px' }}>✗</span>
                 {incorrectCount}
               </span>
-              <span>📱 {t('gradingHistory.snsCount')}: {snsCount}{t('gradingHistory.times')}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><MdSmartphone size={16} /> {t('gradingHistory.snsCount')}: {snsCount}{t('gradingHistory.times')}</span>
               <span>{t('gradingHistory.correctRate')}: {correctRate}%</span>
             </span>
           </div>
@@ -248,7 +249,7 @@ const GradingHistory = ({ onClose, onSelectHistory }: GradingHistoryProps) => {
                     // SNS利用履歴
                     <div className="history-item sns-item">
                       <div className="history-item-header" style={{ backgroundColor: '#f8f9fa' }}>
-                        <span style={{ fontSize: '20px' }}>📱</span>
+                        <MdSmartphone size={20} />
                         <span className="problem-info" style={{ color: '#7f8c8d' }}>
                           {item.data.snsName} - {item.data.timeLimitMinutes}{t('gradingHistory.minutes_short')}
                         </span>
