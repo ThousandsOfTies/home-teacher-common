@@ -593,6 +593,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                       />
                       {snsIcon ? (
                         <div
+                          className="sns-brand-icon"
                           style={{
                             width: '32px',
                             height: '32px',

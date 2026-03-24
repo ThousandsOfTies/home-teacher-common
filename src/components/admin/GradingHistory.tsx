@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { MdSmartphone } from 'react-icons/md'
+import { MdSmartphone, MdEditNote } from 'react-icons/md'
 import { GradingHistoryRecord, getAllGradingHistory, deleteGradingHistory, SNSUsageHistoryRecord, getSNSUsageHistory } from '../../utils/indexedDB'
 import './GradingHistory.css'
 import { useTranslation } from 'react-i18next'
@@ -160,14 +160,14 @@ const GradingHistory = ({ onClose, onSelectHistory }: GradingHistoryProps) => {
               onClick={() => setFilterType('grading')}
               title="採点のみ"
             >
-              {t('gradingHistory.filterGrading')}
+              <MdEditNote size={14} /> {t('gradingHistory.filterGrading')}
             </button>
             <button
               className={filterType === 'sns' ? 'active' : ''}
               onClick={() => setFilterType('sns')}
               title="SNSのみ"
             >
-              {t('gradingHistory.filterSNS')}
+              <MdSmartphone size={14} /> {t('gradingHistory.filterSNS')}
             </button>
 
             {filterType !== 'sns' && (
