@@ -1,6 +1,7 @@
 import React from 'react';
 import { SubjectInfo } from '../../services/api';
 import { MdCleaningServices, MdContrast, MdLightbulbOutline } from 'react-icons/md';
+import { FiArrowLeft } from 'react-icons/fi';
 
 interface EditorToolbarProps {
     onBack?: () => void;
@@ -58,8 +59,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             {/* Left Area: Back & Pagination */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>
                 {onBack && (
-                    <button onClick={onBack} title="ホームに戻る" style={{ border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer', flexShrink: 0 }}>
-                        🔙
+                    <button onClick={onBack} title="ホームに戻る" style={{ border: 'none', background: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                        <FiArrowLeft size={20} />
                     </button>
                 )}
             </div>

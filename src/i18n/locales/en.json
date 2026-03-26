@@ -8,7 +8,8 @@
         },
         "step2": {
             "title": "2️⃣ Configure SNS Access Permissions",
-            "line1": "⚙️ Admin tab → ❤️ Links & Notification",
+            "line1Admin": "Admin tab →",
+            "line1Links": "Links & Notification",
             "line2": "Set SNS usage time limit (5-60 minutes)",
             "line3": "SNS links become active for the set duration after grading"
         },
@@ -24,7 +25,7 @@
         },
         "step4": {
             "title": "4️⃣ AI Grading",
-            "line1": "✅ Grading",
+            "line1": "Grading",
             "line1Tap": "Tap the button",
             "line2": "Drag to select the area to grade",
             "line3": "Send with \"Grade\" button",
@@ -33,9 +34,9 @@
         },
         "step5": {
             "title": "5️⃣ Other Features",
-            "history": "🕒 History - View grading history",
-            "storage": "💾 Storage - Check data usage",
-            "delete": "🗑️ Trash Icon - Delete PDF"
+            "history": "History - View grading history",
+            "storage": "Storage - Check data usage",
+            "delete": "Trash Icon - Delete PDF"
         },
         "closeButton": "Close"
     },
@@ -62,8 +63,8 @@
         "times": "times",
         "correctRate": "Correct Rate",
         "filterAll": "All",
-        "filterGrading": "📝 Grading",
-        "filterSNS": "📱 SNS",
+        "filterGrading": "Grading",
+        "filterSNS": "SNS",
         "searchPlaceholder": "Search by workbook, problem number, SNS name...",
         "loading": "Loading...",
         "noResults": "No history matches the criteria",

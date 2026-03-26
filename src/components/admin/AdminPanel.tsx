@@ -21,8 +21,11 @@ import { auth } from '../../lib/firebase';
 import { FaEarthAmericas } from 'react-icons/fa6';
 import { FaRegEdit } from 'react-icons/fa';
 import { IoIosFolderOpen, IoMdSettings } from 'react-icons/io';
+import { FiEdit2, FiHardDrive, FiTrash2, FiCheckCircle } from 'react-icons/fi';
+import { BiEraser } from 'react-icons/bi';
 import { ImFilePdf } from 'react-icons/im';
 import { VscDatabase } from 'react-icons/vsc';
+import { MdNewReleases, MdHistory, MdNotificationsNone, MdAccessTime } from 'react-icons/md';
 import { ICON_SVG } from '../../constants/icons';
 import { useTranslation } from 'react-i18next';
 import { getSubjects, SubjectInfo, SubjectsResponse } from '../../services/api';
@@ -422,7 +425,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                     alignItems: 'center',
                     gap: '6px'
                   }}>
-                    <span>⏱️</span>
+                    <MdAccessTime size={16} />
                     <span>{t('snsSettings.timeLimit')}</span>
                   </label>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
@@ -507,7 +510,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                     alignItems: 'center',
                     gap: '6px'
                   }}>
-                    <span>🔔</span>
+                    <MdNotificationsNone size={16} />
                     <span>{t('snsSettings.notificationEnable')}</span>
                   </label>
 
@@ -590,6 +593,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                       />
                       {snsIcon ? (
                         <div
+                          className="sns-brand-icon"
                           style={{
                             width: '32px',
                             height: '32px',
@@ -692,31 +696,19 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
               </h4>
               <ul style={{ margin: '0 0 12px 0', paddingLeft: '1em', listStyle: 'none', color: '#7f8c8d', fontSize: '14px', lineHeight: '1.8' }}>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    <FaEarthAmericas style={{ fontSize: '16px', color: '#3498db' }} />
-                  </span>
+                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><FaEarthAmericas size={16} color='#3498db' /></span>
                   →
-                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    <ImFilePdf style={{ fontSize: '16px', color: '#e74c3c' }} />
-                  </span>
+                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><ImFilePdf size={16} color='#e74c3c' /></span>
                   →
-                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    <IoIosFolderOpen style={{ fontSize: '16px', color: '#f39c12' }} />
-                  </span>
+                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><IoIosFolderOpen size={16} color='#f39c12' /></span>
                   {t('howToUse.step1.catalog')}
                 </li>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    <IoIosFolderOpen style={{ fontSize: '16px', color: '#f39c12' }} />
-                  </span>
+                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><IoIosFolderOpen size={16} color='#f39c12' /></span>
                   →
-                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    <ImFilePdf style={{ fontSize: '16px', color: '#e74c3c' }} />
-                  </span>
+                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><ImFilePdf size={16} color='#e74c3c' /></span>
                   →
-                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    <VscDatabase style={{ fontSize: '16px', color: '#34495e' }} />
-                  </span>
+                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><VscDatabase size={16} color='#34495e' /></span>
                   {t('howToUse.step1.local')}
                 </li>
               </ul>
@@ -728,7 +720,12 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                 {t('howToUse.step2.title')}
               </h4>
               <ul style={{ margin: '0 0 12px 0', paddingLeft: '1em', listStyle: 'none', color: '#7f8c8d', fontSize: '14px', lineHeight: '1.8' }}>
-                <li>{t('howToUse.step2.line1')}</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><IoMdSettings size={16} /></span>
+                  {t('howToUse.step2.line1Admin')}
+                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><MdNotificationsNone size={16} /></span>
+                  {t('howToUse.step2.line1Links')}
+                </li>
                 <li>{t('howToUse.step2.line2')}</li>
                 <li>{t('howToUse.step2.line3')}</li>
               </ul>
@@ -742,13 +739,9 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
               <ul style={{ margin: '0 0 12px 0', paddingLeft: '1em', listStyle: 'none', color: '#7f8c8d', fontSize: '14px', lineHeight: '1.8' }}>
                 <li>{t('howToUse.step3.line1')}</li>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    {ICON_SVG.pen(true, '#000000')}
-                  </span>
+                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><FiEdit2 size={16} color='#000000' /></span>
                   <strong>{t('howToUse.step3.line2Pen')}</strong>{t('howToUse.step3.line2Write')}
-                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    {ICON_SVG.eraser(true)}
-                  </span>
+                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><BiEraser size={16} /></span>
                   <strong>{t('howToUse.step3.line2Eraser')}</strong>{t('howToUse.step3.line2Erase')}
                 </li>
                 <li>{t('howToUse.step3.line3')}</li>
@@ -763,6 +756,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
               </h4>
               <ul style={{ margin: '0 0 12px 0', paddingLeft: '1em', listStyle: 'none', color: '#7f8c8d', fontSize: '14px', lineHeight: '1.8' }}>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><FiCheckCircle size={16} /></span>
                   <strong>{t('howToUse.step4.line1')}</strong> {t('howToUse.step4.line1Tap')}
                 </li>
                 <li>{t('howToUse.step4.line2')}</li>
@@ -780,9 +774,18 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                 {t('howToUse.step5.title')}
               </h4>
               <ul style={{ margin: 0, paddingLeft: '1em', listStyle: 'none', color: '#7f8c8d', fontSize: '14px', lineHeight: '1.8' }}>
-                <li>{t('howToUse.step5.history')}</li>
-                <li>{t('howToUse.step5.storage')}</li>
-                <li>{t('howToUse.step5.delete')}</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><MdHistory size={16} /></span>
+                  {t('howToUse.step5.history')}
+                </li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><FiHardDrive size={16} /></span>
+                  {t('howToUse.step5.storage')}
+                </li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><FiTrash2 size={16} /></span>
+                  {t('howToUse.step5.delete')}
+                </li>
               </ul>
             </div>
 
@@ -1113,7 +1116,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                 gap: '8px'
               }}
             >
-              <span style={{ fontSize: '20px' }}>🖊️</span>
+              <FaRegEdit size={20} />
               Study
             </button>
             <button
@@ -1134,7 +1137,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                 position: 'relative'
               }}
             >
-              <span style={{ fontSize: '20px' }}>⚙️</span>
+              <IoMdSettings size={20} />
               Admin
               {hasUpdate && (
                 <span style={{
@@ -1416,7 +1419,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                   boxShadow: '0 2px 4px rgba(230, 126, 34, 0.2)'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '24px' }}>✨</span>
+                    <MdNewReleases size={24} color="#e67e22" />
                     <div>
                       <h3 style={{ margin: '0 0 4px 0', color: '#d35400', fontSize: '16px', fontWeight: 'bold' }}>
                         New Version Available!
@@ -1482,7 +1485,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                   title="採点履歴を表示"
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '24px' }}>🕒</span>
+                    <MdHistory size={24} />
                     <span>History</span>
                   </div>
                   <span style={{ fontSize: '20px', opacity: 0.5 }}>↗</span>
@@ -1524,7 +1527,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                       title="ストレージ詳細を表示"
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span style={{ fontSize: '24px' }}>💾</span>
+                        <FiHardDrive size={24} />
                         <span>Storage</span>
                       </div>
                       <span style={{ fontSize: '20px', opacity: 0.5 }}>↗</span>
@@ -1574,7 +1577,9 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                   title="リンクと通知の設定"
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '24px' }}>❤️</span>
+                    <span style={{ display: 'inline-flex', width: '24px', height: '24px', flexShrink: 0 }}>
+                      <MdNotificationsNone size={24} />
+                    </span>
                     <span>Links & Notification</span>
                   </div>
                   <span style={{ fontSize: '20px', opacity: 0.5 }}>↗</span>

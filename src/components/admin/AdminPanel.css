@@ -276,8 +276,8 @@
   color: #7f8c8d;
 }
 
-/* SVGアイコンのスタイル */
-svg {
+/* SVGアイコンのスタイル（simple-iconsコンテナのみ） */
+.sns-brand-icon svg {
   width: 100%;
   height: 100%;
 }
