@@ -1710,7 +1710,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
             利用規約
           </button>
           <a
-            href="/TutoTuto/tokushoho.html"
+            href="https://thousandsofties.github.io/tokushoho.html"
             target="_blank"
             rel="noopener noreferrer"
             style={{
