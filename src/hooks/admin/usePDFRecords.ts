@@ -103,7 +103,7 @@ export const usePDFRecords = () => {
     }
   }
 
-  const handleFileSelect = async () => {
+  const handleFileSelect = async (mode: 'pdf' | 'image' = 'pdf') => {
     setUploading(true)
     try {
       let files: File[] = []
@@ -111,21 +111,11 @@ export const usePDFRecords = () => {
       if ('showOpenFilePicker' in window) {
         console.log('📂 Using modern file picker API...')
         try {
-          const fileHandles = await (window as any).showOpenFilePicker({
-            types: [
-              {
-                description: 'PDF and Image Files',
-                accept: {
-                  'application/pdf': ['.pdf'],
-                  'image/jpeg': ['.jpg', '.jpeg'],
-                  'image/png': ['.png'],
-                  'image/heic': ['.heic'],
-                  'image/heif': ['.heif'],
-                },
-              },
-            ],
-            multiple: true,
-          })
+          const pickerOptions: any = { multiple: true }
+          if (mode === 'pdf') {
+            pickerOptions.types = [{ description: 'PDF Files', accept: { 'application/pdf': ['.pdf'] } }]
+          }
+          const fileHandles = await (window as any).showOpenFilePicker(pickerOptions)
           console.log(`📂 File handles received: ${fileHandles.length}`)
           files = await Promise.all(fileHandles.map((handle: any) => handle.getFile()))
           console.log(`📂 Files loaded: ${files.length}`)
@@ -149,7 +139,9 @@ export const usePDFRecords = () => {
         const selectedFiles = await new Promise<FileList | null>((resolve) => {
           const input = document.createElement('input')
           input.type = 'file'
-          input.accept = 'application/pdf,image/jpeg,image/jpg,image/png,image/heic,image/heif'
+          if (mode === 'pdf') {
+            input.accept = 'application/pdf'
+          }
           input.multiple = true
 
           let isResolved = false

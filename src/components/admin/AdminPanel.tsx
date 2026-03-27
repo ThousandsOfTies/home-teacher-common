@@ -21,7 +21,7 @@ import { auth } from '../../lib/firebase';
 import { FaEarthAmericas } from 'react-icons/fa6';
 import { FaRegEdit } from 'react-icons/fa';
 import { IoIosFolderOpen, IoMdSettings } from 'react-icons/io';
-import { FiEdit2, FiHardDrive, FiTrash2, FiCheckCircle } from 'react-icons/fi';
+import { FiEdit2, FiHardDrive, FiTrash2, FiCheckCircle, FiImage, FiChevronDown } from 'react-icons/fi';
 import { BiEraser } from 'react-icons/bi';
 import { ImFilePdf } from 'react-icons/im';
 import { VscDatabase } from 'react-icons/vsc';
@@ -1288,8 +1288,8 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
 
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '20px',
+              gridTemplateColumns: '1fr 1fr 1fr',
+              gap: '12px',
               marginTop: '20px'
             }}>
               {/* Catalog Button (外部サイトからダウンロード) */}
@@ -1316,34 +1316,70 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
                 <IoIosFolderOpen style={{ fontSize: '28px', width: '28px', height: '28px', color: '#f39c12' }} />
               </button>
 
-              {/* Local Import Button (ローカルファイルを登録 - PDF & 画像対応) */}
+              {/* PDF Import Button */}
               <button
                 className="add-button"
-                onClick={() => handleFileSelect()}
+                onClick={() => handleFileSelect('pdf')}
                 style={{
                   width: '100%',
                   margin: 0,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '16px',
+                  gap: '8px',
                   height: 'auto',
                   padding: '16px',
                   background: 'white',
                   border: '2px solid #bdc3c7',
                   borderRadius: '8px'
                 }}
-                title="ローカルファイルを登録（PDF・画像対応）"
+                title="PDFファイルを取り込む"
               >
-                <IoIosFolderOpen style={{ fontSize: '28px', width: '28px', height: '28px', color: '#f39c12' }} />
-                <div style={{ fontSize: '20px', color: '#95a5a6' }}>→</div>
+                <IoIosFolderOpen style={{ fontSize: '24px', width: '24px', height: '24px', color: '#f39c12' }} />
+                <div style={{ fontSize: '16px', color: '#95a5a6' }}>→</div>
+                <ImFilePdf style={{ fontSize: '24px', width: '24px', height: '24px', color: '#e74c3c' }} />
+                <div style={{ fontSize: '16px', color: '#95a5a6' }}>→</div>
                 <img
                   src={import.meta.env.DEV
                     ? `/icons/${import.meta.env.MODE}/logo.png`
                     : `${import.meta.env.BASE_URL}logo.png`}
                   alt={`${APP_NAME} Storage`}
-                  style={{ width: '44px', height: '44px', objectFit: 'contain' }}
+                  style={{ width: '32px', height: '32px', objectFit: 'contain' }}
                 />
+                <FiChevronDown style={{ fontSize: '16px', color: '#95a5a6' }} />
+              </button>
+
+              {/* Image Import Button */}
+              <button
+                className="add-button"
+                onClick={() => handleFileSelect('image')}
+                style={{
+                  width: '100%',
+                  margin: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  height: 'auto',
+                  padding: '16px',
+                  background: 'white',
+                  border: '2px solid #bdc3c7',
+                  borderRadius: '8px'
+                }}
+                title="画像ファイルを取り込む"
+              >
+                <IoIosFolderOpen style={{ fontSize: '24px', width: '24px', height: '24px', color: '#f39c12' }} />
+                <div style={{ fontSize: '16px', color: '#95a5a6' }}>→</div>
+                <FiImage style={{ fontSize: '24px', width: '24px', height: '24px', color: '#3498db' }} />
+                <div style={{ fontSize: '16px', color: '#95a5a6' }}>→</div>
+                <img
+                  src={import.meta.env.DEV
+                    ? `/icons/${import.meta.env.MODE}/logo.png`
+                    : `${import.meta.env.BASE_URL}logo.png`}
+                  alt={`${APP_NAME} Storage`}
+                  style={{ width: '32px', height: '32px', objectFit: 'contain' }}
+                />
+                <FiChevronDown style={{ fontSize: '16px', color: '#95a5a6' }} />
               </button>
             </div>
           </div >
