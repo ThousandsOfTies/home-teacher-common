@@ -25,6 +25,7 @@ interface PDFPaneProps {
 
     // スプリット表示モード（高さフィット＋左寄せ）
     splitMode?: boolean
+    hidePdfBackground?: boolean
 
     // レイアウト
     className?: string
@@ -63,6 +64,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         eraserSize,
         isCtrlPressed,
         splitMode = false,
+        hidePdfBackground = false,
         className,
         style
     } = props
@@ -1062,14 +1064,16 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         visibility: isLayoutReady ? 'visible' : 'hidden'
                     }}
                 >
-                    <PDFCanvas
-                        pdfDoc={pdfDoc}
-                        containerRef={containerRef}
-                        canvasRef={canvasRef}
-                        renderScale={RENDER_SCALE}
-                        pageNum={pageNum}
-                        onPageRendered={handlePageRendered}
-                    />
+                    <div style={{ opacity: hidePdfBackground ? 0 : 1, transition: 'opacity 0.2s' }}>
+                        <PDFCanvas
+                            pdfDoc={pdfDoc}
+                            containerRef={containerRef}
+                            canvasRef={canvasRef}
+                            renderScale={RENDER_SCALE}
+                            pageNum={pageNum}
+                            onPageRendered={handlePageRendered}
+                        />
+                    </div>
                     <DrawingCanvas
                         key={`drawing-${pageNum}`}
                         ref={drawingCanvasRef}

@@ -6,15 +6,18 @@
 // ----------------------------------------
 // 利用可能なモデル一覧
 // ----------------------------------------
-export const DEFAULT_MODEL_ID = 'gemini-2.5-flash'
+export const DEFAULT_MODEL_ID = 'gemini-3.5-flash'
 
 export const AVAILABLE_MODELS = [
-  { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro (Preview)', description: '最新世代・最高精度モデル（プレビュー版）' },
-  { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash (Preview)', description: '次世代の高速・高精度モデル（プレビュー版）' },
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: '複雑な論理推論に強いハイエンドモデル（GA）' },
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: '速度と精度のバランスが良いモデル（推奨・GA）' },
+  { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', description: '最新世代・高速・高精度モデル（推奨・GA）' },
+  { id: 'gemini-3.5-pro', name: 'Gemini 3.5 Pro (Preview)', description: '最高精度の推論モデル（プレビュー版）' },
+  { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro (Preview)', description: '高精度モデル（プレビュー版）' },
+  { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite', description: '超高速・低コストモデル（GA）' },
+  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: '複雑な論理推論に強いモデル（GA）' },
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: '速度と精度のバランスが良いモデル（GA）' },
   { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', description: '超高速・低コストモデル（GA）' },
 ]
+
 
 // ----------------------------------------
 // 教科定義
