@@ -400,6 +400,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     } = useDrawing(drawingCanvasRef, {
         width: size,
         color: color,
+        opacity,
         onPathComplete: (path) => {
             if (path.points.length < 2) {
                 return
