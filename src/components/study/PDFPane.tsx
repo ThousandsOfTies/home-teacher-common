@@ -21,6 +21,7 @@ interface PDFPaneProps {
     color: string
     size: number
     opacity?: number
+    strokeStyle?: 'pencil' | 'marker' | 'brush'
     eraserSize: number
     isCtrlPressed: boolean
 
@@ -63,6 +64,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         color,
         size,
         opacity = 1,
+        strokeStyle = 'pencil',
         eraserSize,
         isCtrlPressed,
         splitMode = false,
@@ -408,6 +410,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         width: size,
         color: color,
         opacity,
+        style: strokeStyle,
         onPathComplete: (path) => {
             if (path.points.length < 2) {
                 return
@@ -605,7 +608,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         }
                         // 長押し検出開始
                         startLongPress(normalizedPoint)
-                        startDrawing(x, y)
+                        startDrawing(x, y, e.pressure)
                     } else if (tool === 'eraser') {
                         // 消しゴム時も選択を解除
                         if (hasSelection) clearSelection()
@@ -657,7 +660,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 }
 
                 // すべての Coalesced Events から座標を抽出
-                const batchPoints: Array<{ x: number, y: number }> = []
+                    const batchPoints: Array<{ x: number, y: number, pressure?: number }> = []
 
                 // 前のバッチの最後の点を最初に追加（連続性確保）
                 if (lastDrawnPointRef.current) {
@@ -667,7 +670,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 for (const ev of events) {
                     const ex = (ev.clientX - rect.left - panOffset.x) / zoom
                     const ey = (ev.clientY - rect.top - panOffset.y) / zoom
-                    batchPoints.push({ x: ex, y: ey })
+                    batchPoints.push({ x: ex, y: ey, pressure: ev.pressure })
                 }
 
                 // 最後のイベントを正規化座標に変換（lasso selection, eraser 用）
@@ -1106,6 +1109,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         color={color}
                         size={size}
                         opacity={opacity}
+                        strokeStyle={strokeStyle}
                         eraserSize={eraserSize}
                         paths={drawingPaths}
                         isCtrlPressed={isCtrlPressed}
