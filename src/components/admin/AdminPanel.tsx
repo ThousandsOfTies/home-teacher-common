@@ -1118,7 +1118,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
               }}
             >
               <FaRegEdit size={20} />
-              Study
+              Enjoy
             </button>
             <button
               onClick={() => setActiveTab('admin')}
