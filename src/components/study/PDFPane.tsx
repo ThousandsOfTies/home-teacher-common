@@ -608,7 +608,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         }
                         // 長押し検出開始
                         startLongPress(normalizedPoint)
-                        startDrawing(x, y, e.pressure)
+                        // Mouse は押下中でも pressure=0.5 を返すため、筆圧はペン入力だけ利用する。
+                        startDrawing(x, y, e.pointerType === 'pen' ? e.pressure : undefined)
                     } else if (tool === 'eraser') {
                         // 消しゴム時も選択を解除
                         if (hasSelection) clearSelection()
@@ -662,15 +663,14 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 // すべての Coalesced Events から座標を抽出
                     const batchPoints: Array<{ x: number, y: number, pressure?: number }> = []
 
-                // 前のバッチの最後の点を最初に追加（連続性確保）
-                if (lastDrawnPointRef.current) {
-                    batchPoints.push(lastDrawnPointRef.current)
-                }
-
                 for (const ev of events) {
                     const ex = (ev.clientX - rect.left - panOffset.x) / zoom
                     const ey = (ev.clientY - rect.top - panOffset.y) / zoom
-                    batchPoints.push({ x: ex, y: ey, pressure: ev.pressure })
+                    batchPoints.push({
+                        x: ex,
+                        y: ey,
+                        pressure: ev.pointerType === 'pen' ? ev.pressure : undefined
+                    })
                 }
 
                 // 最後のイベントを正規化座標に変換（lasso selection, eraser 用）
