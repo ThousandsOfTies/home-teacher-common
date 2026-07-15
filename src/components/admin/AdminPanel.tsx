@@ -36,9 +36,16 @@ interface AdminPanelProps {
   onEditPDF?: (record: PDFFileRecord) => void;
   hasUpdate?: boolean;
   onUpdate?: () => void;
+  studyTabLabel?: string;
 }
 
-export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, onUpdate }: AdminPanelProps) {
+export default function AdminPanel({
+  onSelectPDF,
+  onEditPDF,
+  hasUpdate = false,
+  onUpdate,
+  studyTabLabel = 'Study'
+}: AdminPanelProps) {
   // i18n
   const { t, i18n } = useTranslation();
 
@@ -1118,7 +1125,7 @@ export default function AdminPanel({ onSelectPDF, onEditPDF, hasUpdate = false, 
               }}
             >
               <FaRegEdit size={20} />
-              Enjoy
+              {studyTabLabel}
             </button>
             <button
               onClick={() => setActiveTab('admin')}
