@@ -20,6 +20,7 @@ interface PDFPaneProps {
     tool: 'pen' | 'eraser' | 'none'
     color: string
     size: number
+    opacity?: number
     eraserSize: number
     isCtrlPressed: boolean
 
@@ -61,6 +62,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         tool,
         color,
         size,
+        opacity = 1,
         eraserSize,
         isCtrlPressed,
         splitMode = false,
@@ -1089,6 +1091,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         tool={tool === 'none' ? 'pen' : tool}
                         color={color}
                         size={size}
+                        opacity={opacity}
                         eraserSize={eraserSize}
                         paths={drawingPaths}
                         isCtrlPressed={isCtrlPressed}
