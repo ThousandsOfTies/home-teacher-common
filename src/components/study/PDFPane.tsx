@@ -17,7 +17,7 @@ interface PDFPaneProps {
     onPathAdd: (path: DrawingPath) => void
     onPathsChange: (paths: DrawingPath[]) => void
     onUndo?: () => void
-    tool: 'pen' | 'eraser' | 'none'
+    tool: 'pen' | 'eraser' | 'fill' | 'none'
     color: string
     size: number
     opacity?: number
@@ -387,6 +387,13 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         drawingPathsRef.current = drawingPaths
     }, [drawingPaths])
 
+    const handleFill = (x: number, y: number) => {
+        const cw = canvasSize?.width || canvasRef.current?.width || 1
+        const ch = canvasSize?.height || canvasRef.current?.height || 1
+        drawingCanvasRef.current?.fillAt(x, y, color, opacity)
+        onPathAdd({ points: [{ x: x / cw, y: y / ch }], color, width: 0, opacity, kind: 'fill' })
+    }
+
 
     // Drawing Hook (Interaction Only) - RE-ENABLED
     // DrawingCanvas is now display-only (pointerEvents: none)
@@ -581,7 +588,10 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     const ch = canvasSize?.height || canvasRef.current?.height || 1
                     const normalizedPoint = { x: x / cw, y: y / ch }
 
-                    if (tool === 'pen') {
+                    if (tool === 'fill') {
+                        if (hasSelection) clearSelection()
+                        handleFill(x, y)
+                    } else if (tool === 'pen') {
                         // 選択中の場合
                         if (hasSelection) {
                             if (isPointInSelection(normalizedPoint)) {
@@ -841,7 +851,10 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         const normalizedPoint = { x: x / cw, y: y / ch }
 
                         // Eraser mode needs Touch Events for immediate feedback
-                        if (tool === 'eraser') {
+                        if (tool === 'fill') {
+                            if (hasSelection) clearSelection()
+                            handleFill(x, y)
+                        } else if (tool === 'eraser') {
                             // 消しゴム時も選択を解除
                             if (hasSelection) clearSelection()
                             handleErase(x, y)
