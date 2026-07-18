@@ -77,6 +77,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     const wrapperRef = useRef<HTMLDivElement>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const drawingCanvasRef = useRef<DrawingCanvasHandle>(null)
+    const [previewPath, setPreviewPath] = useState<DrawingPath | null>(null)
     // バッチ間の接続のため、前のバッチの最後の点を保持
     const lastDrawnPointRef = useRef<{ x: number, y: number } | null>(null)
 
@@ -410,7 +411,9 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         width: size,
         color: color,
         opacity,
+        // 質感（透明度）と描き味は独立させる。
         style: strokeStyle,
+        onPathPreview: setPreviewPath,
         onPathComplete: (path) => {
             if (path.points.length < 2) {
                 return
@@ -502,8 +505,10 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
             // DOM から DrawingCanvas を取得
             const drawingCanvas = containerRef.current?.querySelector('.drawing-canvas') as HTMLCanvasElement | null
 
-            // 描画キャンバスがない、またはサイズが0の場合はPDFキャンバスのみ返す
-            if (!drawingCanvas || drawingCanvas.width === 0 || drawingCanvas.height === 0) {
+            // PDF背景を表示する通常ペインで描画レイヤーがなければ、そのままPDFを返す。
+            // hidePdfBackground のペインは、キャプチャー時にもPDFを混ぜてはいけない。
+            const hasDrawingCanvas = Boolean(drawingCanvas && drawingCanvas.width > 0 && drawingCanvas.height > 0)
+            if (!hidePdfBackground && !hasDrawingCanvas) {
                 return pdfCanvas
             }
 
@@ -514,10 +519,14 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
             const ctx = compositeCanvas.getContext('2d')
             if (!ctx) return pdfCanvas
 
-            // PDFを描画
-            ctx.drawImage(pdfCanvas, 0, 0)
-            // 描画レイヤーを上に重ねる
-            ctx.drawImage(drawingCanvas, 0, 0, pdfCanvas.width, pdfCanvas.height)
+            // 画面上で非表示にしているPDF背景は、合成画像にも含めない。
+            // 呼び出し側の白いキャプチャーキャンバスへ透明背景として重ねる。
+            if (!hidePdfBackground) {
+                ctx.drawImage(pdfCanvas, 0, 0)
+            }
+            if (hasDrawingCanvas && drawingCanvas) {
+                ctx.drawImage(drawingCanvas, 0, 0, pdfCanvas.width, pdfCanvas.height)
+            }
 
             return compositeCanvas
         },
@@ -609,7 +618,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         // 長押し検出開始
                         startLongPress(normalizedPoint)
                         // Mouse は押下中でも pressure=0.5 を返すため、筆圧はペン入力だけ利用する。
-                        startDrawing(x, y, e.pointerType === 'pen' ? e.pressure : undefined)
+                        startDrawing(x, y, e.pointerType === 'pen' ? e.pressure : undefined, e.timeStamp)
                     } else if (tool === 'eraser') {
                         // 消しゴム時も選択を解除
                         if (hasSelection) clearSelection()
@@ -661,7 +670,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 }
 
                 // すべての Coalesced Events から座標を抽出
-                    const batchPoints: Array<{ x: number, y: number, pressure?: number }> = []
+                    const batchPoints: Array<{ x: number, y: number, pressure?: number, time?: number }> = []
 
                 for (const ev of events) {
                     const ex = (ev.clientX - rect.left - panOffset.x) / zoom
@@ -669,7 +678,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     batchPoints.push({
                         x: ex,
                         y: ey,
-                        pressure: ev.pointerType === 'pen' ? ev.pressure : undefined
+                        pressure: ev.pointerType === 'pen' ? ev.pressure : undefined,
+                        time: ev.timeStamp
                     })
                 }
 
@@ -1112,6 +1122,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         strokeStyle={strokeStyle}
                         eraserSize={eraserSize}
                         paths={drawingPaths}
+                        previewPath={previewPath}
                         isCtrlPressed={isCtrlPressed}
                         stylusOnly={false}
                         selectionState={selectionState}

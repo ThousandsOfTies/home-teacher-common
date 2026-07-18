@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || 'TutoTuto';
-import { PDFFileRecord, getAppSettings, saveAppSettings } from '../../utils/indexedDB';
+import { PDFFileRecord, deleteAppDatabase, getAppSettings, saveAppSettings } from '../../utils/indexedDB';
 import { getPlatformInfo } from '../../utils/storageManager';
 import GradingHistory from './GradingHistory';
 import { usePDFRecords } from '../../hooks/admin/usePDFRecords';
@@ -172,11 +172,7 @@ export default function AdminPanel({
   const clearAllStorage = async () => {
     try {
       // IndexedDBを削除
-      await new Promise<void>((resolve, reject) => {
-        const request = indexedDB.deleteDatabase('TutoTutoDB');
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(new Error('データベースの削除に失敗しました'));
-      });
+      await deleteAppDatabase();
 
       // データを再読み込み（空になる）
       await loadPDFRecords();

@@ -108,6 +108,8 @@ export interface GradeResponse {
   error?: string
 }
 
+export type TeacherMode = 'kind' | 'balanced' | 'strict'
+
 export const getAvailableModels = async (): Promise<AvailableModelsResponse> => {
   const response = await fetch(`${API_BASE_URL}/api/models`)
   if (!response.ok) {
@@ -128,7 +130,9 @@ export const gradeWork = async (
   croppedImageData: string,
   model?: string,
   language: string = 'ja',
-  subjectId?: string  // Optional: subject ID for subject-specific grading
+  subjectId?: string,  // Optional: subject ID for subject-specific grading
+  teacherMode: TeacherMode = 'kind',
+  panesReversed: boolean = false
 ): Promise<GradeResponse> => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/grade-work`, {
@@ -140,6 +144,8 @@ export const gradeWork = async (
         croppedImageData,
         model,
         language,
+        teacherMode,
+        panesReversed,
         ...(subjectId && { subjectId }), // Only include if provided (backward compatible)
       }),
     })

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { requestPersistentStorage, getStorageEstimate, getPlatformInfo, getStorageAdviceMessage } from '../../utils/storageManager'
 import { useTranslation } from 'react-i18next'
+import { deleteAppDatabase } from '../../utils/indexedDB'
 
 export const useStorage = () => {
   const { t } = useTranslation()
@@ -42,11 +43,7 @@ export const useStorage = () => {
     }
 
     try {
-      await new Promise<void>((resolve, reject) => {
-        const request = indexedDB.deleteDatabase('TutoTutoDB')
-        request.onsuccess = () => resolve()
-        request.onerror = () => reject(new Error('データベースの削除に失敗しました'))
-      })
+      await deleteAppDatabase()
 
       window.location.reload()
     } catch (error) {

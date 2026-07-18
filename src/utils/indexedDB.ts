@@ -1,6 +1,7 @@
 // IndexedDB管理ユーティリティ
 
-const DB_NAME = 'TutoTutoDB';
+// 共通ライブラリの既定値はTutoTutoのまま維持し、各アプリのビルド設定で分離する。
+export const DB_NAME = import.meta.env.VITE_INDEXED_DB_NAME || 'TutoTutoDB';
 const DB_VERSION = 9; // バージョンを上げて解答ストア追加
 const STORE_NAME = 'pdfFiles';
 const SNS_STORE_NAME = 'snsLinks';
@@ -73,6 +74,20 @@ export interface SNSUsageHistoryRecord {
 
 // Cached DB instance for Singleton pattern
 let dbInstance: IDBDatabase | null = null;
+
+export function deleteAppDatabase(): Promise<void> {
+  if (dbInstance) {
+    dbInstance.close();
+    dbInstance = null;
+  }
+
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(DB_NAME);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(new Error('データベースの削除に失敗しました'));
+    request.onblocked = () => reject(new Error('データベースが使用中のため削除できませんでした'));
+  });
+}
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
