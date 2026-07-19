@@ -2,11 +2,12 @@
 
 // 共通ライブラリの既定値はTutoTutoのまま維持し、各アプリのビルド設定で分離する。
 export const DB_NAME = import.meta.env.VITE_INDEXED_DB_NAME || 'TutoTutoDB';
-const DB_VERSION = 10; // PDF本体とページ別筆跡を分離
+const DB_VERSION = 12; // 採点履歴をBlob参照形式へ一本化
 const STORE_NAME = 'pdfFiles';
 const DRAWING_STORE_NAME = 'drawings';
 const SNS_STORE_NAME = 'snsLinks';
 const GRADING_HISTORY_STORE_NAME = 'gradingHistory';
+const GRADING_IMAGE_STORE_NAME = 'gradingImages';
 const SETTINGS_STORE_NAME = 'settings';
 const SNS_USAGE_HISTORY_STORE_NAME = 'snsUsageHistory';
 
@@ -32,6 +33,12 @@ interface DrawingRecord {
   updatedAt: number;
 }
 
+interface GradingImageRecord {
+  id: string;
+  blob: Blob;
+  createdAt: number;
+}
+
 export interface SNSLinkRecord {
   id: string; // ユニークID
   name: string; // SNS名（例: Twitter, Instagram）
@@ -52,7 +59,8 @@ export interface GradingHistoryRecord {
   feedback: string; // フィードバック
   explanation: string; // 解説
   timestamp: number; // 実施時刻（タイムスタンプ）
-  imageData?: string; // 採点時の画像データ（オプション）
+  imageData?: string; // Blobから復元した画面表示用データ（保存しない）
+  imageId?: string; // v11以降: gradingImagesストアへの参照
   teacherMode?: 'kind' | 'balanced' | 'strict'; // 採点時の先生レベル
   score?: number; // 作品評価（1〜5）
   overallComment?: string; // 作品全体の印象
@@ -180,6 +188,22 @@ function openDB(): Promise<IDBDatabase> {
         historyStore.createIndex('timestamp', 'timestamp', { unique: false });
         historyStore.createIndex('pdfId', 'pdfId', { unique: false });
         historyStore.createIndex('pageNumber', 'pageNumber', { unique: false });
+      }
+      const upgradeTransaction = (event.target as IDBOpenDBRequest).transaction!;
+      const historyStore = upgradeTransaction.objectStore(GRADING_HISTORY_STORE_NAME);
+      if (!historyStore.indexNames.contains('imageId')) {
+        historyStore.createIndex('imageId', 'imageId', { unique: false });
+      }
+
+      if (!db.objectStoreNames.contains(GRADING_IMAGE_STORE_NAME)) {
+        const imageStore = db.createObjectStore(GRADING_IMAGE_STORE_NAME, { keyPath: 'id' });
+        imageStore.createIndex('createdAt', 'createdAt', { unique: false });
+      }
+
+      // 正式利用前のため、Base64画像を内包する旧形式の採点履歴は移行しない。
+      if (oldVersion > 0 && oldVersion < 12) {
+        historyStore.clear();
+        upgradeTransaction.objectStore(GRADING_IMAGE_STORE_NAME).clear();
       }
 
       // 設定用オブジェクトストアが存在しない場合は作成
@@ -336,6 +360,7 @@ export async function getPDFRecord(id: string): Promise<PDFFileRecord | null> {
 
 // PDFファイルレコードを削除
 export async function deletePDFRecord(id: string): Promise<void> {
+  cancelScheduledDrawingSaves(id);
   await waitForDrawingSaves(id);
   const db = await openDB();
 
@@ -357,6 +382,13 @@ export async function deletePDFRecord(id: string): Promise<void> {
 
 // ペン跡を保存
 const drawingSaveQueues = new Map<string, Promise<void>>();
+const scheduledDrawingSaves = new Map<string, {
+  id: string;
+  pageNumber: number;
+  drawingData: string;
+  timer: ReturnType<typeof setTimeout>;
+}>();
+const DRAWING_SAVE_DEBOUNCE_MS = 400;
 
 export function saveDrawing(id: string, pageNumber: number, drawingData: string): Promise<void> {
   const key = `${id}:${pageNumber}`;
@@ -388,16 +420,53 @@ export function saveDrawing(id: string, pageNumber: number, drawingData: string)
   return next;
 }
 
-async function waitForDrawingSaves(id: string): Promise<void> {
+/** 連続描画中のIndexedDB書き込みをまとめ、最後の状態だけを保存する。 */
+export function scheduleDrawingSave(id: string, pageNumber: number, drawingData: string): void {
+  const key = `${id}:${pageNumber}`;
+  const previous = scheduledDrawingSaves.get(key);
+  if (previous) clearTimeout(previous.timer);
+  const timer = setTimeout(() => {
+    scheduledDrawingSaves.delete(key);
+    void saveDrawing(id, pageNumber, drawingData);
+  }, DRAWING_SAVE_DEBOUNCE_MS);
+  scheduledDrawingSaves.set(key, { id, pageNumber, drawingData, timer });
+}
+
+/** ページ遷移・終了前に保留中の状態を確実に永続化する。 */
+export async function flushDrawingSaves(id: string, pageNumber?: number): Promise<void> {
+  const prefix = `${id}:`;
+  const pending = [...scheduledDrawingSaves.entries()].filter(([key, entry]) => (
+    key.startsWith(prefix) && (pageNumber === undefined || entry.pageNumber === pageNumber)
+  ));
+  pending.forEach(([key, entry]) => {
+    clearTimeout(entry.timer);
+    scheduledDrawingSaves.delete(key);
+  });
+  await Promise.all(pending.map(([, entry]) => saveDrawing(entry.id, entry.pageNumber, entry.drawingData)));
+  await waitForDrawingSaves(id, pageNumber);
+}
+
+function cancelScheduledDrawingSaves(id: string): void {
+  const prefix = `${id}:`;
+  for (const [key, entry] of scheduledDrawingSaves) {
+    if (!key.startsWith(prefix)) continue;
+    clearTimeout(entry.timer);
+    scheduledDrawingSaves.delete(key);
+  }
+}
+
+async function waitForDrawingSaves(id: string, pageNumber?: number): Promise<void> {
+  const exactKey = pageNumber === undefined ? null : `${id}:${pageNumber}`;
   await Promise.all(
     [...drawingSaveQueues.entries()]
-      .filter(([key]) => key.startsWith(`${id}:`))
+      .filter(([key]) => exactKey ? key === exactKey : key.startsWith(`${id}:`))
       .map(([, pending]) => pending.catch(() => undefined))
   );
 }
 
 // ペン跡を取得
 export async function getDrawing(id: string, pageNumber: number): Promise<string | null> {
+  await flushDrawingSaves(id, pageNumber);
   const db = await openDB();
   const stored = await new Promise<DrawingRecord | null>((resolve, reject) => {
     const request = db.transaction([DRAWING_STORE_NAME], 'readonly')
@@ -414,6 +483,7 @@ export async function getDrawing(id: string, pageNumber: number): Promise<string
 }
 
 export async function getAllDrawings(id: string): Promise<Record<number, string>> {
+  await flushDrawingSaves(id);
   const db = await openDB();
   const stored = await new Promise<DrawingRecord[]>((resolve, reject) => {
     const request = db.transaction([DRAWING_STORE_NAME], 'readonly')
@@ -433,6 +503,7 @@ export async function getAllDrawings(id: string): Promise<Record<number, string>
 }
 
 export async function deleteAllDrawings(id: string): Promise<void> {
+  cancelScheduledDrawingSaves(id);
   await waitForDrawingSaves(id);
   const db = await openDB();
   await new Promise<void>((resolve, reject) => {
@@ -553,6 +624,66 @@ export function generateSNSLinkId(name: string): string {
   return `sns_${name}_${Date.now()}`;
 }
 
+const dataUrlToBlob = async (dataUrl: string): Promise<Blob> => {
+  const response = await fetch(dataUrl);
+  if (!response.ok) throw new Error('採点画像の変換に失敗しました');
+  return response.blob();
+}
+
+const blobToDataUrl = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result));
+  reader.onerror = () => reject(new Error('採点画像の読み込みに失敗しました'));
+  reader.readAsDataURL(blob);
+});
+
+const createBlobId = async (blob: Blob): Promise<string> => {
+  const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
+  const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+  return `grading-image-${hash}`;
+}
+
+/** 同じ画像は内容ハッシュで1件だけ保存し、複数の採点項目から共有する。 */
+export async function saveGradingImage(imageData: string): Promise<string> {
+  const blob = await dataUrlToBlob(imageData);
+  const id = await createBlobId(blob);
+  const db = await openDB();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction([GRADING_IMAGE_STORE_NAME], 'readwrite');
+    const record: GradingImageRecord = { id, blob, createdAt: Date.now() };
+    transaction.objectStore(GRADING_IMAGE_STORE_NAME).put(record);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(new Error('採点画像の保存に失敗しました'));
+    transaction.onabort = () => reject(new Error('採点画像の保存に失敗しました'));
+  });
+  return id;
+}
+
+export async function getGradingImageData(id: string): Promise<string | null> {
+  const db = await openDB();
+  const record = await new Promise<GradingImageRecord | null>((resolve, reject) => {
+    const request = db.transaction([GRADING_IMAGE_STORE_NAME], 'readonly')
+      .objectStore(GRADING_IMAGE_STORE_NAME)
+      .get(id);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(new Error('採点画像の取得に失敗しました'));
+  });
+  return record ? blobToDataUrl(record.blob) : null;
+}
+
+const hydrateGradingImages = async (records: GradingHistoryRecord[]): Promise<GradingHistoryRecord[]> => {
+  const imageIds = [...new Set(records.flatMap(record => record.imageId ? [record.imageId] : []))];
+  const images = new Map<string, string>();
+  await Promise.all(imageIds.map(async imageId => {
+    const imageData = await getGradingImageData(imageId);
+    if (imageData) images.set(imageId, imageData);
+  }));
+  return records.map(record => ({
+    ...record,
+    imageData: record.imageId ? images.get(record.imageId) : undefined
+  }));
+}
+
 // 採点履歴を保存
 export async function saveGradingHistory(record: GradingHistoryRecord): Promise<void> {
   const db = await openDB();
@@ -576,7 +707,7 @@ export async function saveGradingHistory(record: GradingHistoryRecord): Promise<
 export async function getAllGradingHistory(): Promise<GradingHistoryRecord[]> {
   const db = await openDB();
 
-  return new Promise((resolve, reject) => {
+  const records = await new Promise<GradingHistoryRecord[]>((resolve, reject) => {
     const transaction = db.transaction([GRADING_HISTORY_STORE_NAME], 'readonly');
     const objectStore = transaction.objectStore(GRADING_HISTORY_STORE_NAME);
     const index = objectStore.index('timestamp');
@@ -598,13 +729,14 @@ export async function getAllGradingHistory(): Promise<GradingHistoryRecord[]> {
       reject(new Error('採点履歴の取得に失敗しました'));
     };
   });
+  return hydrateGradingImages(records);
 }
 
 // 特定のPDFの採点履歴を取得
 export async function getGradingHistoryByPdfId(pdfId: string): Promise<GradingHistoryRecord[]> {
   const db = await openDB();
 
-  return new Promise((resolve, reject) => {
+  const records = await new Promise<GradingHistoryRecord[]>((resolve, reject) => {
     const transaction = db.transaction([GRADING_HISTORY_STORE_NAME], 'readonly');
     const objectStore = transaction.objectStore(GRADING_HISTORY_STORE_NAME);
     const index = objectStore.index('pdfId');
@@ -626,13 +758,14 @@ export async function getGradingHistoryByPdfId(pdfId: string): Promise<GradingHi
       reject(new Error('採点履歴の取得に失敗しました'));
     };
   });
+  return hydrateGradingImages(records);
 }
 
 // 特定の採点履歴を取得
 export async function getGradingHistory(id: string): Promise<GradingHistoryRecord | null> {
   const db = await openDB();
 
-  return new Promise((resolve, reject) => {
+  const record = await new Promise<GradingHistoryRecord | null>((resolve, reject) => {
     const transaction = db.transaction([GRADING_HISTORY_STORE_NAME], 'readonly');
     const objectStore = transaction.objectStore(GRADING_HISTORY_STORE_NAME);
     const request = objectStore.get(id);
@@ -645,25 +778,48 @@ export async function getGradingHistory(id: string): Promise<GradingHistoryRecor
       reject(new Error('採点履歴の取得に失敗しました'));
     };
   });
+  if (!record) return null;
+  return (await hydrateGradingImages([record]))[0];
 }
 
 // 採点履歴を削除
 export async function deleteGradingHistory(id: string): Promise<void> {
   const db = await openDB();
+  const existing = await new Promise<GradingHistoryRecord | null>((resolve, reject) => {
+    const request = db.transaction([GRADING_HISTORY_STORE_NAME], 'readonly')
+      .objectStore(GRADING_HISTORY_STORE_NAME)
+      .get(id);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(new Error('採点履歴の取得に失敗しました'));
+  });
 
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const transaction = db.transaction([GRADING_HISTORY_STORE_NAME], 'readwrite');
     const objectStore = transaction.objectStore(GRADING_HISTORY_STORE_NAME);
-    const request = objectStore.delete(id);
-
-    request.onsuccess = () => {
-      resolve();
-    };
-
-    request.onerror = () => {
-      reject(new Error('採点履歴の削除に失敗しました'));
-    };
+    objectStore.delete(id);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(new Error('採点履歴の削除に失敗しました'));
+    transaction.onabort = () => reject(new Error('採点履歴の削除に失敗しました'));
   });
+
+  if (!existing?.imageId) return;
+  const remainingReferences = await new Promise<number>((resolve, reject) => {
+    const request = db.transaction([GRADING_HISTORY_STORE_NAME], 'readonly')
+      .objectStore(GRADING_HISTORY_STORE_NAME)
+      .index('imageId')
+      .count(IDBKeyRange.only(existing.imageId));
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(new Error('採点画像の参照確認に失敗しました'));
+  });
+  if (remainingReferences === 0) {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction([GRADING_IMAGE_STORE_NAME], 'readwrite');
+      transaction.objectStore(GRADING_IMAGE_STORE_NAME).delete(existing.imageId!);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(new Error('採点画像の削除に失敗しました'));
+      transaction.onabort = () => reject(new Error('採点画像の削除に失敗しました'));
+    });
+  }
 }
 
 // アプリ設定を取得

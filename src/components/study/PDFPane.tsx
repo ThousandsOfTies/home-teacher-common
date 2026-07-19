@@ -368,55 +368,142 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     const erasePendingPointsRef = useRef<Array<{ x: number; y: number }>>([])
     const eraseAnimationFrameRef = useRef<number | null>(null)
     const eraseDidChangeRef = useRef(false)
+    const eraserPathBoundsCacheRef = useRef(new WeakMap<DrawingPath, {
+        left: number
+        right: number
+        top: number
+        bottom: number
+    }>())
+    const eraserSpatialIndexRef = useRef<{
+        paths: DrawingPath[]
+        canvasWidth: number
+        canvasHeight: number
+        cellSize: number
+        cells: Map<string, Set<DrawingPath>>
+    } | null>(null)
+
+    const distanceToSegmentSquared = (
+        point: { x: number; y: number },
+        start: { x: number; y: number },
+        end: { x: number; y: number }
+    ) => {
+        const segmentX = end.x - start.x
+        const segmentY = end.y - start.y
+        const lengthSquared = segmentX * segmentX + segmentY * segmentY
+        if (lengthSquared === 0) {
+            const dx = point.x - start.x
+            const dy = point.y - start.y
+            return dx * dx + dy * dy
+        }
+        const projection = Math.max(0, Math.min(1,
+            ((point.x - start.x) * segmentX + (point.y - start.y) * segmentY) / lengthSquared
+        ))
+        const closestX = start.x + projection * segmentX
+        const closestY = start.y + projection * segmentY
+        const dx = point.x - closestX
+        const dy = point.y - closestY
+        return dx * dx + dy * dy
+    }
 
     const applyErasePoints = (sourcePaths: DrawingPath[], positions: Array<{ x: number; y: number }>) => {
         if (positions.length === 0) return { paths: sourcePaths, changed: false }
         const cw = canvasSize?.width || canvasRef.current?.clientWidth || canvasRef.current?.width || 1
         const ch = canvasSize?.height || canvasRef.current?.clientHeight || canvasRef.current?.height || 1
-        const radiusX = eraserSize / cw
-        const radiusY = eraserSize / ch
-        const normalizedPositions = positions.map(position => ({ x: position.x / cw, y: position.y / ch }))
+        const radius = Math.max(1, eraserSize)
         const eraseBounds = {
-            left: Math.min(...normalizedPositions.map(position => position.x)) - radiusX,
-            right: Math.max(...normalizedPositions.map(position => position.x)) + radiusX,
-            top: Math.min(...normalizedPositions.map(position => position.y)) - radiusY,
-            bottom: Math.max(...normalizedPositions.map(position => position.y)) + radiusY
+            left: Math.min(...positions.map(position => position.x)) - radius,
+            right: Math.max(...positions.map(position => position.x)) + radius,
+            top: Math.min(...positions.map(position => position.y)) - radius,
+            bottom: Math.max(...positions.map(position => position.y)) + radius
         }
-        let changed = false
-        const nextPaths: DrawingPath[] = []
+        const getPixelPathBounds = (path: DrawingPath) => {
+            if (path.points.length === 0) return null
+            let pathBounds = eraserPathBoundsCacheRef.current.get(path)
+            if (!pathBounds) {
+                pathBounds = {
+                    left: Math.min(...path.points.map(point => point.x)),
+                    right: Math.max(...path.points.map(point => point.x)),
+                    top: Math.min(...path.points.map(point => point.y)),
+                    bottom: Math.max(...path.points.map(point => point.y))
+                }
+                eraserPathBoundsCacheRef.current.set(path, pathBounds)
+            }
+            const maximumWidth = Math.max(path.width, ...path.points.map(point => point.width ?? path.width)) / 2
+            return {
+                left: pathBounds.left * cw - maximumWidth,
+                right: pathBounds.right * cw + maximumWidth,
+                top: pathBounds.top * ch - maximumWidth,
+                bottom: pathBounds.bottom * ch + maximumWidth
+            }
+        }
 
-        sourcePaths.forEach(path => {
-            if (editableLayerId && path.layerId !== editableLayerId) {
-                nextPaths.push(path)
-                return
+        const cellSize = 128
+        const cellKey = (column: number, row: number) => `${column}:${row}`
+        const visitBoundsCells = (
+            bounds: { left: number; right: number; top: number; bottom: number },
+            visitor: (key: string) => void
+        ) => {
+            const firstColumn = Math.floor(bounds.left / cellSize)
+            const lastColumn = Math.floor(bounds.right / cellSize)
+            const firstRow = Math.floor(bounds.top / cellSize)
+            const lastRow = Math.floor(bounds.bottom / cellSize)
+            for (let column = firstColumn; column <= lastColumn; column += 1) {
+                for (let row = firstRow; row <= lastRow; row += 1) visitor(cellKey(column, row))
             }
+        }
 
-            if (path.points.length === 0) return
-            const pathBounds = {
-                left: Math.min(...path.points.map(point => point.x)),
-                right: Math.max(...path.points.map(point => point.x)),
-                top: Math.min(...path.points.map(point => point.y)),
-                bottom: Math.max(...path.points.map(point => point.y))
-            }
-            if (pathBounds.right < eraseBounds.left || pathBounds.left > eraseBounds.right
-                || pathBounds.bottom < eraseBounds.top || pathBounds.top > eraseBounds.bottom) {
-                nextPaths.push(path)
-                return
-            }
+        let spatialIndex = eraserSpatialIndexRef.current
+        if (!spatialIndex || spatialIndex.paths !== sourcePaths
+            || spatialIndex.canvasWidth !== cw || spatialIndex.canvasHeight !== ch) {
+            spatialIndex = { paths: sourcePaths, canvasWidth: cw, canvasHeight: ch, cellSize, cells: new Map() }
+            sourcePaths.forEach(path => {
+                const bounds = getPixelPathBounds(path)
+                if (!bounds) return
+                visitBoundsCells(bounds, key => {
+                    const paths = spatialIndex!.cells.get(key) ?? new Set<DrawingPath>()
+                    paths.add(path)
+                    spatialIndex!.cells.set(key, paths)
+                })
+            })
+            eraserSpatialIndexRef.current = spatialIndex
+        }
+
+        const candidatePaths = new Set<DrawingPath>()
+        visitBoundsCells(eraseBounds, key => {
+            spatialIndex!.cells.get(key)?.forEach(path => candidatePaths.add(path))
+        })
+        if (candidatePaths.size === 0) return { paths: sourcePaths, changed: false }
+
+        const replacements = new Map<DrawingPath, DrawingPath[]>()
+        candidatePaths.forEach(path => {
+            if (editableLayerId && path.layerId !== editableLayerId) return
+            const pixelPathBounds = getPixelPathBounds(path)
+            if (!pixelPathBounds) return
+            if (pixelPathBounds.right < eraseBounds.left || pixelPathBounds.left > eraseBounds.right
+                || pixelPathBounds.bottom < eraseBounds.top || pixelPathBounds.top > eraseBounds.bottom) return
+
+            const candidatePositions = positions.filter(position => (
+                position.x >= pixelPathBounds.left - radius && position.x <= pixelPathBounds.right + radius
+                && position.y >= pixelPathBounds.top - radius && position.y <= pixelPathBounds.bottom + radius
+            ))
+            if (candidatePositions.length === 0) return
 
             const segments: DrawingPath['points'][] = []
             let currentSegment: DrawingPath['points'] = []
             let pathChanged = false
-            path.points.forEach(point => {
-                const erased = normalizedPositions.some(position => {
-                    const dx = (point.x - position.x) / radiusX
-                    const dy = (point.y - position.y) / radiusY
-                    return dx * dx + dy * dy < 1
+            path.points.forEach((point, pointIndex) => {
+                const current = { x: point.x * cw, y: point.y * ch }
+                const previousPoint = pointIndex > 0 ? path.points[pointIndex - 1] : null
+                const previous = previousPoint
+                    ? { x: previousPoint.x * cw, y: previousPoint.y * ch }
+                    : current
+                const hitRadius = radius + (point.width ?? path.width) / 2
+                const erased = candidatePositions.some(position => {
+                    return distanceToSegmentSquared(position, previous, current) <= hitRadius * hitRadius
                 })
                 if (erased) {
                     if (currentSegment.length > 1) segments.push(currentSegment)
                     currentSegment = []
-                    changed = true
                     pathChanged = true
                 } else {
                     currentSegment.push(point)
@@ -424,14 +511,32 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
             })
             if (currentSegment.length > 1) segments.push(currentSegment)
 
-            if (!pathChanged) {
-                nextPaths.push(path)
-            } else {
-                segments.forEach(points => nextPaths.push({ ...path, points }))
-            }
+            if (pathChanged) replacements.set(path, segments.map(points => ({ ...path, points })))
         })
 
-        return { paths: changed ? nextPaths : sourcePaths, changed }
+        if (replacements.size === 0) return { paths: sourcePaths, changed: false }
+        const nextPaths = sourcePaths.flatMap(path => replacements.has(path) ? replacements.get(path)! : [path])
+
+        // 同じ消去ジェスチャー中は変更されたストロークだけをインデックス更新する。
+        replacements.forEach((replacementPaths, originalPath) => {
+            const originalBounds = getPixelPathBounds(originalPath)
+            if (originalBounds) visitBoundsCells(originalBounds, key => {
+                const paths = spatialIndex!.cells.get(key)
+                paths?.delete(originalPath)
+                if (paths?.size === 0) spatialIndex!.cells.delete(key)
+            })
+            replacementPaths.forEach(path => {
+                const bounds = getPixelPathBounds(path)
+                if (!bounds) return
+                visitBoundsCells(bounds, key => {
+                    const paths = spatialIndex!.cells.get(key) ?? new Set<DrawingPath>()
+                    paths.add(path)
+                    spatialIndex!.cells.set(key, paths)
+                })
+            })
+        })
+        spatialIndex.paths = nextPaths
+        return { paths: nextPaths, changed: true }
     }
 
     const flushErasePreview = () => {
