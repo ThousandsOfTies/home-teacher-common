@@ -4,6 +4,8 @@ const APP_NAME = import.meta.env.VITE_APP_NAME || 'TutoTuto';
 import { PDFFileRecord, deleteAppDatabase, getAppSettings, saveAppSettings } from '../../utils/indexedDB';
 import { getPlatformInfo } from '../../utils/storageManager';
 import GradingHistory from './GradingHistory';
+import ProgressHistory from './ProgressHistory';
+import TeacherSettings from './TeacherSettings';
 import { usePDFRecords } from '../../hooks/admin/usePDFRecords';
 import { useSNSLinks } from '../../hooks/admin/useSNSLinks';
 import { useStorage } from '../../hooks/admin/useStorage';
@@ -25,7 +27,7 @@ import { FiEdit2, FiHardDrive, FiTrash2, FiCheckCircle, FiImage } from 'react-ic
 import { BiEraser } from 'react-icons/bi';
 import { ImFilePdf } from 'react-icons/im';
 import { VscDatabase } from 'react-icons/vsc';
-import { MdNewReleases, MdHistory, MdNotificationsNone, MdAccessTime } from 'react-icons/md';
+import { MdNewReleases, MdHistory, MdNotificationsNone, MdAccessTime, MdOutlineCollections } from 'react-icons/md';
 import { ICON_SVG } from '../../constants/icons';
 import { useTranslation } from 'react-i18next';
 import { getSubjects, SubjectInfo, SubjectsResponse } from '../../services/api';
@@ -37,6 +39,9 @@ interface AdminPanelProps {
   hasUpdate?: boolean;
   onUpdate?: () => void;
   studyTabLabel?: string;
+  storageIconSrc?: string;
+  historyVariant?: 'timeline' | 'progress';
+  settingsVariant?: 'links' | 'teachers';
 }
 
 export default function AdminPanel({
@@ -44,7 +49,10 @@ export default function AdminPanel({
   onEditPDF,
   hasUpdate = false,
   onUpdate,
-  studyTabLabel = 'Study'
+  studyTabLabel = 'Study',
+  storageIconSrc,
+  historyVariant = 'timeline',
+  settingsVariant = 'links'
 }: AdminPanelProps) {
   // i18n
   const { t, i18n } = useTranslation();
@@ -368,7 +376,16 @@ export default function AdminPanel({
         </div>
       )}
 
-      {showSNSSettings && (
+      {showSNSSettings && (settingsVariant === 'teachers' ? (
+        <TeacherSettings
+          onClose={() => setShowSNSSettings(false)}
+          isPremium={isPremium}
+          onUpgrade={() => {
+            setShowSNSSettings(false);
+            setShowParentSettings(true);
+          }}
+        />
+      ) : (
         <div style={{
           position: 'fixed',
           top: 0,
@@ -665,7 +682,7 @@ export default function AdminPanel({
             </div>
           </div>
         </div>
-      )}
+      ))}
 
       {showHelp && (
         <div style={{
@@ -1349,9 +1366,7 @@ export default function AdminPanel({
                   }
                   <div style={{ fontSize: '16px', color: '#95a5a6' }}>→</div>
                   <img
-                    src={import.meta.env.DEV
-                      ? `/icons/${import.meta.env.MODE}/logo.png`
-                      : `${import.meta.env.BASE_URL}logo.png`}
+                    src={storageIconSrc ?? `${import.meta.env.BASE_URL}logo.png`}
                     alt={`${APP_NAME} Storage`}
                     style={{ width: '32px', height: '32px', objectFit: 'contain' }}
                   />
@@ -1508,18 +1523,18 @@ export default function AdminPanel({
                     transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#9b59b6';
+                    e.currentTarget.style.borderColor = historyVariant === 'progress' ? '#4f846b' : '#9b59b6';
                     e.currentTarget.style.transform = 'translateY(-2px)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.borderColor = '#ecf0f1';
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
-                  title="採点履歴を表示"
+                  title={historyVariant === 'progress' ? '上達の記録を表示' : '採点履歴を表示'}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <MdHistory size={24} />
-                    <span>History</span>
+                    {historyVariant === 'progress' ? <MdOutlineCollections size={24} /> : <MdHistory size={24} />}
+                    <span>{historyVariant === 'progress' ? 'Progress' : 'History'}</span>
                   </div>
                   <span style={{ fontSize: '20px', opacity: 0.5 }}>↗</span>
                 </button>
@@ -1580,7 +1595,7 @@ export default function AdminPanel({
                   </div>
                 )}
 
-                {/* SNS Links Section - Merged with Notification */}
+                {/* Links / Teacher settings */}
                 <button
                   onClick={() => setShowSNSSettings(true)}
                   style={{
@@ -1607,13 +1622,13 @@ export default function AdminPanel({
                     e.currentTarget.style.borderColor = '#ecf0f1';
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
-                  title="リンクと通知の設定"
+                  title={settingsVariant === 'teachers' ? '先生レベルの設定' : 'リンクと通知の設定'}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span style={{ display: 'inline-flex', width: '24px', height: '24px', flexShrink: 0 }}>
-                      <MdNotificationsNone size={24} />
+                      {settingsVariant === 'teachers' ? <IoMdSettings size={24} /> : <MdNotificationsNone size={24} />}
                     </span>
-                    <span>Links & Notification</span>
+                    <span>{settingsVariant === 'teachers' ? 'Teacher Settings' : 'Links & Notification'}</span>
                   </div>
                   <span style={{ fontSize: '20px', opacity: 0.5 }}>↗</span>
                 </button>
@@ -1672,7 +1687,7 @@ export default function AdminPanel({
             >
               ✕
             </button>
-            <ParentSettings />
+            <ParentSettings variant={settingsVariant === 'teachers' ? 'copicopi' : 'tutotuto'} />
           </div>
         </div>
       )}
@@ -1772,9 +1787,9 @@ export default function AdminPanel({
       {/* 採点履歴モーダル */}
       {
         showGradingHistory && (
-          <GradingHistory
-            onClose={() => setShowGradingHistory(false)}
-          />
+          historyVariant === 'progress'
+            ? <ProgressHistory onClose={() => setShowGradingHistory(false)} />
+            : <GradingHistory onClose={() => setShowGradingHistory(false)} />
         )
       }
 

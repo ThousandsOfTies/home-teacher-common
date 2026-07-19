@@ -3,18 +3,25 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { auth } from '../../lib/firebase'; // needed to get the token
 
-export const ParentSettings: React.FC = () => {
+interface ParentSettingsProps {
+    variant?: 'tutotuto' | 'copicopi';
+}
+
+export const ParentSettings: React.FC<ParentSettingsProps> = ({ variant = 'tutotuto' }) => {
     const { t } = useTranslation();
     const { user, userData, loading, signInWithGoogle, logout } = useAuth();
     const [isUpdating, setIsUpdating] = useState(false);
     const [minutes, setMinutes] = useState(userData?.snsRewardMinutes || 60);
+    const isCopiCopi = variant === 'copicopi';
+    const title = isCopiCopi ? 'CopiCopi Premium' : t('parentSettings.title');
+    const getBaseUrl = () => window.location.origin + window.location.pathname.replace(/\/$/, '');
 
     if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: '#7f8c8d' }}>{t('parentSettings.processing')}</div>;
 
     if (!user || !userData) {
         return (
             <div style={{ padding: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
-                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#2c3e50' }}>{t('parentSettings.title')}</h2>
+                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#2c3e50' }}>{title}</h2>
                 <button
                     onClick={signInWithGoogle}
                     style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 24px', backgroundColor: 'white', border: '1px solid #dadce0', borderRadius: '8px', fontSize: '15px', fontWeight: '600', color: '#3c4043', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
@@ -31,13 +38,14 @@ export const ParentSettings: React.FC = () => {
             setIsUpdating(true);
             const token = await auth.currentUser?.getIdToken();
             const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3003'}/api/create-checkout-session`;
-            const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '');
+            const baseUrl = getBaseUrl();
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ baseUrl })
             });
             const data = await response.json();
+            if (!response.ok) throw new Error(data.error || '決済画面を開始できませんでした');
             if (data.url) window.location.href = data.url;
         } catch (error) {
             console.error('Subscription error:', error);
@@ -54,9 +62,11 @@ export const ParentSettings: React.FC = () => {
             const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3003'}/api/create-portal-session`;
             const response = await fetch(apiUrl, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ baseUrl: getBaseUrl() })
             });
             const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'プラン管理画面を開始できませんでした');
             if (data.url) window.location.href = data.url;
         } catch (error) {
             console.error('Portal session error:', error);
@@ -96,7 +106,7 @@ export const ParentSettings: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span style={{ fontSize: '24px' }}>✨</span>
                     <h2 style={{ fontSize: '24px', fontWeight: '900', background: 'linear-gradient(to right, #f59e0b, #fb923c)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        {t('parentSettings.title')}
+                        {title}
                     </h2>
                 </div>
                 <button
@@ -141,14 +151,14 @@ export const ParentSettings: React.FC = () => {
                         </div>
 
                         <h3 style={{ fontWeight: '700', color: '#1f2937', fontSize: '18px', marginBottom: '16px', textAlign: 'center', position: 'relative', zIndex: 10 }}>
-                            {t('parentSettings.premiumTitle')}
+                            {isCopiCopi ? 'Premiumで選べる先生が増えます' : t('parentSettings.premiumTitle')}
                         </h3>
                         <ul style={{ listStyleType: 'none', padding: 0, margin: 0, marginBottom: '32px', position: 'relative', zIndex: 10 }}>
                             <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
                                 <span style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }}>⏱️</span>
                                 <div>
-                                    <p style={{ fontWeight: '700', color: '#1f2937', fontSize: '14px', margin: 0 }}>{t('parentSettings.snsTimeFeature')}</p>
-                                    <p style={{ fontSize: '12px', color: '#4b5563', marginTop: '4px', margin: 0 }}>{t('parentSettings.snsTimeDesc')}</p>
+                                    <p style={{ fontWeight: '700', color: '#1f2937', fontSize: '14px', margin: 0 }}>{isCopiCopi ? 'BALANCED・HARDをアンロック' : t('parentSettings.snsTimeFeature')}</p>
+                                    <p style={{ fontSize: '12px', color: '#4b5563', marginTop: '4px', margin: 0 }}>{isCopiCopi ? '利用する先生レベルと、採点時のデフォルト先生を自由に設定できます。' : t('parentSettings.snsTimeDesc')}</p>
                                 </div>
                             </li>
                         </ul>
@@ -181,12 +191,12 @@ export const ParentSettings: React.FC = () => {
                         {t('parentSettings.premiumActive')}
                     </h3>
                     <p style={{ color: '#6b7280', fontSize: '14px', maxWidth: '320px', margin: '0 auto', marginBottom: '24px' }}>
-                        {t('parentSettings.premiumActiveDesc')}
+                        {isCopiCopi ? 'ありがとうございます！すべての先生レベルをご利用いただけます。' : t('parentSettings.premiumActiveDesc')}
                     </p>
 
                     <div style={{ backgroundColor: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '16px', fontSize: '14px', textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '24px' }}>
                         <span style={{ fontSize: '20px' }}>💡</span>
-                        <p style={{ margin: 0 }}>{t('parentSettings.snsHint')}</p>
+                        <p style={{ margin: 0 }}>{isCopiCopi ? '先生レベルの有効化とデフォルト設定は、Teacher Settingsから変更できます。' : t('parentSettings.snsHint')}</p>
                     </div>
 
                     <button

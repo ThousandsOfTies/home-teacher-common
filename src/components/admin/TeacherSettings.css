@@ -1,0 +1,61 @@
+.teacher-settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(29, 43, 48, .68);
+  backdrop-filter: blur(5px);
+}
+.teacher-settings-panel { width: min(600px, 100%); overflow: hidden; border-radius: 20px; background: #fbfaf7; box-shadow: 0 24px 70px rgba(13, 38, 38, .35); color: #293b3d; }
+.teacher-settings-panel > header { display: flex; align-items: center; justify-content: space-between; padding: 22px 24px 18px; border-bottom: 1px solid #dde5df; }
+.teacher-settings-title { display: flex; align-items: center; gap: 13px; }
+.teacher-settings-title > span { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; background: #e4f1e9; color: #39735f; font-size: 25px; }
+.teacher-settings-title small { color: #84918d; font-size: 10px; font-weight: 800; letter-spacing: .15em; }
+.teacher-settings-title h2 { margin: 2px 0 0; font-size: 23px; }
+.teacher-settings-panel > header > button { width: 38px; height: 38px; display: grid; place-items: center; border: 0; border-radius: 50%; background: #edf0ed; color: #53625f; cursor: pointer; font-size: 22px; }
+.teacher-settings-lead { margin: 0; padding: 16px 24px 8px; color: #687671; font-size: 13px; }
+.teacher-settings-list { display: grid; gap: 10px; padding: 10px 24px; }
+.teacher-setting-card { display: grid; grid-template-columns: 46px 1fr auto; align-items: center; gap: 12px; padding: 14px; border: 1px solid #dce3df; border-radius: 15px; background: white; transition: opacity .2s, border-color .2s; }
+.teacher-setting-card.disabled { opacity: .58; }
+.teacher-setting-card.locked { opacity: .55; background: #f8f7f3; }
+.teacher-setting-card.enabled { border-color: #a9c6b7; }
+.teacher-setting-icon { grid-row: 1 / span 2; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 13px; font-size: 21px; }
+.teacher-setting-card.kind .teacher-setting-icon { background: #e6f4eb; color: #39735f; }
+.teacher-setting-card.balanced .teacher-setting-icon { background: #edf0f5; color: #52677f; }
+.teacher-setting-card.strict .teacher-setting-icon { background: #f8ecdf; color: #965e2d; }
+.teacher-setting-copy { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.teacher-setting-copy strong { font-size: 14px; letter-spacing: .05em; }
+.teacher-setting-copy span { color: #74817d; font-size: 11px; line-height: 1.4; }
+.teacher-enable-control { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.teacher-enable-control > span { min-width: 46px; display: inline-flex; align-items: center; justify-content: flex-end; gap: 3px; color: #7c8985; font-size: 9px; font-weight: 800; text-align: right; }
+.teacher-enable-control input { position: absolute; opacity: 0; pointer-events: none; }
+.teacher-enable-control i { position: relative; width: 38px; height: 22px; border-radius: 20px; background: #bdc7c2; transition: background .2s; }
+.teacher-enable-control i::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .2s; }
+.teacher-enable-control input:checked + i { background: #4e876c; }
+.teacher-enable-control input:checked + i::after { transform: translateX(16px); }
+.teacher-enable-control input:disabled + i { cursor: default; }
+.teacher-default-control { grid-column: 2 / 4; display: inline-flex; align-items: center; gap: 7px; width: max-content; color: #62716c; cursor: pointer; }
+.teacher-default-control input { accent-color: #4e876c; }
+.teacher-default-control span { font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+.teacher-default-control.unavailable { opacity: .4; cursor: not-allowed; }
+.teacher-settings-note { margin: 8px 24px 18px; padding: 11px 13px; border-radius: 10px; background: #f0f5f2; color: #687873; font-size: 11px; line-height: 1.55; }
+.teacher-settings-upgrade { width: calc(100% - 48px); margin: 8px 24px 18px; padding: 13px 15px; display: flex; align-items: center; gap: 11px; border: 1px solid #f0c986; border-radius: 12px; background: #fff8e9; color: #704d19; cursor: pointer; text-align: left; }
+.teacher-settings-upgrade > span { width: 34px; height: 34px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 10px; background: #f8dfae; color: #98651b; }
+.teacher-settings-upgrade > div { display: flex; flex: 1; flex-direction: column; gap: 2px; }
+.teacher-settings-upgrade strong { font-size: 12px; }
+.teacher-settings-upgrade small { color: #8b7049; font-size: 10px; }
+.teacher-settings-upgrade b { font-size: 18px; }
+.teacher-settings-panel > footer { display: flex; justify-content: flex-end; gap: 10px; padding: 15px 24px; border-top: 1px solid #dde5df; background: #f5f6f3; }
+.teacher-settings-panel > footer button { padding: 9px 18px; border-radius: 9px; cursor: pointer; font-size: 13px; font-weight: 700; }
+.teacher-settings-cancel { border: 1px solid #cfd7d2; background: white; color: #65736f; }
+.teacher-settings-save { border: 1px solid #42745c; background: #4e876c; color: white; }
+.teacher-settings-save:disabled { opacity: .55; cursor: wait; }
+@media (max-width: 520px) {
+  .teacher-settings-overlay { padding: 0; }
+  .teacher-settings-panel { height: 100%; border-radius: 0; overflow-y: auto; }
+  .teacher-setting-card { grid-template-columns: 42px 1fr; }
+  .teacher-enable-control { grid-column: 2; justify-self: start; }
+  .teacher-default-control { grid-column: 2; }
+}

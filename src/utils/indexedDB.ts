@@ -44,6 +44,11 @@ export interface GradingHistoryRecord {
   explanation: string; // 解説
   timestamp: number; // 実施時刻（タイムスタンプ）
   imageData?: string; // 採点時の画像データ（オプション）
+  teacherMode?: 'kind' | 'balanced' | 'strict'; // 採点時の先生レベル
+  score?: number; // 作品評価（1〜5）
+  overallComment?: string; // 作品全体の印象
+  nextPoint?: string; // 次に直すポイント
+  practiceAdvice?: string; // 次の一枚へのアドバイス
   matchingMetadata?: {
     method: 'exact' | 'ai' | 'context' | 'hybrid';
     confidence?: string;
@@ -59,6 +64,8 @@ export interface AppSettings {
   notificationEnabled: boolean; // 通知の有効/無効
   defaultGradingModel?: string; // 採点時のデフォルトAIモデル
   isPremium?: boolean; // 有料プラン（ファミリー解除）フラグ
+  enabledTeacherModes?: Array<'kind' | 'balanced' | 'strict'>; // 利用可能な先生レベル
+  defaultTeacherMode?: 'kind' | 'balanced' | 'strict'; // 採点時の初期先生レベル
 }
 
 export interface SNSUsageHistoryRecord {
@@ -567,7 +574,9 @@ export async function getAppSettings(): Promise<AppSettings> {
         id: 'app-settings',
         snsTimeLimitMinutes: 30,
         notificationEnabled: false,
-        defaultGradingModel: undefined
+        defaultGradingModel: undefined,
+        enabledTeacherModes: ['kind'],
+        defaultTeacherMode: 'kind'
       });
     };
 
