@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, forwardRef, useImperativeHandle, useState } from 'react'
 import { PDFFileRecord } from '../../utils/indexedDB'
-import PDFCanvas, { PDFCanvasHandle } from './components/PDFCanvas'
+import PDFCanvas, { PDFCanvasHandle, PDFRenderMetrics } from './components/PDFCanvas'
 import { DrawingPath, DrawingCanvas, useDrawing, useZoomPan, doPathsIntersect, isScratchPattern, useLassoSelection, DrawingCanvasHandle } from '@thousands-of-ties/drawing-common'
 import { RENDER_SCALE } from '../../constants/pdf'
 import './StudyPanel.css'
@@ -26,6 +26,8 @@ interface PDFPaneProps {
     isCtrlPressed: boolean
     scratchEraseEnabled?: boolean
     editableLayerId?: string
+    /** `legacy` keeps the original fixed 500% bitmap; `adaptive` changes only backing resolution. */
+    renderMode?: 'legacy' | 'adaptive'
 
     // スプリット表示モード（高さフィット＋左寄せ）
     splitMode?: boolean
@@ -71,6 +73,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         isCtrlPressed,
         scratchEraseEnabled = true,
         editableLayerId,
+        renderMode = 'legacy',
         splitMode = false,
         hidePdfBackground = false,
         className,
@@ -160,7 +163,13 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     }, [isPanning, checkAndFinishSwipe])
 
     // キャンバスサイズの状態（DrawingCanvas との同期用）
+    // Logical coordinates intentionally remain at the legacy 500% size so old
+    // paths keep exactly the same position, width and brush-speed behaviour.
     const [canvasSize, setCanvasSize] = React.useState<{ width: number, height: number } | null>(null)
+    const [bitmapCanvasSize, setBitmapCanvasSize] = React.useState<{ width: number, height: number } | null>(null)
+    const [adaptiveRenderScale, setAdaptiveRenderScale] = React.useState(1.5)
+    const [isPinching, setIsPinching] = React.useState(false)
+    const effectiveRenderScale = renderMode === 'legacy' ? RENDER_SCALE : adaptiveRenderScale
 
     // スライダーの一時状態（ドラッグ中の高速レンダリング防止用）
     const [sliderValue, setSliderValue] = React.useState<number | null>(null)
@@ -188,7 +197,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
 
     // splitMode変更時は再フィットを実行
     useEffect(() => {
-        if (!canvasRef.current || !containerRef.current) return
+        if (!canvasRef.current || !containerRef.current || !canvasSize) return
 
         // console.log('📏 PDFPane: splitMode変更、再フィット実行', {splitMode})
 
@@ -197,13 +206,13 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         const effectiveH = (containerH > window.innerHeight) ? maxH : containerH
 
         fitToScreen(
-            canvasRef.current.width,
-            canvasRef.current.height,
+            canvasSize.width,
+            canvasSize.height,
             effectiveH,
             splitMode ? { fitToHeight: true, alignLeft: true } : undefined
         )
         setIsLayoutReady(true)
-    }, [splitMode, fitToScreen])
+    }, [canvasSize, splitMode, fitToScreen])
 
     // RAFキャンセル用ref
     const rafIdRef = useRef<number | null>(null)
@@ -231,14 +240,16 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
 
     // Page Rendered Handler
 
-    const handlePageRendered = () => {
+    const handlePageRendered = (metrics: PDFRenderMetrics) => {
         // console.log('🏁 PDFPane: handlePageRendered triggered')
         if (!canvasRef.current || !containerRef.current) return
 
-        setCanvasSize({
-            width: canvasRef.current.width,
-            height: canvasRef.current.height
-        })
+        setCanvasSize(current => current
+            && current.width === metrics.layoutWidth
+            && current.height === metrics.layoutHeight
+            ? current
+            : { width: metrics.layoutWidth, height: metrics.layoutHeight })
+        setBitmapCanvasSize({ width: metrics.pixelWidth, height: metrics.pixelHeight })
 
         // Log canvas size
         // console.log('📏 PDFPane: Canvas size captured', {
@@ -273,8 +284,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     if (!initialFitDoneRef.current) {
                         // console.log('📏 PDFPane: 初回フィット実行', { containerH, effectiveH, splitMode })
                         fitToScreen(
-                            canvasRef.current.width,
-                            canvasRef.current.height,
+                            metrics.layoutWidth,
+                            metrics.layoutHeight,
                             effectiveH,
                             splitMode ? { fitToHeight: true, alignLeft: true } : undefined
                         )
@@ -291,6 +302,32 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
             })
         })
     }
+
+    // Keep pinch tracking entirely CSS-driven. Once interaction settles, render
+    // a sharper or smaller backing bitmap and swap it in atomically.
+    useEffect(() => {
+        if (renderMode !== 'adaptive' || isPinching || !canvasSize) return
+
+        const timer = window.setTimeout(() => {
+            const baseWidth = canvasSize.width / RENDER_SCALE
+            const baseHeight = canvasSize.height / RENDER_SCALE
+            if (baseWidth <= 0 || baseHeight <= 0) return
+
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+            const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
+            const desiredScale = Math.max(1, RENDER_SCALE * zoom * pixelRatio * 1.05)
+            const maxPixels = isIOS ? 7_000_000 : 16_000_000
+            const pixelLimitedScale = Math.sqrt(maxPixels / (baseWidth * baseHeight))
+            const maximumScale = Math.max(1, Math.min(RENDER_SCALE, pixelLimitedScale))
+            const scaleSteps = [1, 1.25, 1.5, 2, 2.5, 3, 4, 5]
+            const targetScale = scaleSteps.find(step => step >= desiredScale && step <= maximumScale)
+                ?? Math.max(1, scaleSteps.filter(step => step <= maximumScale).pop() ?? maximumScale)
+
+            setAdaptiveRenderScale(current => Math.abs(current - targetScale) >= 0.2 ? targetScale : current)
+        }, 220)
+
+        return () => window.clearTimeout(timer)
+    }, [canvasSize, isPinching, renderMode, zoom])
 
     // Cleanup RAF on unmount
     useEffect(() => {
@@ -322,76 +359,103 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     }, [pageNum, pdfRecord.id])
 
 
-    // Manual Eraser Logic - Segment-level erasing (carves through lines)
-    // IMPORTANT: Path coordinates are stored as NORMALIZED values (0-1)
-    const handleErase = (x: number, y: number) => {
-        const currentPaths = drawingPathsRef.current
-        if (currentPaths.length === 0) return
+    // Segment erasing is previewed at most once per animation frame and committed
+    // only once at pointer-up. This avoids serializing and saving the whole PDF
+    // record for every Apple Pencil move event.
+    const [erasingPaths, setErasingPaths] = useState<DrawingPath[] | null>(null)
+    const eraseWorkingPathsRef = useRef<DrawingPath[] | null>(null)
+    const erasePendingPointsRef = useRef<Array<{ x: number; y: number }>>([])
+    const eraseAnimationFrameRef = useRef<number | null>(null)
+    const eraseDidChangeRef = useRef(false)
 
-        // Get canvas dimensions for normalization
-        const cw = canvasSize?.width || canvasRef.current?.width || 1
-        const ch = canvasSize?.height || canvasRef.current?.height || 1
+    const applyErasePoints = (sourcePaths: DrawingPath[], positions: Array<{ x: number; y: number }>) => {
+        if (positions.length === 0) return { paths: sourcePaths, changed: false }
+        const cw = canvasSize?.width || canvasRef.current?.clientWidth || canvasRef.current?.width || 1
+        const ch = canvasSize?.height || canvasRef.current?.clientHeight || canvasRef.current?.height || 1
+        const radius = eraserSize / cw
+        const radiusSquared = radius * radius
+        const normalizedPositions = positions.map(position => ({ x: position.x / cw, y: position.y / ch }))
+        let changed = false
+        const nextPaths: DrawingPath[] = []
 
-        // Normalize eraser position to 0-1 range (same as path coordinates)
-        const normalizedEraserX = x / cw
-        const normalizedEraserY = y / ch
-
-        // Eraser size also needs to be normalized (relative to canvas width)
-        const normalizedEraserSize = eraserSize / cw
-
-        // Check if point is within eraser radius
-        const isPointErased = (point: { x: number; y: number }) => {
-            const dx = point.x - normalizedEraserX
-            const dy = point.y - normalizedEraserY
-            const dist = Math.sqrt(dx * dx + dy * dy)
-            return dist < normalizedEraserSize
-        }
-
-        let hasChanges = false
-        const newPaths: DrawingPath[] = []
-
-        currentPaths.forEach(path => {
+        sourcePaths.forEach(path => {
             if (editableLayerId && path.layerId !== editableLayerId) {
-                newPaths.push(path)
+                nextPaths.push(path)
                 return
             }
 
-            // Split path into segments based on erased points
-            const segments: { x: number; y: number }[][] = []
-            let currentSegment: { x: number; y: number }[] = []
-
+            const segments: DrawingPath['points'][] = []
+            let currentSegment: DrawingPath['points'] = []
+            let pathChanged = false
             path.points.forEach(point => {
-                if (isPointErased(point)) {
-                    // Point is erased - end current segment if it has points
-                    if (currentSegment.length > 1) {
-                        segments.push(currentSegment)
-                    }
+                const erased = normalizedPositions.some(position => {
+                    const dx = point.x - position.x
+                    const dy = point.y - position.y
+                    return dx * dx + dy * dy < radiusSquared
+                })
+                if (erased) {
+                    if (currentSegment.length > 1) segments.push(currentSegment)
                     currentSegment = []
-                    hasChanges = true
+                    changed = true
+                    pathChanged = true
                 } else {
-                    // Point is kept - add to current segment
                     currentSegment.push(point)
                 }
             })
+            if (currentSegment.length > 1) segments.push(currentSegment)
 
-            // Don't forget the last segment
-            if (currentSegment.length > 1) {
-                segments.push(currentSegment)
+            if (!pathChanged) {
+                nextPaths.push(path)
+            } else {
+                segments.forEach(points => nextPaths.push({ ...path, points }))
             }
-
-            // Convert segments back to paths
-            segments.forEach(segment => {
-                newPaths.push({
-                    ...path,
-                    points: segment
-                })
-            })
         })
 
-        if (hasChanges) {
-            onPathsChange(newPaths)
+        return { paths: changed ? nextPaths : sourcePaths, changed }
+    }
+
+    const flushErasePreview = () => {
+        eraseAnimationFrameRef.current = null
+        const positions = erasePendingPointsRef.current.splice(0)
+        const sourcePaths = eraseWorkingPathsRef.current
+        if (!sourcePaths || positions.length === 0) return
+        const result = applyErasePoints(sourcePaths, positions)
+        if (!result.changed) return
+        eraseDidChangeRef.current = true
+        eraseWorkingPathsRef.current = result.paths
+        setErasingPaths(result.paths)
+    }
+
+    const queueErasePoint = (x: number, y: number) => {
+        if (!eraseWorkingPathsRef.current) {
+            eraseWorkingPathsRef.current = drawingPathsRef.current
+            setErasingPaths(drawingPathsRef.current)
+        }
+        erasePendingPointsRef.current.push({ x, y })
+        if (eraseAnimationFrameRef.current === null) {
+            eraseAnimationFrameRef.current = requestAnimationFrame(flushErasePreview)
         }
     }
+
+    const finishErasing = () => {
+        if (!eraseWorkingPathsRef.current) return
+        if (eraseAnimationFrameRef.current !== null) {
+            cancelAnimationFrame(eraseAnimationFrameRef.current)
+            eraseAnimationFrameRef.current = null
+        }
+        flushErasePreview()
+        const finalPaths = eraseWorkingPathsRef.current
+        const didChange = eraseDidChangeRef.current
+        eraseWorkingPathsRef.current = null
+        erasePendingPointsRef.current = []
+        eraseDidChangeRef.current = false
+        if (didChange && finalPaths) onPathsChange(finalPaths)
+        requestAnimationFrame(() => setErasingPaths(null))
+    }
+
+    useEffect(() => () => {
+        if (eraseAnimationFrameRef.current !== null) cancelAnimationFrame(eraseAnimationFrameRef.current)
+    }, [])
 
     // Ref for stable access to drawingPaths in callbacks
     const drawingPathsRef = useRef(drawingPaths)
@@ -528,8 +592,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
 
             // 合成用の一時キャンバスを作成
             const compositeCanvas = document.createElement('canvas')
-            compositeCanvas.width = pdfCanvas.width
-            compositeCanvas.height = pdfCanvas.height
+            compositeCanvas.width = hidePdfBackground && drawingCanvas ? drawingCanvas.width : pdfCanvas.width
+            compositeCanvas.height = hidePdfBackground && drawingCanvas ? drawingCanvas.height : pdfCanvas.height
             const ctx = compositeCanvas.getContext('2d')
             if (!ctx) return pdfCanvas
 
@@ -637,7 +701,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         // 消しゴム時も選択を解除
                         if (hasSelection) clearSelection()
                         // console.log('🧹 Eraser MouseDown:', { x, y, pathsCount: drawingPathsRef.current.length })
-                        handleErase(x, y)
+                        queueErasePoint(x, y)
                     } else if (tool === 'none') {
                         // 選択/採点モード時もパン可能
                         startPanning(e)
@@ -728,7 +792,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     }
                 } else if (tool === 'eraser') {
                     if (e.buttons === 1) {
-                        handleErase(x, y)
+                        queueErasePoint(x, y)
                     }
                     // マウスの消しゴムカーソル更新
                     setEraserCursorPos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
@@ -751,6 +815,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     endDrag()
                     return
                 }
+                if (tool === 'eraser') finishErasing()
                 // 長押しキャンセル
                 // 長押しキャンセル
                 cancelLongPress()
@@ -760,6 +825,9 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 // ここで判定しても良いが、Global MouseUpが動いているならそちらに任せる？
                 // captureしていればGlobal MouseUpより確実にここで取れる。
                 checkAndFinishSwipe()
+            }}
+            onPointerCancel={() => {
+                if (tool === 'eraser') finishErasing()
             }}
             onPointerLeave={(e) => {
                 // Clear eraser cursor when stylus leaves hover range
@@ -787,6 +855,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 }
 
                 if (e.touches.length === 2) {
+                    setIsPinching(true)
                     // --- 2-Finger Gesture (Pinch/Pan) ---
                     const t1 = e.touches[0]
                     const t2 = e.touches[1]
@@ -884,7 +953,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         } else if (tool === 'eraser') {
                             // 消しゴム時も選択を解除
                             if (hasSelection) clearSelection()
-                            handleErase(x, y)
+                            queueErasePoint(x, y)
                         }
                         // Pen tool: handled by Pointer Events only (no startDrawing here)
                     }
@@ -1014,7 +1083,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
 
                         // Eraser needs Touch Events for immediate feedback
                         if (tool === 'eraser') {
-                            handleErase(x, y)
+                            queueErasePoint(x, y)
                             // Update eraser cursor position for touch/stylus
                             setEraserCursorPos({ x: t.clientX - rect.left, y: t.clientY - rect.top })
                         }
@@ -1025,12 +1094,13 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     const t = e.touches[0]
                     const x = (t.clientX - rect.left - panOffset.x) / zoom
                     const y = (t.clientY - rect.top - panOffset.y) / zoom
-                    handleErase(x, y)
+                    queueErasePoint(x, y)
                     // Update eraser cursor position for touch/stylus
                     setEraserCursorPos({ x: t.clientX - rect.left, y: t.clientY - rect.top })
                 }
             }}
             onTouchEnd={(e) => {
+                if (e.touches.length < 2) setIsPinching(false)
                 // Stylus チェック（念のため）
                 if (e.touches.length > 0) {
                     const hasStylus = Array.from(e.touches).some(t => {
@@ -1085,6 +1155,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     endDrag()
                     return
                 }
+                if (tool === 'eraser' && e.touches.length === 0) finishErasing()
 
                 // 長押しキャンセル
                 // 長押しキャンセル
@@ -1093,6 +1164,10 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 lastDrawnPointRef.current = null // CRITICAL: Reset batch connection point
                 stopPanning()
                 checkAndFinishSwipe()
+            }}
+            onTouchCancel={() => {
+                setIsPinching(false)
+                if (tool === 'eraser') finishErasing()
             }}
         >
             <div className="canvas-wrapper" ref={wrapperRef}>
@@ -1112,21 +1187,27 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             pdfDoc={pdfDoc}
                             containerRef={containerRef}
                             canvasRef={canvasRef}
-                            renderScale={RENDER_SCALE}
+                            renderScale={effectiveRenderScale}
+                            layoutScale={RENDER_SCALE}
+                            renderContent={!hidePdfBackground}
                             pageNum={pageNum}
                             onPageRendered={handlePageRendered}
                         />
                     </div>
-                    <DrawingCanvas
+                    {(hidePdfBackground || tool !== 'none' || drawingPaths.length > 0) && <DrawingCanvas
                         key={`drawing-${pageNum}`}
                         ref={drawingCanvasRef}
-                        width={canvasSize?.width || 300}
-                        height={canvasSize?.height || 150}
+                        width={bitmapCanvasSize?.width || 300}
+                        height={bitmapCanvasSize?.height || 150}
+                        coordinateWidth={canvasSize?.width || 300}
+                        coordinateHeight={canvasSize?.height || 150}
                         className="drawing-canvas"
                         style={{
                             position: 'absolute',
                             top: 0,
                             left: 0,
+                            width: `${canvasSize?.width || 300}px`,
+                            height: `${canvasSize?.height || 150}px`,
                             pointerEvents: 'none'
                         }}
                         tool={tool === 'none' ? 'pen' : tool}
@@ -1135,7 +1216,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         opacity={opacity}
                         strokeStyle={strokeStyle}
                         eraserSize={eraserSize}
-                        paths={drawingPaths}
+                        paths={erasingPaths ?? drawingPaths}
                         previewPath={previewPath}
                         isCtrlPressed={isCtrlPressed}
                         stylusOnly={false}
@@ -1143,7 +1224,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         interactionMode='display-only'
                         isDrawingExternal={isDrawingInternal}
                         onPathAdd={() => { }} // Display only - PDFPane handles path saving
-                    />
+                    />}
                 </div>
             </div>
 

@@ -10,8 +10,18 @@ interface PDFCanvasProps {
     containerRef: React.RefObject<HTMLDivElement>
     canvasRef: React.RefObject<HTMLCanvasElement>
     renderScale?: number
-    onPageRendered?: () => void
+    layoutScale?: number
+    renderContent?: boolean
+    onPageRendered?: (metrics: PDFRenderMetrics) => void
     pageNum: number // Strictly required now
+}
+
+export interface PDFRenderMetrics {
+    pixelWidth: number
+    pixelHeight: number
+    layoutWidth: number
+    layoutHeight: number
+    renderScale: number
 }
 
 export interface PDFCanvasHandle {
@@ -24,6 +34,8 @@ const PDFCanvas = forwardRef<PDFCanvasHandle, PDFCanvasProps>(({
     containerRef,
     canvasRef,
     renderScale = 1.0,
+    layoutScale = renderScale,
+    renderContent = true,
     onPageRendered,
     pageNum
 }, ref) => {
@@ -36,27 +48,22 @@ const PDFCanvas = forwardRef<PDFCanvasHandle, PDFCanvasProps>(({
 
     // レンダリングタスク管理
     const renderTaskRef = useRef<any>(null)
-    const lastRenderPromise = useRef<Promise<void>>(Promise.resolve())
+    const renderGenerationRef = useRef(0)
 
     // ページレンダリング
     useEffect(() => {
         if (!pdfDoc || !canvasRef.current) return
 
-        const renderPage = async () => {
-            // console.log('🎨 PDFCanvas: renderPage queued', { pageNum, renderScale })
+        const generation = ++renderGenerationRef.current
+        let disposed = false
 
-            // キャンセル
+        const renderPage = async () => {
             if (renderTaskRef.current) {
                 renderTaskRef.current.cancel()
                 renderTaskRef.current = null
             }
 
-            // Queue the render to ensure sequential execution
-            lastRenderPromise.current = lastRenderPromise.current.then(async () => {
-                // Double check cancellation/staleness inside the queue
-                if (!canvasRef.current || !pdfDoc) return
-
-                // console.log('🎨 PDFCanvas: renderPage start', { pageNum, renderScale })
+            try {
                 const page = await pdfDoc.getPage(pageNum)
 
                 let pageRotation = 0
@@ -70,52 +77,82 @@ const PDFCanvas = forwardRef<PDFCanvasHandle, PDFCanvasProps>(({
                 }
 
                 const viewport = page.getViewport({ scale: renderScale, rotation: pageRotation })
-                if (!canvasRef.current) return
-                const canvas = canvasRef.current
-                const context = canvas.getContext('2d')
-                if (!context) return
+                const layoutViewport = page.getViewport({ scale: layoutScale, rotation: pageRotation })
+                if (disposed || generation !== renderGenerationRef.current || !canvasRef.current) return
 
-                canvas.height = viewport.height
-                canvas.width = viewport.width
-                // Ensure CSS dimensions match attribute dimensions (override max-width: 100% etc)
-                canvas.style.width = `${viewport.width}px`
-                canvas.style.height = `${viewport.height}px`
+                if (!renderContent) {
+                    const canvas = canvasRef.current
+                    canvas.width = 1
+                    canvas.height = 1
+                    canvas.style.width = `${layoutViewport.width}px`
+                    canvas.style.height = `${layoutViewport.height}px`
+                    onPageRendered?.({
+                        pixelWidth: Math.max(1, Math.ceil(viewport.width)),
+                        pixelHeight: Math.max(1, Math.ceil(viewport.height)),
+                        layoutWidth: layoutViewport.width,
+                        layoutHeight: layoutViewport.height,
+                        renderScale,
+                    })
+                    return
+                }
+
+                // Render away from the visible DOM. The old bitmap remains visible while
+                // adaptive resolution catches up after a pinch gesture.
+                const buffer = document.createElement('canvas')
+                buffer.height = Math.max(1, Math.ceil(viewport.height))
+                buffer.width = Math.max(1, Math.ceil(viewport.width))
+                const bufferContext = buffer.getContext('2d')
+                if (!bufferContext) return
 
                 const renderContext = {
-                    canvasContext: context,
+                    canvasContext: bufferContext,
                     viewport: viewport,
                 }
 
                 try {
-                    // console.log('📏 PDFCanvas: Viewport calculated', { width: viewport.width, height: viewport.height })
-
                     renderTaskRef.current = page.render(renderContext)
                     await renderTaskRef.current.promise
                     renderTaskRef.current = null
-                    // console.log('✅ PDFCanvas: Render complete')
-                    onPageRendered?.()
+
+                    if (disposed || generation !== renderGenerationRef.current || !canvasRef.current) return
+                    const canvas = canvasRef.current
+                    canvas.width = buffer.width
+                    canvas.height = buffer.height
+                    canvas.style.width = `${layoutViewport.width}px`
+                    canvas.style.height = `${layoutViewport.height}px`
+                    const context = canvas.getContext('2d')
+                    if (!context) return
+                    context.drawImage(buffer, 0, 0)
+                    onPageRendered?.({
+                        pixelWidth: buffer.width,
+                        pixelHeight: buffer.height,
+                        layoutWidth: layoutViewport.width,
+                        layoutHeight: layoutViewport.height,
+                        renderScale,
+                    })
                 } catch (error: any) {
                     if (error?.name === 'RenderingCancelledException') {
                         // console.log('🛑 Rendering Cancelled')
                         return
                     }
-                    // console.error('Render error:', error)
                 }
-            }).catch((err) => {
-                // console.error('Render queue error:', err)
-            })
+            } catch {
+                // A newer render request or page change will replace this one.
+            }
         }
 
         renderPage()
 
         return () => {
+            disposed = true
+            renderGenerationRef.current += 1
             if (renderTaskRef.current) {
                 renderTaskRef.current.cancel()
                 renderTaskRef.current = null
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pdfDoc, pageNum, renderScale])
+    }, [pdfDoc, pageNum, renderScale, layoutScale, renderContent])
 
     // canvas要素自体への参照が必要な場合（useZoomPanなどで使われる）
     // ただし、forwardRefで公開しているのはHandleなので、canvasRefへのアクセス方法を検討する必要がある
