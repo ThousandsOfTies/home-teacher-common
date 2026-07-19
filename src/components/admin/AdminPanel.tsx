@@ -27,7 +27,7 @@ import { FiEdit2, FiHardDrive, FiTrash2, FiCheckCircle, FiImage } from 'react-ic
 import { BiEraser } from 'react-icons/bi';
 import { ImFilePdf } from 'react-icons/im';
 import { VscDatabase } from 'react-icons/vsc';
-import { MdNewReleases, MdHistory, MdNotificationsNone, MdAccessTime, MdOutlineCollections } from 'react-icons/md';
+import { MdNewReleases, MdHistory, MdNotificationsNone, MdAccessTime, MdOutlineCollections, MdBalance } from 'react-icons/md';
 import { ICON_SVG } from '../../constants/icons';
 import { useTranslation } from 'react-i18next';
 import { getSubjects, SubjectInfo, SubjectsResponse } from '../../services/api';
@@ -42,6 +42,7 @@ interface AdminPanelProps {
   storageIconSrc?: string;
   historyVariant?: 'timeline' | 'progress';
   settingsVariant?: 'links' | 'teachers';
+  guideVariant?: 'study' | 'copy';
 }
 
 export default function AdminPanel({
@@ -52,10 +53,13 @@ export default function AdminPanel({
   studyTabLabel = 'Study',
   storageIconSrc,
   historyVariant = 'timeline',
-  settingsVariant = 'links'
+  settingsVariant = 'links',
+  guideVariant = 'study'
 }: AdminPanelProps) {
   // i18n
   const { t, i18n } = useTranslation();
+  const guideKey = guideVariant === 'copy' ? 'howToUseCopi' : 'howToUse';
+  const catalogKey = guideVariant === 'copy' ? 'drawingCatalog' : 'drillCatalog';
 
   // Custom hooks
   const {
@@ -707,13 +711,13 @@ export default function AdminPanel({
             overflow: 'auto'
           }}>
             <h3 style={{ margin: '0 0 16px 0', color: '#2c3e50', fontSize: '20px' }}>
-              {t('howToUse.title')}
+              {t(`${guideKey}.title`)}
             </h3>
 
             {/* Step 1: PDF登録 */}
             <div style={{ marginBottom: '20px' }}>
               <h4 style={{ margin: '0 0 8px 0', color: '#3498db', fontSize: '16px' }}>
-                {t('howToUse.step1.title')}
+                {t(`${guideKey}.step1.title`)}
               </h4>
               <ul style={{ margin: '0 0 12px 0', paddingLeft: '1em', listStyle: 'none', color: '#7f8c8d', fontSize: '14px', lineHeight: '1.8' }}>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -722,7 +726,7 @@ export default function AdminPanel({
                   <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><ImFilePdf size={16} color='#e74c3c' /></span>
                   →
                   <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><IoIosFolderOpen size={16} color='#f39c12' /></span>
-                  {t('howToUse.step1.catalog')}
+                  {t(`${guideKey}.step1.catalog`)}
                 </li>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><IoIosFolderOpen size={16} color='#f39c12' /></span>
@@ -730,7 +734,7 @@ export default function AdminPanel({
                   <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><ImFilePdf size={16} color='#e74c3c' /></span>
                   →
                   <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><VscDatabase size={16} color='#34495e' /></span>
-                  {t('howToUse.step1.local')}
+                  {t(`${guideKey}.step1.local`)}
                 </li>
               </ul>
             </div>
@@ -738,74 +742,78 @@ export default function AdminPanel({
             {/* Step 2: SNS制限 */}
             <div style={{ marginBottom: '20px' }}>
               <h4 style={{ margin: '0 0 8px 0', color: '#3498db', fontSize: '16px' }}>
-                {t('howToUse.step2.title')}
+                {t(`${guideKey}.step2.title`)}
               </h4>
               <ul style={{ margin: '0 0 12px 0', paddingLeft: '1em', listStyle: 'none', color: '#7f8c8d', fontSize: '14px', lineHeight: '1.8' }}>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><IoMdSettings size={16} /></span>
-                  {t('howToUse.step2.line1Admin')}
-                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><MdNotificationsNone size={16} /></span>
-                  {t('howToUse.step2.line1Links')}
+                  {t(`${guideKey}.step2.line1Admin`)}
+                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}>
+                    {guideVariant === 'copy' ? <MdBalance size={16} /> : <MdNotificationsNone size={16} />}
+                  </span>
+                  {t(`${guideKey}.step2.line1Links`)}
                 </li>
-                <li>{t('howToUse.step2.line2')}</li>
-                <li>{t('howToUse.step2.line3')}</li>
+                <li>{t(`${guideKey}.step2.line2`)}</li>
+                <li>{t(`${guideKey}.step2.line3`)}</li>
               </ul>
             </div>
 
             {/* Step 3: 学習 */}
             <div style={{ marginBottom: '20px' }}>
               <h4 style={{ margin: '0 0 8px 0', color: '#3498db', fontSize: '16px' }}>
-                {t('howToUse.step3.title')}
+                {t(`${guideKey}.step3.title`)}
               </h4>
               <ul style={{ margin: '0 0 12px 0', paddingLeft: '1em', listStyle: 'none', color: '#7f8c8d', fontSize: '14px', lineHeight: '1.8' }}>
-                <li>{t('howToUse.step3.line1')}</li>
+                <li>{t(`${guideKey}.step3.line1`)}</li>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><FiEdit2 size={16} color='#000000' /></span>
-                  <strong>{t('howToUse.step3.line2Pen')}</strong>{t('howToUse.step3.line2Write')}
+                  <strong>{t(`${guideKey}.step3.line2Pen`)}</strong>{t(`${guideKey}.step3.line2Write`)}
                   <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><BiEraser size={16} /></span>
-                  <strong>{t('howToUse.step3.line2Eraser')}</strong>{t('howToUse.step3.line2Erase')}
+                  <strong>{t(`${guideKey}.step3.line2Eraser`)}</strong>{t(`${guideKey}.step3.line2Erase`)}
                 </li>
-                <li>{t('howToUse.step3.line3')}</li>
-                <li>{t('howToUse.step3.line4')}</li>
+                <li>{t(`${guideKey}.step3.line3`)}</li>
+                <li>{t(`${guideKey}.step3.line4`)}</li>
               </ul>
             </div>
 
             {/* Step 4: 採点 */}
             <div style={{ marginBottom: '20px' }}>
               <h4 style={{ margin: '0 0 8px 0', color: '#3498db', fontSize: '16px' }}>
-                {t('howToUse.step4.title')}
+                {t(`${guideKey}.step4.title`)}
               </h4>
               <ul style={{ margin: '0 0 12px 0', paddingLeft: '1em', listStyle: 'none', color: '#7f8c8d', fontSize: '14px', lineHeight: '1.8' }}>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><FiCheckCircle size={16} /></span>
-                  <strong>{t('howToUse.step4.line1')}</strong> {t('howToUse.step4.line1Tap')}
+                  <strong>{t(`${guideKey}.step4.line1`)}</strong> {t(`${guideKey}.step4.line1Tap`)}
                 </li>
-                <li>{t('howToUse.step4.line2')}</li>
-                <li>{t('howToUse.step4.line3')}</li>
-                <li>{t('howToUse.step4.line4')}</li>
+                <li>{t(`${guideKey}.step4.line2`)}</li>
+                <li>{t(`${guideKey}.step4.line3`)}</li>
+                <li>{t(`${guideKey}.step4.line4`)}</li>
               </ul>
               <p style={{ margin: '0', padding: '8px', backgroundColor: '#fff3cd', borderRadius: '4px', fontSize: '12px', color: '#856404', lineHeight: '1.5' }}>
-                {t('howToUse.step4.warning')}
+                {t(`${guideKey}.step4.warning`)}
               </p>
             </div>
 
             {/* Step 5: その他 */}
             <div style={{ marginBottom: '20px' }}>
               <h4 style={{ margin: '0 0 8px 0', color: '#3498db', fontSize: '16px' }}>
-                {t('howToUse.step5.title')}
+                {t(`${guideKey}.step5.title`)}
               </h4>
               <ul style={{ margin: 0, paddingLeft: '1em', listStyle: 'none', color: '#7f8c8d', fontSize: '14px', lineHeight: '1.8' }}>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><MdHistory size={16} /></span>
-                  {t('howToUse.step5.history')}
+                  <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}>
+                    {guideVariant === 'copy' ? <MdOutlineCollections size={16} /> : <MdHistory size={16} />}
+                  </span>
+                  {t(`${guideKey}.step5.history`)}
                 </li>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><FiHardDrive size={16} /></span>
-                  {t('howToUse.step5.storage')}
+                  {t(`${guideKey}.step5.storage`)}
                 </li>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ display: 'inline-flex', width: '16px', height: '16px', flexShrink: 0 }}><FiTrash2 size={16} /></span>
-                  {t('howToUse.step5.delete')}
+                  {t(`${guideKey}.step5.delete`)}
                 </li>
               </ul>
             </div>
@@ -824,7 +832,7 @@ export default function AdminPanel({
                   cursor: 'pointer'
                 }}
               >
-                {t('howToUse.closeButton')}
+                {t(`${guideKey}.closeButton`)}
               </button>
             </div>
           </div>
@@ -1330,7 +1338,7 @@ export default function AdminPanel({
                   border: '2px solid #bdc3c7',
                   borderRadius: '8px'
                 }}
-                title="おすすめ無料教材サイト"
+                title={t(`${catalogKey}.title`)}
               >
                 <FaEarthAmericas style={{ fontSize: '28px', width: '28px', height: '28px', color: '#3498db' }} />
                 <div style={{ fontSize: '20px', color: '#95a5a6' }}>→</div>
@@ -1439,7 +1447,7 @@ export default function AdminPanel({
                 >
                   ✕
                 </button>
-                <DrillCatalog addPDF={addPDF} />
+                <DrillCatalog addPDF={addPDF} variant={guideVariant === 'copy' ? 'drawing' : 'study'} />
               </div>
             </div>
           )

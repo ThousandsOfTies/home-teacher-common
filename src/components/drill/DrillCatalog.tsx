@@ -107,14 +107,73 @@ const RECOMMENDED_SITES_EN = [
     }
 ];
 
+const DRAWING_SITES_JA = [
+    {
+        name: 'ひよこドリル',
+        description: '動物や食べ物などを、1つずつまたはドリル形式で練習できる子ども・初心者向けの無料イラスト教材です。',
+        url: 'https://hiyokodrill.com/illustration/',
+        highlight: '🐣 はじめての模写に',
+        subjects: ['動物', '食べ物', 'かんたんイラスト'],
+        grades: ['幼児〜初心者'],
+    },
+    {
+        name: '学習プリント.com お絵描き',
+        description: '簡単な図形からかわいいイラストへ段階的に進める、無料のお絵描きPDFプリントです。',
+        url: 'https://xn--fdk3a7ctb5192box5b.com/yo/oekaki/',
+        highlight: '✏️ 段階練習',
+        subjects: ['図形', '運筆', 'イラスト'],
+        grades: ['幼児〜小学生'],
+    },
+    {
+        name: 'SuperColoring Drawing Tutorials',
+        description: '動物、人物、乗り物などの描き方を段階ごとに見られる、豊富な印刷用チュートリアル集です。',
+        url: 'https://www.supercoloring.com/section/drawing-tutorials',
+        highlight: '🌎 テーマが豊富',
+        subjects: ['動物', '人物', '乗り物', '植物'],
+        grades: ['子ども〜大人'],
+    },
+];
+
+const DRAWING_SITES_EN = [
+    {
+        name: 'SuperColoring Drawing Tutorials',
+        description: 'A large collection of printable step-by-step drawing guides for animals, people, vehicles, plants, and more.',
+        url: 'https://www.supercoloring.com/section/drawing-tutorials',
+        highlight: '🌎 Huge Collection',
+        subjects: ['Animals', 'People', 'Vehicles', 'Plants'],
+        grades: ['Kids to Adults'],
+    },
+    {
+        name: 'How to Draw for Kids',
+        description: 'Simple tutorials and downloadable worksheets with drawing, tracing, coloring, and grid-copying activities.',
+        url: 'https://howtodrawforkids.com/',
+        highlight: '✏️ Step by Step',
+        subjects: ['Drawing', 'Tracing', 'Grid Copying'],
+        grades: ['Kids & Beginners'],
+    },
+    {
+        name: 'LittleActivity Art Printables',
+        description: 'Free printable PDF art activities and drawing tutorials for children, with no account required.',
+        url: 'https://www.littleactivity.com/free-printables',
+        highlight: '🎨 Free PDFs',
+        subjects: ['Art', 'Drawing', 'Crafts'],
+        grades: ['Ages 3–12'],
+    },
+];
+
 interface DrillCatalogProps {
     onImportConfig?: (addPDF: (file: Blob, fileName: string) => Promise<boolean>) => void;
     addPDF: (file: Blob, fileName: string) => Promise<boolean>;
+    variant?: 'study' | 'drawing';
 }
 
-export default function DrillCatalog({ }: DrillCatalogProps) {
+export default function DrillCatalog({ variant = 'study' }: DrillCatalogProps) {
     const { t, i18n } = useTranslation();
-    const sites = (i18n.language === 'en' || i18n.language?.startsWith('en')) ? RECOMMENDED_SITES_EN : RECOMMENDED_SITES_JA;
+    const isEnglish = i18n.language === 'en' || i18n.language?.startsWith('en');
+    const sites = variant === 'drawing'
+        ? (isEnglish ? DRAWING_SITES_EN : DRAWING_SITES_JA)
+        : (isEnglish ? RECOMMENDED_SITES_EN : RECOMMENDED_SITES_JA);
+    const catalogKey = variant === 'drawing' ? 'drawingCatalog' : 'drillCatalog';
 
     const handleOpenSite = (url: string) => {
         window.open(url, '_blank', 'noopener,noreferrer');
@@ -127,7 +186,7 @@ export default function DrillCatalog({ }: DrillCatalogProps) {
                 marginBottom: '10px',
                 color: '#2c3e50'
             }}>
-                {t('drillCatalog.title')}
+                {t(`${catalogKey}.title`)}
             </h2>
 
             <p style={{
@@ -136,7 +195,7 @@ export default function DrillCatalog({ }: DrillCatalogProps) {
                 marginBottom: '25px',
                 fontSize: '14px',
                 lineHeight: '1.6'
-            }} dangerouslySetInnerHTML={{ __html: t('drillCatalog.description') }} />
+            }} dangerouslySetInnerHTML={{ __html: t(`${catalogKey}.description`) }} />
 
             <div style={{
                 display: 'flex',
@@ -237,7 +296,7 @@ export default function DrillCatalog({ }: DrillCatalogProps) {
                                     e.currentTarget.style.backgroundColor = 'white';
                                 }}
                             >
-                                {t('drillCatalog.openSite')}
+                                {t(`${catalogKey}.openSite`)}
                                 <span style={{ fontSize: '16px' }}>→</span>
                             </button>
                         </div>
@@ -258,8 +317,8 @@ export default function DrillCatalog({ }: DrillCatalogProps) {
                     color: '#e65100',
                     lineHeight: '1.6'
                 }}>
-                    <strong>{t('drillCatalog.tipsTitle')}</strong><br />
-                    <span dangerouslySetInnerHTML={{ __html: t('drillCatalog.tipsContent') }} />
+                    <strong>{t(`${catalogKey}.tipsTitle`)}</strong><br />
+                    <span dangerouslySetInnerHTML={{ __html: t(`${catalogKey}.tipsContent`) }} />
                 </p>
             </div>
 
@@ -275,7 +334,7 @@ export default function DrillCatalog({ }: DrillCatalogProps) {
                     fontSize: '11px',
                     color: '#888',
                     lineHeight: '1.5'
-                }} dangerouslySetInnerHTML={{ __html: t('drillCatalog.disclaimer') }} />
+                }} dangerouslySetInnerHTML={{ __html: t(`${catalogKey}.disclaimer`) }} />
             </div>
         </div>
     );

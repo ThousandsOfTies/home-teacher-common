@@ -40,6 +40,47 @@
         },
         "closeButton": "Close"
     },
+    "howToUseCopi": {
+        "title": "📖 CopiCopi Guide",
+        "step1": {
+            "title": "1️⃣ Add a Reference PDF",
+            "catalog": "Import a reference PDF you found on the web",
+            "local": "Add a PDF saved on your device"
+        },
+        "step2": {
+            "title": "2️⃣ Choose Your AI Teacher",
+            "line1Admin": "Admin tab →",
+            "line1Links": "Teacher Settings",
+            "line2": "Enable the teacher levels you want to use",
+            "line3": "Choose which teacher appears by default"
+        },
+        "step3": {
+            "title": "3️⃣ Copy While Looking at the Reference",
+            "line1": "Open a PDF to see the reference on side A and a blank canvas on side B",
+            "line2Pen": "Pen Mode",
+            "line2Write": "to draw,",
+            "line2Eraser": "Eraser Mode",
+            "line2Erase": "to erase",
+            "line3": "Draw freely on side B with your finger or Apple Pencil",
+            "line4": "Pinch each side to zoom, and drag with two fingers to pan"
+        },
+        "step4": {
+            "title": "4️⃣ Ask the AI Teacher",
+            "line1": "Teacher button",
+            "line1Tap": "to choose a teacher and start the review",
+            "line2": "First, position and zoom sides A and B so they are easy to compare",
+            "line3": "The currently visible A and B views are sent to the AI as they appear",
+            "line4": "The AI compares the mood and shapes, then shares strengths and a next practice point",
+            "warning": "⚠️ AI advice is a reference, not a final judgment of the value of your artwork."
+        },
+        "step5": {
+            "title": "5️⃣ Review Your Work",
+            "history": "Progress - Review artwork, advice, and improvement over time",
+            "storage": "Storage - Check data usage",
+            "delete": "Trash icon - Delete a reference PDF"
+        },
+        "closeButton": "Close"
+    },
     "about": {
         "title": "About TutoTuto"
     },
@@ -139,6 +180,14 @@
         "tipsTitle": "💡 Tips:",
         "tipsContent": "<strong>K5 Learning</strong> offers comprehensive worksheets organized by grade and topic.<br />Download the PDF and print it out for a great workbook experience!",
         "disclaimer": "※ Please use materials from each site in accordance with their respective terms of use.<br />HomeTeacher only provides links and is not the distributor."
+    },
+    "drawingCatalog": {
+        "title": "🎨 Recommended Free Drawing Materials",
+        "description": "Download a PDF you want to practice from one of these sites,<br />then add it to CopiCopi with the import button at the bottom right of the home screen.",
+        "openSite": "Find Materials",
+        "tipsTitle": "💡 Tip:",
+        "tipsContent": "Start with a simple step-by-step worksheet.<br />Even when the reference and practice space share one PDF page, CopiCopi lets you view it on side A and copy it onto a blank side B.",
+        "disclaimer": "※ Follow each site's terms of use.<br />CopiCopi does not redistribute these materials and only links to their official pages."
     },
     "textMode": {
         "placeholder": "Enter text..."

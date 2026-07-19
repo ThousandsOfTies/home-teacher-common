@@ -40,6 +40,47 @@
         },
         "closeButton": "閉じる"
     },
+    "howToUseCopi": {
+        "title": "📖 CopiCopi 使い方ガイド",
+        "step1": {
+            "title": "1️⃣ お手本PDFを登録する",
+            "catalog": "Webで見つけたお手本PDFを取り込む",
+            "local": "端末に保存したPDFを直接登録"
+        },
+        "step2": {
+            "title": "2️⃣ AIの先生を設定する",
+            "line1Admin": "Adminタブ →",
+            "line1Links": "Teacher Settings",
+            "line2": "利用する先生レベルを有効にします",
+            "line3": "最初に使う先生をデフォルトとして設定できます"
+        },
+        "step3": {
+            "title": "3️⃣ 見本を見ながら模写する",
+            "line1": "PDFを開くと、A面にお手本、B面に白いキャンバスが表示されます",
+            "line2Pen": "ペンモード",
+            "line2Write": "で描き、",
+            "line2Eraser": "消しゴムモード",
+            "line2Erase": "で消去",
+            "line3": "指やApple PencilでB面へ自由に描けます",
+            "line4": "A面とB面は、それぞれピンチで拡大・縮小、2本指ドラッグで移動できます"
+        },
+        "step4": {
+            "title": "4️⃣ AIの先生に見てもらう",
+            "line1": "先生ボタン",
+            "line1Tap": "で先生を選び、確認を始めます",
+            "line2": "A面とB面を比べやすい位置・倍率に整えてから実行します",
+            "line3": "現在画面に見えているA面とB面が、そのままAIへ送られます",
+            "line4": "AIが雰囲気や形を見比べ、良い点と次の練習ポイントを伝えます",
+            "warning": "⚠️ AIのアドバイスは参考情報です。作品の良さを決めつけるものではありません。"
+        },
+        "step5": {
+            "title": "5️⃣ 作品を振り返る",
+            "history": "Progress - 作品とアドバイス、上達の記録を確認",
+            "storage": "Storage - データ使用状況を確認",
+            "delete": "ゴミ箱アイコン - お手本PDFを削除"
+        },
+        "closeButton": "閉じる"
+    },
     "about": {
         "title": "TutoTutoについて"
     },
@@ -139,6 +180,14 @@
         "tipsTitle": "💡 使い方のヒント：",
         "tipsContent": "「ふたば問題集」は新学習指導要領に対応した全単元カバーのプリントが揃っています。<br />PDFをダウンロードしたら、コンビニで両面印刷すれば市販ドリルのように使えます！",
         "disclaimer": "※ 各サイトの教材は、それぞれのサイトの利用規約に従ってご利用ください。<br />HomeTeacherは教材の配布元ではなく、リンクを紹介しているのみです。"
+    },
+    "drawingCatalog": {
+        "title": "🎨 おすすめ無料お絵描き素材",
+        "description": "サイトから練習したいPDFをダウンロードし、<br />ホーム画面右下の取込ボタンでCopiCopiへ登録してください。",
+        "openSite": "素材を探す",
+        "tipsTitle": "💡 おすすめ：",
+        "tipsContent": "初めてなら<strong>ひよこドリル</strong>の1つずつ練習がおすすめです。<br />見本と描く場所が同じページにあるPDFも、CopiCopiではA面を見ながら白いB面へ模写できます。",
+        "disclaimer": "※ 素材は各サイトの利用規約に従ってご利用ください。<br />CopiCopiは素材を再配布せず、公式の掲載ページへのリンクのみを紹介しています。"
     },
     "textMode": {
         "placeholder": "テキストを入力..."

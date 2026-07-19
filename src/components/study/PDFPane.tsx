@@ -24,6 +24,8 @@ interface PDFPaneProps {
     strokeStyle?: 'pencil' | 'marker' | 'brush'
     eraserSize: number
     isCtrlPressed: boolean
+    scratchEraseEnabled?: boolean
+    editableLayerId?: string
 
     // スプリット表示モード（高さフィット＋左寄せ）
     splitMode?: boolean
@@ -67,6 +69,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         strokeStyle = 'pencil',
         eraserSize,
         isCtrlPressed,
+        scratchEraseEnabled = true,
+        editableLayerId,
         splitMode = false,
         hidePdfBackground = false,
         className,
@@ -347,6 +351,11 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         const newPaths: DrawingPath[] = []
 
         currentPaths.forEach(path => {
+            if (editableLayerId && path.layerId !== editableLayerId) {
+                newPaths.push(path)
+                return
+            }
+
             // Split path into segments based on erased points
             const segments: { x: number; y: number }[][] = []
             let currentSegment: { x: number; y: number }[] = []
@@ -422,6 +431,11 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
             onPathAdd(path)
         },
         onScratchComplete: (scratchPath) => {
+            if (!scratchEraseEnabled) {
+                onPathAdd(scratchPath)
+                return
+            }
+
             const currentPaths = drawingPathsRef.current
             const pathsToKeep = currentPaths.filter(existingPath =>
                 !doPathsIntersect(scratchPath, existingPath)
