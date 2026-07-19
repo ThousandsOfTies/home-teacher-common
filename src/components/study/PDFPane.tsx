@@ -3,6 +3,7 @@ import { PDFFileRecord } from '../../utils/indexedDB'
 import PDFCanvas, { PDFCanvasHandle, PDFRenderMetrics } from './components/PDFCanvas'
 import { DrawingPath, DrawingCanvas, useDrawing, useZoomPan, doPathsIntersect, isScratchPattern, useLassoSelection, DrawingCanvasHandle } from '@thousands-of-ties/drawing-common'
 import { RENDER_SCALE } from '../../constants/pdf'
+import { isIOSLikeDevice } from '../../utils/platform'
 import './StudyPanel.css'
 import { ICON_SVG } from '../../constants/icons'
 
@@ -313,7 +314,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
             const baseHeight = canvasSize.height / RENDER_SCALE
             if (baseWidth <= 0 || baseHeight <= 0) return
 
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+            const isIOS = isIOSLikeDevice()
             const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
             const desiredScale = Math.max(1, RENDER_SCALE * zoom * pixelRatio * 1.05)
             const maxPixels = isIOS ? 7_000_000 : 16_000_000
@@ -372,9 +373,15 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         if (positions.length === 0) return { paths: sourcePaths, changed: false }
         const cw = canvasSize?.width || canvasRef.current?.clientWidth || canvasRef.current?.width || 1
         const ch = canvasSize?.height || canvasRef.current?.clientHeight || canvasRef.current?.height || 1
-        const radius = eraserSize / cw
-        const radiusSquared = radius * radius
+        const radiusX = eraserSize / cw
+        const radiusY = eraserSize / ch
         const normalizedPositions = positions.map(position => ({ x: position.x / cw, y: position.y / ch }))
+        const eraseBounds = {
+            left: Math.min(...normalizedPositions.map(position => position.x)) - radiusX,
+            right: Math.max(...normalizedPositions.map(position => position.x)) + radiusX,
+            top: Math.min(...normalizedPositions.map(position => position.y)) - radiusY,
+            bottom: Math.max(...normalizedPositions.map(position => position.y)) + radiusY
+        }
         let changed = false
         const nextPaths: DrawingPath[] = []
 
@@ -384,14 +391,27 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 return
             }
 
+            if (path.points.length === 0) return
+            const pathBounds = {
+                left: Math.min(...path.points.map(point => point.x)),
+                right: Math.max(...path.points.map(point => point.x)),
+                top: Math.min(...path.points.map(point => point.y)),
+                bottom: Math.max(...path.points.map(point => point.y))
+            }
+            if (pathBounds.right < eraseBounds.left || pathBounds.left > eraseBounds.right
+                || pathBounds.bottom < eraseBounds.top || pathBounds.top > eraseBounds.bottom) {
+                nextPaths.push(path)
+                return
+            }
+
             const segments: DrawingPath['points'][] = []
             let currentSegment: DrawingPath['points'] = []
             let pathChanged = false
             path.points.forEach(point => {
                 const erased = normalizedPositions.some(position => {
-                    const dx = point.x - position.x
-                    const dy = point.y - position.y
-                    return dx * dx + dy * dy < radiusSquared
+                    const dx = (point.x - position.x) / radiusX
+                    const dy = (point.y - position.y) / radiusY
+                    return dx * dx + dy * dy < 1
                 })
                 if (erased) {
                     if (currentSegment.length > 1) segments.push(currentSegment)
@@ -558,13 +578,13 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
 
     useImperativeHandle(ref, () => ({
         resetZoom: () => {
-            if (canvasRef.current && containerRef.current) {
+            if (canvasSize && containerRef.current) {
                 const containerH = containerRef.current.clientHeight
                 const maxH = window.innerHeight - 120
                 const effectiveH = (containerH > window.innerHeight) ? maxH : containerH
                 fitToScreen(
-                    canvasRef.current.width,
-                    canvasRef.current.height,
+                    canvasSize.width,
+                    canvasSize.height,
                     effectiveH,
                     splitMode ? { fitToHeight: true, alignLeft: true } : undefined
                 )
@@ -617,7 +637,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         getContainerRect: () => containerRef.current?.getBoundingClientRect() || null,
         getPdfCanvas: () => canvasRef.current
 
-    }), [splitMode, fitToScreen, resetZoom, setZoom, setPanOffset, zoom, panOffset, handleUndo, pdfDoc])
+    }), [splitMode, fitToScreen, resetZoom, setZoom, setPanOffset, zoom, panOffset, handleUndo, pdfDoc, canvasSize])
 
     // Eraser cursor state
     const [eraserCursorPos, setEraserCursorPos] = React.useState<{ x: number, y: number } | null>(null)

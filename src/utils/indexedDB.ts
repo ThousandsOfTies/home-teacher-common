@@ -2,8 +2,9 @@
 
 // 共通ライブラリの既定値はTutoTutoのまま維持し、各アプリのビルド設定で分離する。
 export const DB_NAME = import.meta.env.VITE_INDEXED_DB_NAME || 'TutoTutoDB';
-const DB_VERSION = 9; // バージョンを上げて解答ストア追加
+const DB_VERSION = 10; // PDF本体とページ別筆跡を分離
 const STORE_NAME = 'pdfFiles';
+const DRAWING_STORE_NAME = 'drawings';
 const SNS_STORE_NAME = 'snsLinks';
 const GRADING_HISTORY_STORE_NAME = 'gradingHistory';
 const SETTINGS_STORE_NAME = 'settings';
@@ -21,6 +22,14 @@ export interface PDFFileRecord {
   drawings: Record<number, string>; // ページ番号 -> JSON文字列のマップ
   textAnnotations?: Record<number, string>; // ページ番号 -> JSON文字列のマップ（テキストアノテーション）
   subjectId?: string; // 教科識別子 (math, japanese, etc)
+}
+
+interface DrawingRecord {
+  id: string;
+  pdfId: string;
+  pageNumber: number;
+  data: string;
+  updatedAt: number;
 }
 
 export interface SNSLinkRecord {
@@ -151,6 +160,14 @@ function openDB(): Promise<IDBDatabase> {
         objectStore.createIndex('lastOpened', 'lastOpened', { unique: false });
       }
 
+      // 筆跡はPDF本体と分離し、1ストロークごとに大きなPDF Blobを
+      // 再保存しない。ページ単位なので更新競合と書き込み量も抑えられる。
+      if (!db.objectStoreNames.contains(DRAWING_STORE_NAME)) {
+        const drawingStore = db.createObjectStore(DRAWING_STORE_NAME, { keyPath: 'id' });
+        drawingStore.createIndex('pdfId', 'pdfId', { unique: false });
+        drawingStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+      }
+
       // SNSリンク用オブジェクトストアが存在しない場合は作成
       if (!db.objectStoreNames.contains(SNS_STORE_NAME)) {
         const snsStore = db.createObjectStore(SNS_STORE_NAME, { keyPath: 'id' });
@@ -177,36 +194,53 @@ function openDB(): Promise<IDBDatabase> {
         snsUsageStore.createIndex('snsId', 'snsId', { unique: false });
       }
 
-      // v6へのアップグレード: Base64からBlobへ移行
-      if (oldVersion < 6 && db.objectStoreNames.contains(STORE_NAME)) {
+      // v10: PDFレコード内の筆跡をページ別ストアへ移行する。
+      if (oldVersion > 0 && oldVersion < 10 && db.objectStoreNames.contains(STORE_NAME)) {
         const transaction = (event.target as IDBOpenDBRequest).transaction!;
-        const objectStore = transaction.objectStore(STORE_NAME);
-        const getAllRequest = objectStore.getAll();
+        const pdfStore = transaction.objectStore(STORE_NAME);
+        const drawingStore = transaction.objectStore(DRAWING_STORE_NAME);
+        const cursorRequest = pdfStore.openCursor();
 
-        getAllRequest.onsuccess = () => {
-          const records = getAllRequest.result as Array<PDFFileRecord & { fileData?: string | Blob }>;
-          console.log(`📦 Base64→Blob移行開始: ${records.length}件のPDF`);
+        cursorRequest.onsuccess = () => {
+          const cursor = cursorRequest.result;
+          if (!cursor) return;
+          const record = cursor.value as PDFFileRecord & { fileData?: string | Blob };
+          const drawings = record.drawings || {};
+          let recordChanged = false;
 
-          records.forEach(record => {
-            // fileDataが文字列（Base64）でなければスキップ
-            if (!record.fileData || typeof record.fileData !== 'string') return
-
+          // v6以前から直接v10へ上がる場合も同じカーソル内で変換し、
+          // 複数の移行処理が同じPDFレコードを上書きし合わないようにする。
+          if (record.fileData && typeof record.fileData === 'string') {
             try {
-              // Base64をBlobに変換
               const binaryString = atob(record.fileData);
               const bytes = new Uint8Array(binaryString.length);
-              for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
+              for (let index = 0; index < binaryString.length; index += 1) {
+                bytes[index] = binaryString.charCodeAt(index);
               }
               record.fileData = new Blob([bytes], { type: 'application/pdf' });
-              objectStore.put(record);
-              console.log(`✅ ${record.fileName} をBlobに変換`);
+              recordChanged = true;
             } catch (error) {
-              console.error(`❌ ${record.fileName} の変換失敗:`, error);
+              console.error(`❌ ${record.fileName} のBase64→Blob変換失敗:`, error);
             }
-          });
-
-          console.log('✅ Base64→Blob移行完了');
+          }
+          for (const [pageNumber, data] of Object.entries(drawings)) {
+            const page = Number(pageNumber);
+            if (!Number.isFinite(page) || typeof data !== 'string') continue;
+            const drawingRecord: DrawingRecord = {
+              id: `${record.id}:${page}`,
+              pdfId: record.id,
+              pageNumber: page,
+              data,
+              updatedAt: record.lastOpened || Date.now()
+            };
+            drawingStore.put(drawingRecord);
+          }
+          if (Object.keys(drawings).length > 0) {
+            record.drawings = {};
+            recordChanged = true;
+          }
+          if (recordChanged) cursor.update(record);
+          cursor.continue();
         };
       }
     };
@@ -302,44 +336,118 @@ export async function getPDFRecord(id: string): Promise<PDFFileRecord | null> {
 
 // PDFファイルレコードを削除
 export async function deletePDFRecord(id: string): Promise<void> {
+  await waitForDrawingSaves(id);
   const db = await openDB();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const objectStore = transaction.objectStore(STORE_NAME);
-    const request = objectStore.delete(id);
-
-    request.onsuccess = () => {
-      resolve();
+    const transaction = db.transaction([STORE_NAME, DRAWING_STORE_NAME], 'readwrite');
+    transaction.objectStore(STORE_NAME).delete(id);
+    const drawingStore = transaction.objectStore(DRAWING_STORE_NAME);
+    drawingStore.index('pdfId').openKeyCursor(IDBKeyRange.only(id)).onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest<IDBCursor | null>).result;
+      if (!cursor) return;
+      drawingStore.delete(cursor.primaryKey);
+      cursor.continue();
     };
-
-    request.onerror = () => {
-      reject(new Error('レコードの削除に失敗しました'));
-    };
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(new Error('レコードの削除に失敗しました'));
+    transaction.onabort = () => reject(new Error('レコードの削除に失敗しました'));
   });
 }
 
 // ペン跡を保存
-export async function saveDrawing(id: string, pageNumber: number, drawingData: string): Promise<void> {
-  const record = await getPDFRecord(id);
-  if (!record) {
-    throw new Error('PDFレコードが見つかりません');
-  }
+const drawingSaveQueues = new Map<string, Promise<void>>();
 
-  record.drawings[pageNumber] = drawingData;
-  record.lastOpened = Date.now();
+export function saveDrawing(id: string, pageNumber: number, drawingData: string): Promise<void> {
+  const key = `${id}:${pageNumber}`;
+  const previous = drawingSaveQueues.get(key) ?? Promise.resolve();
+  const next = previous.catch(() => undefined).then(async () => {
+    const db = await openDB();
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction([DRAWING_STORE_NAME], 'readwrite');
+      const record: DrawingRecord = {
+        id: key,
+        pdfId: id,
+        pageNumber,
+        data: drawingData,
+        updatedAt: Date.now()
+      };
+      transaction.objectStore(DRAWING_STORE_NAME).put(record);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(new Error('ペン跡の保存に失敗しました'));
+      transaction.onabort = () => reject(new Error('ペン跡の保存に失敗しました'));
+    });
+  });
+  drawingSaveQueues.set(key, next);
+  void next.catch(error => console.error('ペン跡の保存に失敗しました:', error));
+  void next.then(() => {
+    if (drawingSaveQueues.get(key) === next) drawingSaveQueues.delete(key);
+  }, () => {
+    if (drawingSaveQueues.get(key) === next) drawingSaveQueues.delete(key);
+  });
+  return next;
+}
 
-  await savePDFRecord(record);
+async function waitForDrawingSaves(id: string): Promise<void> {
+  await Promise.all(
+    [...drawingSaveQueues.entries()]
+      .filter(([key]) => key.startsWith(`${id}:`))
+      .map(([, pending]) => pending.catch(() => undefined))
+  );
 }
 
 // ペン跡を取得
 export async function getDrawing(id: string, pageNumber: number): Promise<string | null> {
-  const record = await getPDFRecord(id);
-  if (!record) {
-    return null;
-  }
+  const db = await openDB();
+  const stored = await new Promise<DrawingRecord | null>((resolve, reject) => {
+    const request = db.transaction([DRAWING_STORE_NAME], 'readonly')
+      .objectStore(DRAWING_STORE_NAME)
+      .get(`${id}:${pageNumber}`);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(new Error('ペン跡の取得に失敗しました'));
+  });
+  if (stored) return stored.data;
 
-  return record.drawings[pageNumber] || null;
+  // v10移行前データに対する安全なフォールバック。
+  const record = await getPDFRecord(id);
+  return record?.drawings?.[pageNumber] || null;
+}
+
+export async function getAllDrawings(id: string): Promise<Record<number, string>> {
+  const db = await openDB();
+  const stored = await new Promise<DrawingRecord[]>((resolve, reject) => {
+    const request = db.transaction([DRAWING_STORE_NAME], 'readonly')
+      .objectStore(DRAWING_STORE_NAME)
+      .index('pdfId')
+      .getAll(IDBKeyRange.only(id));
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(new Error('ペン跡の取得に失敗しました'));
+  });
+  const result: Record<number, string> = {};
+  for (const drawing of stored) result[drawing.pageNumber] = drawing.data;
+  if (stored.length === 0) {
+    const legacyRecord = await getPDFRecord(id);
+    Object.assign(result, legacyRecord?.drawings || {});
+  }
+  return result;
+}
+
+export async function deleteAllDrawings(id: string): Promise<void> {
+  await waitForDrawingSaves(id);
+  const db = await openDB();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction([DRAWING_STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(DRAWING_STORE_NAME);
+    store.index('pdfId').openKeyCursor(IDBKeyRange.only(id)).onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest<IDBCursor | null>).result;
+      if (!cursor) return;
+      store.delete(cursor.primaryKey);
+      cursor.continue();
+    };
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(new Error('ペン跡の削除に失敗しました'));
+    transaction.onabort = () => reject(new Error('ペン跡の削除に失敗しました'));
+  });
 }
 
 // テキストアノテーションを保存

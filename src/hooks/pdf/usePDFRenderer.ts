@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import { PDFFileRecord, fetchPDFData } from '../../utils/indexedDB'
+import { isIOSLikeDevice } from '../../utils/platform'
 
 // PDF.jsのworkerを設定（ローカルファイルを使用、Safari/Edge対応）
 // PDF.jsのworkerを設定
@@ -44,6 +45,7 @@ export const usePDFRenderer = (
     let isActive = true
     let loadingTask: { promise: Promise<pdfjsLib.PDFDocumentProxy>, destroy: () => Promise<void> } | null = null
     let loadedPdf: pdfjsLib.PDFDocumentProxy | null = null
+    let timeoutId: number | null = null
 
     const loadPDF = async () => {
       // Use the current record
@@ -55,13 +57,7 @@ export const usePDFRenderer = (
       }
 
       try {
-        // iPad対応: SNSタイムアウト後のIndexedDB安定化待機
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-        if (isIOS) {
-          await new Promise(resolve => setTimeout(resolve, 200))
-        }
-
-        if (!isActive) return
+        const isIOS = isIOSLikeDevice()
 
         if (isActive) {
           optionsRef.current?.onLoadStart?.()
@@ -92,13 +88,20 @@ export const usePDFRenderer = (
         // タイムアウト処理（iPad/iPhoneでは60秒、それ以外は30秒）
         const timeoutMs = isIOS ? 60000 : 30000
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error(`PDF読み込みがタイムアウトしました（${timeoutMs / 1000}秒）`)), timeoutMs)
+          timeoutId = window.setTimeout(
+            () => reject(new Error(`PDF読み込みがタイムアウトしました（${timeoutMs / 1000}秒）`)),
+            timeoutMs
+          )
         })
 
         const pdf = await Promise.race([
           loadingTask.promise,
           timeoutPromise
         ]) as pdfjsLib.PDFDocumentProxy
+        if (timeoutId !== null) {
+          window.clearTimeout(timeoutId)
+          timeoutId = null
+        }
 
         console.log('✅ PDF document loaded successfully, numPages:', pdf.numPages, 'isActive:', isActive);
 
@@ -120,6 +123,11 @@ export const usePDFRenderer = (
         }
 
       } catch (error) {
+        if (timeoutId !== null) {
+          window.clearTimeout(timeoutId)
+          timeoutId = null
+        }
+        if (loadingTask) loadingTask.destroy().catch(() => { })
         if (isActive) {
           const errorMsg = error instanceof Error ? error.message : String(error)
           console.error('PDF読み込みエラー:', errorMsg)
@@ -135,6 +143,7 @@ export const usePDFRenderer = (
 
     return () => {
       isActive = false
+      if (timeoutId !== null) window.clearTimeout(timeoutId)
       if (loadingTask) {
         loadingTask.destroy().catch(() => { })
       }
