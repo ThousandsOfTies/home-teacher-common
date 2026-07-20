@@ -128,9 +128,9 @@ export const ParentSettings: React.FC<ParentSettingsProps> = ({ variant = 'tutot
                 <div style={{ textAlign: 'right' }}>
                     <p style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '700', marginBottom: '4px' }}>{t('parentSettings.currentPlan')}</p>
                     {userData.isPremium ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#059669', backgroundColor: '#ecfdf5', padding: '4px 12px', borderRadius: '9999px', border: '1px solid #d1fae5' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: userData.cancelAtPeriodEnd ? '#b45309' : '#059669', backgroundColor: userData.cancelAtPeriodEnd ? '#fffbeb' : '#ecfdf5', padding: '4px 12px', borderRadius: '9999px', border: `1px solid ${userData.cancelAtPeriodEnd ? '#fde68a' : '#d1fae5'}` }}>
                             <span style={{ fontSize: '14px' }}>👑</span>
-                            <span style={{ fontWeight: '700', fontSize: '14px' }}>{t('parentSettings.premium')}</span>
+                            <span style={{ fontWeight: '700', fontSize: '14px' }}>{t('parentSettings.premium')}{userData.cancelAtPeriodEnd ? ' (解約手続済)' : ''}</span>
                         </div>
                     ) : (
                         <div style={{ display: 'inline-block', color: '#6b7280', backgroundColor: '#f3f4f6', padding: '4px 12px', borderRadius: '9999px', border: '1px solid #e5e7eb' }}>
@@ -194,10 +194,22 @@ export const ParentSettings: React.FC<ParentSettingsProps> = ({ variant = 'tutot
                         {isCopiCopi ? 'ありがとうございます！すべての先生レベルをご利用いただけます。' : t('parentSettings.premiumActiveDesc')}
                     </p>
 
-                    <div style={{ backgroundColor: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '16px', fontSize: '14px', textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '24px' }}>
-                        <span style={{ fontSize: '20px' }}>💡</span>
-                        <p style={{ margin: 0 }}>{isCopiCopi ? '先生レベルの有効化とデフォルト設定は、Teacher Settingsから変更できます。' : t('parentSettings.snsHint')}</p>
-                    </div>
+                    {userData.cancelAtPeriodEnd ? (
+                        <div style={{ backgroundColor: '#fffbeb', color: '#b45309', border: '1px solid #fde68a', borderRadius: '8px', padding: '16px', fontSize: '14px', textAlign: 'center', marginBottom: '24px' }}>
+                            <p style={{ fontWeight: '700', margin: '0 0 4px 0' }}>解約手続き済みです</p>
+                            <p style={{ margin: 0 }}>
+                                {userData.currentPeriodEnd 
+                                    ? `Premiumは ${new Date(userData.currentPeriodEnd * 1000).toLocaleDateString('ja-JP')} まで有効です。`
+                                    : '現在の期間終了後に解約されます。'}
+                            </p>
+                            <p style={{ fontSize: '12px', marginTop: '8px', opacity: 0.8 }}>※有効期限内であれば管理画面から再開可能です</p>
+                        </div>
+                    ) : (
+                        <div style={{ backgroundColor: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '16px', fontSize: '14px', textAlign: 'left', display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '24px' }}>
+                            <span style={{ fontSize: '20px' }}>💡</span>
+                            <p style={{ margin: 0 }}>{isCopiCopi ? '先生レベルの有効化とデフォルト設定は、Teacher Settingsから変更できます。' : t('parentSettings.snsHint')}</p>
+                        </div>
+                    )}
 
                     <button
                         onClick={handleManageSubscription}

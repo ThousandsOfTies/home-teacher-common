@@ -9,6 +9,8 @@ interface UserData {
     displayName: string | null;
     isPremium: boolean;
     snsRewardMinutes: number;
+    cancelAtPeriodEnd?: boolean;
+    currentPeriodEnd?: number;
 }
 
 
