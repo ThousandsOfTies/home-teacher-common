@@ -388,6 +388,10 @@ export default function AdminPanel({
             setShowSNSSettings(false);
             setShowParentSettings(true);
           }}
+          onManagePlan={() => {
+            setShowSNSSettings(false);
+            setShowParentSettings(true);
+          }}
         />
       ) : (
         <div style={{

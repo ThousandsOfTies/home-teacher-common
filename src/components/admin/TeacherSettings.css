@@ -40,6 +40,10 @@
 .teacher-default-control span { font-size: 9px; font-weight: 800; letter-spacing: .08em; }
 .teacher-default-control.unavailable { opacity: .4; cursor: not-allowed; }
 .teacher-settings-note { margin: 8px 24px 18px; padding: 11px 13px; border-radius: 10px; background: #f0f5f2; color: #687873; font-size: 11px; line-height: 1.55; }
+.teacher-settings-premium-note { display: flex; flex-direction: column; gap: 4px; margin-bottom: 18px; }
+.teacher-settings-premium-note .teacher-settings-note { margin-bottom: 0; }
+.teacher-settings-manage-plan { margin: 0 24px; padding: 8px 12px; border: 1px solid #dce3df; border-radius: 8px; background: white; color: #687671; font-size: 12px; font-weight: 600; cursor: pointer; transition: background .2s; text-align: center; }
+.teacher-settings-manage-plan:hover { background: #f5f6f3; }
 .teacher-settings-upgrade { width: calc(100% - 48px); margin: 8px 24px 18px; padding: 13px 15px; display: flex; align-items: center; gap: 11px; border: 1px solid #f0c986; border-radius: 12px; background: #fff8e9; color: #704d19; cursor: pointer; text-align: left; }
 .teacher-settings-upgrade > span { width: 34px; height: 34px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 10px; background: #f8dfae; color: #98651b; }
 .teacher-settings-upgrade > div { display: flex; flex: 1; flex-direction: column; gap: 2px; }

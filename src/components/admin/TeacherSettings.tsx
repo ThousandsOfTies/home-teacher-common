@@ -10,6 +10,7 @@ interface TeacherSettingsProps {
   onClose: () => void
   isPremium: boolean
   onUpgrade: () => void
+  onManagePlan?: () => void
 }
 
 const teachers: Array<{
@@ -24,7 +25,7 @@ const teachers: Array<{
   { mode: 'strict', label: 'HARD', description: '形や比率まで細かく、具体的にアドバイス', icon: <FiTarget /> }
 ]
 
-export default function TeacherSettings({ onClose, isPremium, onUpgrade }: TeacherSettingsProps) {
+export default function TeacherSettings({ onClose, isPremium, onUpgrade, onManagePlan }: TeacherSettingsProps) {
   const [enabledModes, setEnabledModes] = useState<TeacherMode[]>(['kind'])
   const [defaultMode, setDefaultMode] = useState<TeacherMode>('kind')
   const [loading, setLoading] = useState(true)
@@ -121,7 +122,14 @@ export default function TeacherSettings({ onClose, isPremium, onUpgrade }: Teach
         </div>
 
         {isPremium ? (
-          <div className="teacher-settings-note">KINDはいつでも利用できます。無効にした先生は採点ボタンのリストに表示されません。</div>
+          <div className="teacher-settings-premium-note">
+            <div className="teacher-settings-note">KINDはいつでも利用できます。無効にした先生は採点ボタンのリストに表示されません。</div>
+            {onManagePlan && (
+              <button className="teacher-settings-manage-plan" onClick={onManagePlan}>
+                プラン管理・解約
+              </button>
+            )}
+          </div>
         ) : (
           <button className="teacher-settings-upgrade" onClick={onUpgrade}>
             <span><FiLock /></span>
