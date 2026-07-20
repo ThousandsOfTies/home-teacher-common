@@ -67,6 +67,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             displayName: currentUser.displayName,
                             isPremium: data.isPremium === true,
                             snsRewardMinutes: data.snsRewardMinutes || (data.isPremium ? 10 : 60),
+                            cancelAtPeriodEnd: data.cancelAtPeriodEnd,
+                            currentPeriodEnd: data.currentPeriodEnd,
                         });
                     }
                 });
