@@ -173,6 +173,50 @@
         "viewSns": "📱 SNSを見る",
         "close": "閉じる"
     },
+    "copiStudy": {
+        "breadcrumb": {
+            "practice": "練習",
+            "question": "質問記入",
+            "answer": "解答記入",
+            "checking": "採点中",
+            "result": "採点結果"
+        },
+        "status": {
+            "teacherReviewing": "🎯 先生が作品を見ています...",
+            "reviewComplete": "✅ 採点が終わりました",
+            "reviewFailed": "採点に失敗しました",
+            "splitRequired": "A/B表示で採点できます",
+            "imageTooSmall": "選択範囲が小さすぎます。もう少し大きく選択してください。",
+            "imageLoadFailed": "画像の読み込みに失敗しました。"
+        },
+        "toolbar": {
+            "grade": "採点する",
+            "splitRequired": "A/B表示で採点できます",
+            "checkWithTeacher": "{{teacher}}先生で採点",
+            "chooseTeacher": "先生を選ぶ",
+            "checking": "確認中"
+        },
+        "result": {
+            "loadingTitle": "作品を見ています…",
+            "loadingDescription": "見本と模写の構図・形・雰囲気を見比べています。",
+            "loadingTime": "通常10〜30秒ほどです",
+            "silhouette": "シルエット",
+            "balance": "バランス",
+            "mood": "雰囲気",
+            "errorTitle": "採点できませんでした",
+            "errorHint": "練習画面に戻り、もう一度お試しください。",
+            "title": "模写の振り返り",
+            "scoreLabel": "模写評価 {{level}}点、5点満点",
+            "overall": "全体の印象",
+            "goodPoints": "よかったところ",
+            "improvements": "次に直すポイント",
+            "practice": "次の一枚でやってみよう",
+            "empty": "採点結果がありません。",
+            "seconds": "{{value}}秒",
+            "nextPointPrefix": "次のポイント：",
+            "capturedImageAlt": "採点に使用した見本と模写"
+        }
+    },
     "drillCatalog": {
         "title": "📚 おすすめ無料教材サイト",
         "description": "以下のサイトからPDFをダウンロードして、<br />ホーム画面の「<strong>+ Add PDF</strong>」ボタンで登録してください。",

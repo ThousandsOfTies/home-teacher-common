@@ -173,6 +173,50 @@
         "viewSns": "📱 View SNS",
         "close": "Close"
     },
+    "copiStudy": {
+        "breadcrumb": {
+            "practice": "Practice",
+            "question": "Add Question",
+            "answer": "Add Answer",
+            "checking": "Reviewing",
+            "result": "Review"
+        },
+        "status": {
+            "teacherReviewing": "🎯 Your teacher is reviewing the drawing...",
+            "reviewComplete": "✅ Review complete",
+            "reviewFailed": "The review could not be completed",
+            "splitRequired": "Switch to A/B view to start a review",
+            "imageTooSmall": "The selected area is too small. Please select a larger area.",
+            "imageLoadFailed": "The image could not be loaded."
+        },
+        "toolbar": {
+            "grade": "Review drawing",
+            "splitRequired": "Switch to A/B view to start a review",
+            "checkWithTeacher": "Review with the {{teacher}} teacher",
+            "chooseTeacher": "Choose a teacher",
+            "checking": "CHECKING"
+        },
+        "result": {
+            "loadingTitle": "Looking at your drawing…",
+            "loadingDescription": "Comparing the composition, shapes, and overall mood of the reference and your copy.",
+            "loadingTime": "This usually takes 10–30 seconds",
+            "silhouette": "Silhouette",
+            "balance": "Balance",
+            "mood": "Mood",
+            "errorTitle": "The review could not be completed",
+            "errorHint": "Return to the practice screen and try again.",
+            "title": "Copying Review",
+            "scoreLabel": "Copying score: {{level}} out of 5",
+            "overall": "Overall Impression",
+            "goodPoints": "What Worked Well",
+            "improvements": "What to Improve Next",
+            "practice": "Try This in Your Next Drawing",
+            "empty": "No review result is available.",
+            "seconds": "{{value}} sec",
+            "nextPointPrefix": "Next point: ",
+            "capturedImageAlt": "Reference and copied drawing used for the review"
+        }
+    },
     "drillCatalog": {
         "title": "📚 Recommended Free Worksheets",
         "description": "Download PDFs from the sites below and add them using the '<strong>+ Add PDF</strong>' button on the home screen.",
