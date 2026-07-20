@@ -11,7 +11,7 @@ interface UserData {
     snsRewardMinutes: number;
 }
 
-const entitlementKey = import.meta.env.VITE_APP_ENTITLEMENT_KEY || 'tutotuto';
+
 
 interface AuthContextType {
     user: User | null;
@@ -49,11 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     await setDoc(userRef, {
                         email: currentUser.email,
                         displayName: currentUser.displayName,
-                        entitlements: {
-                            [entitlementKey]: {
-                                isPremium: false
-                            }
-                        },
+                        isPremium: false,
                         snsRewardMinutes: 60, // Default 60 mins for free users
                         createdAt: new Date()
                     });
@@ -63,13 +59,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const unsubscribeDoc = onSnapshot(userRef, (docSnap) => {
                     if (docSnap.exists()) {
                         const data = docSnap.data();
-                        const entitlement = data.entitlements?.[entitlementKey];
                         setUserData({
                             uid: currentUser.uid,
                             email: currentUser.email,
                             displayName: currentUser.displayName,
-                            isPremium: entitlement?.isPremium === true,
-                            snsRewardMinutes: data.snsRewardMinutes || (entitlement?.isPremium ? 10 : 60),
+                            isPremium: data.isPremium === true,
+                            snsRewardMinutes: data.snsRewardMinutes || (data.isPremium ? 10 : 60),
                         });
                     }
                 });
