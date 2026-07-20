@@ -214,6 +214,9 @@ export interface DetectSubjectResponse {
  */
 export const getSubjects = async (): Promise<SubjectsResponse> => {
   try {
+    if (import.meta.env.VITE_APP_NAME === 'CopiCopi') {
+      throw new Error('CopiCopi uses local fallback');
+    }
     const response = await fetch(`${API_BASE_URL}/api/subjects`)
 
     if (!response.ok) {
@@ -223,7 +226,9 @@ export const getSubjects = async (): Promise<SubjectsResponse> => {
 
     return await response.json()
   } catch (error) {
-    console.warn('⚠️ Server subjects not available, using localized fallback')
+    if (import.meta.env.VITE_APP_NAME !== 'CopiCopi') {
+      console.warn('⚠️ Server subjects not available, using localized fallback')
+    }
     // Fallback: If server is not ready, return static list
     return {
       subjects: [
