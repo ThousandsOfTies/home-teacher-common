@@ -717,8 +717,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
 
             // 合成用の一時キャンバスを作成
             const compositeCanvas = document.createElement('canvas')
-            compositeCanvas.width = hidePdfBackground && drawingCanvas ? drawingCanvas.width : pdfCanvas.width
-            compositeCanvas.height = hidePdfBackground && drawingCanvas ? drawingCanvas.height : pdfCanvas.height
+            compositeCanvas.width = pdfCanvas.width
+            compositeCanvas.height = pdfCanvas.height
             const ctx = compositeCanvas.getContext('2d')
             if (!ctx) return pdfCanvas
 
