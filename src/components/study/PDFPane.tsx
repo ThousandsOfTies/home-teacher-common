@@ -715,10 +715,15 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 return pdfCanvas
             }
 
+            // PDF背景が非表示の場合（B面など）、pdfCanvasはパフォーマンスのため1x1に縮小されている。
+            // その場合、合成キャンバスのサイズは描画キャンバス（高解像度）に合わせる。
+            const targetWidth = hidePdfBackground && hasDrawingCanvas ? drawingCanvas!.width : pdfCanvas.width
+            const targetHeight = hidePdfBackground && hasDrawingCanvas ? drawingCanvas!.height : pdfCanvas.height
+
             // 合成用の一時キャンバスを作成
             const compositeCanvas = document.createElement('canvas')
-            compositeCanvas.width = pdfCanvas.width
-            compositeCanvas.height = pdfCanvas.height
+            compositeCanvas.width = targetWidth
+            compositeCanvas.height = targetHeight
             const ctx = compositeCanvas.getContext('2d')
             if (!ctx) return pdfCanvas
 
@@ -728,7 +733,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 ctx.drawImage(pdfCanvas, 0, 0)
             }
             if (hasDrawingCanvas && drawingCanvas) {
-                ctx.drawImage(drawingCanvas, 0, 0, pdfCanvas.width, pdfCanvas.height)
+                ctx.drawImage(drawingCanvas, 0, 0, targetWidth, targetHeight)
             }
 
             return compositeCanvas
