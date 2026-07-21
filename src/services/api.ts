@@ -1,4 +1,6 @@
 
+import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from '../constants/grading'
+
 /**
  * ============================================================================
  * 🔒 CRITICAL CONFIGURATION - DO NOT MODIFY WITHOUT READING
@@ -118,7 +120,15 @@ export const getAvailableModels = async (): Promise<AvailableModelsResponse> => 
 
   const text = await response.text()
   try {
-    return JSON.parse(text)
+    const result = JSON.parse(text) as AvailableModelsResponse
+    const defaultModel = AVAILABLE_MODELS.find(model => model.id === DEFAULT_MODEL_ID)
+    return {
+      default: DEFAULT_MODEL_ID,
+      models: [
+        ...(defaultModel ? [defaultModel] : []),
+        ...(result.models || []).filter(model => model.id !== DEFAULT_MODEL_ID && model.id !== 'gemini-3.5-flash'),
+      ],
+    }
   } catch (err) {
     console.error("Failed to parse models JSON. Response was:", text.substring(0, 100))
     throw new Error("Invalid JSON response from /api/models")
@@ -142,7 +152,7 @@ export const gradeWork = async (
       },
       body: JSON.stringify({
         croppedImageData,
-        model,
+        model: model || DEFAULT_MODEL_ID,
         language,
         teacherMode,
         panesReversed,
