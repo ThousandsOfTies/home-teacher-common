@@ -1,16 +1,9 @@
-import { useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
-import { PDFFileRecord } from '../../../utils/indexedDB'
-import { usePDFRenderer } from '../../../hooks/pdf/usePDFRenderer'
-
-// PDF.jsのworker設定は usePDFRenderer.ts で一元管理するため削除
-import * as pdfjsLib from 'pdfjs-dist'
+import { useRef, useEffect } from 'react'
 
 interface PDFCanvasProps {
     pdfDoc: any // pdfjsLib.PDFDocumentProxy | null
-    containerRef: React.RefObject<HTMLDivElement>
     canvasRef: React.RefObject<HTMLCanvasElement>
     renderScale?: number
-    layoutScale?: number
     renderContent?: boolean
     onPageRendered?: (metrics: PDFRenderMetrics) => void
     pageNum: number // Strictly required now
@@ -21,30 +14,16 @@ export interface PDFRenderMetrics {
     pixelHeight: number
     layoutWidth: number
     layoutHeight: number
-    renderScale: number
 }
 
-export interface PDFCanvasHandle {
-    // Only exposure needed? maybe not even needed as parent controls specific page
-    // converting to pure means less logic exposed
-}
-
-const PDFCanvas = forwardRef<PDFCanvasHandle, PDFCanvasProps>(({
+const PDFCanvas = ({
     pdfDoc,
-    containerRef,
     canvasRef,
     renderScale = 1.0,
-    layoutScale = renderScale,
     renderContent = true,
     onPageRendered,
     pageNum
-}, ref) => {
-    // No internal hook usage! Pure render only.
-
-    // We can expose empty handle or whatever is needed by parent
-    useImperativeHandle(ref, () => ({
-        // Legacy support if needed, but logic is moved up
-    }))
+}: PDFCanvasProps) => {
 
     // レンダリングタスク管理
     const renderTaskRef = useRef<any>(null)
@@ -77,7 +56,7 @@ const PDFCanvas = forwardRef<PDFCanvasHandle, PDFCanvasProps>(({
                 }
 
                 const viewport = page.getViewport({ scale: renderScale, rotation: pageRotation })
-                const layoutViewport = page.getViewport({ scale: layoutScale, rotation: pageRotation })
+                const layoutViewport = page.getViewport({ scale: 1, rotation: pageRotation })
                 if (disposed || generation !== renderGenerationRef.current || !canvasRef.current) return
 
                 if (!renderContent) {
@@ -91,7 +70,6 @@ const PDFCanvas = forwardRef<PDFCanvasHandle, PDFCanvasProps>(({
                         pixelHeight: Math.max(1, Math.ceil(viewport.height)),
                         layoutWidth: layoutViewport.width,
                         layoutHeight: layoutViewport.height,
-                        renderScale,
                     })
                     return
                 }
@@ -128,7 +106,6 @@ const PDFCanvas = forwardRef<PDFCanvasHandle, PDFCanvasProps>(({
                         pixelHeight: buffer.height,
                         layoutWidth: layoutViewport.width,
                         layoutHeight: layoutViewport.height,
-                        renderScale,
                     })
                 } catch (error: any) {
                     if (error?.name === 'RenderingCancelledException') {
@@ -152,7 +129,7 @@ const PDFCanvas = forwardRef<PDFCanvasHandle, PDFCanvasProps>(({
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pdfDoc, pageNum, renderScale, layoutScale, renderContent])
+    }, [pdfDoc, pageNum, renderScale, renderContent])
 
     // canvas要素自体への参照が必要な場合（useZoomPanなどで使われる）
     // ただし、forwardRefで公開しているのはHandleなので、canvasRefへのアクセス方法を検討する必要がある
@@ -171,6 +148,6 @@ const PDFCanvas = forwardRef<PDFCanvasHandle, PDFCanvasProps>(({
             }}
         />
     )
-})
+}
 
 export default PDFCanvas

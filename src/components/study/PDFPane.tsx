@@ -1,11 +1,14 @@
 import React, { useRef, useEffect, forwardRef, useImperativeHandle, useState } from 'react'
 import { PDFFileRecord } from '../../utils/indexedDB'
-import PDFCanvas, { PDFCanvasHandle, PDFRenderMetrics } from './components/PDFCanvas'
+import PDFCanvas, { PDFRenderMetrics } from './components/PDFCanvas'
+import { PDFPagePreview } from './components/PDFPagePreview'
 import { DrawingPath, DrawingCanvas, useDrawing, useZoomPan, doPathsIntersect, isScratchPattern, useLassoSelection, DrawingCanvasHandle } from '@thousands-of-ties/drawing-common'
-import { RENDER_SCALE } from '../../constants/pdf'
+import { INITIAL_PDF_RENDER_SCALE, MAX_PDF_RENDER_SCALE } from '../../constants/pdf'
 import { isIOSLikeDevice } from '../../utils/platform'
 import './StudyPanel.css'
 import { ICON_SVG } from '../../constants/icons'
+
+const EMPTY_PREVIEW_PATHS: DrawingPath[] = []
 
 interface PDFPaneProps {
     pdfRecord: PDFFileRecord
@@ -15,6 +18,7 @@ interface PDFPaneProps {
 
     // 描画ツール
     drawingPaths: DrawingPath[]
+    drawingPathsByPage?: ReadonlyMap<number, DrawingPath[]>
     onPathAdd: (path: DrawingPath) => void
     onPathsChange: (paths: DrawingPath[]) => void
     onUndo?: () => void
@@ -27,9 +31,6 @@ interface PDFPaneProps {
     isCtrlPressed: boolean
     scratchEraseEnabled?: boolean
     editableLayerId?: string
-    /** `legacy` keeps the original fixed 500% bitmap; `adaptive` changes only backing resolution. */
-    renderMode?: 'legacy' | 'adaptive'
-
     // スプリット表示モード（高さフィット＋左寄せ）
     splitMode?: boolean
     hidePdfBackground?: boolean
@@ -62,6 +63,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         pageNum,
         onPageChange,
         drawingPaths,
+        drawingPathsByPage,
         onPathAdd,
         onPathsChange,
         onUndo,
@@ -74,7 +76,6 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         isCtrlPressed,
         scratchEraseEnabled = true,
         editableLayerId,
-        renderMode = 'legacy',
         splitMode = false,
         hidePdfBackground = false,
         className,
@@ -106,7 +107,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         overscroll,
         setOverscroll,
         resetOverscroll
-    } = useZoomPan(containerRef, RENDER_SCALE, 0.1, () => { }, canvasRef)
+    } = useZoomPan(containerRef, 0.1, () => { }, canvasRef)
 
     // ページナビゲーション
     const numPages = pdfDoc ? pdfDoc.numPages : 0
@@ -164,13 +165,18 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     }, [isPanning, checkAndFinishSwipe])
 
     // キャンバスサイズの状態（DrawingCanvas との同期用）
-    // Logical coordinates intentionally remain at the legacy 500% size so old
-    // paths keep exactly the same position, width and brush-speed behaviour.
+    // PDF原寸の論理サイズと、端末に合わせたbitmapサイズを分離する。
     const [canvasSize, setCanvasSize] = React.useState<{ width: number, height: number } | null>(null)
     const [bitmapCanvasSize, setBitmapCanvasSize] = React.useState<{ width: number, height: number } | null>(null)
-    const [adaptiveRenderScale, setAdaptiveRenderScale] = React.useState(1.5)
+    const [adaptiveRenderScale, setAdaptiveRenderScale] = React.useState(INITIAL_PDF_RENDER_SCALE)
     const [isPinching, setIsPinching] = React.useState(false)
-    const effectiveRenderScale = renderMode === 'legacy' ? RENDER_SCALE : adaptiveRenderScale
+    const [previewLayouts, setPreviewLayouts] = React.useState<Array<{
+        pageNum: number
+        distance: 1 | 2
+        top: number
+        left: number
+    }>>([])
+    const PAGE_GAP = 20
 
     // スライダーの一時状態（ドラッグ中の高速レンダリング防止用）
     const [sliderValue, setSliderValue] = React.useState<number | null>(null)
@@ -307,19 +313,19 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     // Keep pinch tracking entirely CSS-driven. Once interaction settles, render
     // a sharper or smaller backing bitmap and swap it in atomically.
     useEffect(() => {
-        if (renderMode !== 'adaptive' || isPinching || !canvasSize) return
+        if (isPinching || !canvasSize) return
 
         const timer = window.setTimeout(() => {
-            const baseWidth = canvasSize.width / RENDER_SCALE
-            const baseHeight = canvasSize.height / RENDER_SCALE
+            const baseWidth = canvasSize.width
+            const baseHeight = canvasSize.height
             if (baseWidth <= 0 || baseHeight <= 0) return
 
             const isIOS = isIOSLikeDevice()
             const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
-            const desiredScale = Math.max(1, RENDER_SCALE * zoom * pixelRatio * 1.05)
+            const desiredScale = Math.max(1, zoom * pixelRatio * 1.05)
             const maxPixels = isIOS ? 7_000_000 : 16_000_000
             const pixelLimitedScale = Math.sqrt(maxPixels / (baseWidth * baseHeight))
-            const maximumScale = Math.max(1, Math.min(RENDER_SCALE, pixelLimitedScale))
+            const maximumScale = Math.max(1, Math.min(MAX_PDF_RENDER_SCALE, pixelLimitedScale))
             const scaleSteps = [1, 1.25, 1.5, 2, 2.5, 3, 4, 5]
             const targetScale = scaleSteps.find(step => step >= desiredScale && step <= maximumScale)
                 ?? Math.max(1, scaleSteps.filter(step => step <= maximumScale).pop() ?? maximumScale)
@@ -328,7 +334,65 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         }, 220)
 
         return () => window.clearTimeout(timer)
-    }, [canvasSize, isPinching, renderMode, zoom])
+    }, [canvasSize, isPinching, zoom])
+
+    // Resolve the original-size geometry for two neighbouring pages in each
+    // direction. Only these four preview canvases are mounted.
+    useEffect(() => {
+        let cancelled = false
+        if (!pdfDoc || !canvasSize) {
+            setPreviewLayouts([])
+            return
+        }
+
+        const loadLayouts = async () => {
+            const candidates = [-2, -1, 1, 2]
+                .map(offset => pageNum + offset)
+                .filter(candidatePage => candidatePage >= 1 && candidatePage <= numPages)
+            const sizes = new Map<number, { width: number; height: number }>()
+
+            await Promise.all(candidates.map(async candidatePage => {
+                const page = await pdfDoc.getPage(candidatePage)
+                const rotation = typeof page.rotate === 'number' ? page.rotate : 0
+                const viewport = page.getViewport({ scale: 1, rotation })
+                sizes.set(candidatePage, { width: viewport.width, height: viewport.height })
+            }))
+            if (cancelled) return
+
+            const layouts: Array<{ pageNum: number; distance: 1 | 2; top: number; left: number }> = []
+            let aboveOffset = 0
+            for (const distance of [1, 2] as const) {
+                const previewPage = pageNum - distance
+                const size = sizes.get(previewPage)
+                if (!size) continue
+                aboveOffset += size.height + PAGE_GAP
+                layouts.push({
+                    pageNum: previewPage,
+                    distance,
+                    top: -aboveOffset,
+                    left: (canvasSize.width - size.width) / 2,
+                })
+            }
+
+            let belowOffset = canvasSize.height + PAGE_GAP
+            for (const distance of [1, 2] as const) {
+                const previewPage = pageNum + distance
+                const size = sizes.get(previewPage)
+                if (!size) continue
+                layouts.push({
+                    pageNum: previewPage,
+                    distance,
+                    top: belowOffset,
+                    left: (canvasSize.width - size.width) / 2,
+                })
+                belowOffset += size.height + PAGE_GAP
+            }
+            setPreviewLayouts(layouts)
+        }
+
+        void loadLayouts()
+        return () => { cancelled = true }
+    }, [canvasSize, numPages, pageNum, pdfDoc])
 
     // Cleanup RAF on unmount
     useEffect(() => {
@@ -354,10 +418,10 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     // Note: ResizeObserver removed - リサイズ時の自動フィットは不要
     // 初回表示時のみfitToScreenを実行（handlePageRenderedで処理）
 
-    // Reset layout ready when page changes
+    // Keep the previous bitmap visible while a new page renders atomically.
     useEffect(() => {
         setIsLayoutReady(false)
-    }, [pageNum, pdfRecord.id])
+    }, [pdfRecord.id])
 
 
     // Segment erasing is previewed at most once per animation frame and committed
@@ -1037,55 +1101,17 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         lastTwoFingerTapTime.current = 0
                     }
                 } else if (e.touches.length === 1) {
-                    // --- Single Touch ---
+                    // A finger always pans the document. Stylus input was
+                    // already excluded above and is handled by Pointer Events.
                     const t = e.touches[0]
-
-                    if (isCtrlPressed || (tool === 'none' && !isDrawingInternal)) {
-                        // Pan Mode
-                        gestureRef.current = {
-                            type: 'pan',
-                            startZoom: zoom,
-                            startPan: { ...panOffset },
-                            startDist: 0,
-                            startCenter: { x: t.clientX, y: t.clientY },
-                            rect
-                        }
-                    } else {
-                        // Drawing/Erasing Mode
-                        // NOTE: Pen drawing is now handled ONLY by Pointer Events to prevent
-                        // duplicate drawing (Pointer Events + Touch Events firing together)
-
-                        // Palm Rejection - ignore direct touch when pen tool is active
-                        // @ts-ignore
-                        if (tool === 'pen' && t.touchType === 'direct') return
-                        twoFingerTapRef.current = null
-
-                        // Apple Pencil で描画開始時は、前のジェスチャー状態をクリア
-                        // @ts-ignore
-                        if (t.touchType === 'stylus') {
-                            gestureRef.current = null
-                            // Stylus drawing is handled by Pointer Events - do not call startDrawing here
-                            return
-                        }
-
-                        const x = (t.clientX - rect.left - panOffset.x) / zoom
-                        const y = (t.clientY - rect.top - panOffset.y) / zoom
-
-                        // 正規化座標に変換
-                        const cw = canvasSize?.width || canvasRef.current?.width || 1
-                        const ch = canvasSize?.height || canvasRef.current?.height || 1
-                        const normalizedPoint = { x: x / cw, y: y / ch }
-
-                        // Eraser mode needs Touch Events for immediate feedback
-                        if (tool === 'fill') {
-                            if (hasSelection) clearSelection()
-                            handleFill(x, y)
-                        } else if (tool === 'eraser') {
-                            // 消しゴム時も選択を解除
-                            if (hasSelection) clearSelection()
-                            queueErasePoint(x, y)
-                        }
-                        // Pen tool: handled by Pointer Events only (no startDrawing here)
+                    twoFingerTapRef.current = null
+                    gestureRef.current = {
+                        type: 'pan',
+                        startZoom: zoom,
+                        startPan: { ...panOffset },
+                        startDist: 0,
+                        startCenter: { x: t.clientX, y: t.clientY },
+                        rect
                     }
                 }
             }}
@@ -1312,13 +1338,26 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         visibility: isLayoutReady ? 'visible' : 'hidden'
                     }}
                 >
+                    {previewLayouts.map(preview => (
+                        <PDFPagePreview
+                            key={`preview-${preview.pageNum}`}
+                            pdfDoc={pdfDoc}
+                            pageNum={preview.pageNum}
+                            renderScale={preview.distance === 1
+                                ? Math.min(adaptiveRenderScale, 2)
+                                : 0.75}
+                            paths={drawingPathsByPage?.get(preview.pageNum) ?? EMPTY_PREVIEW_PATHS}
+                            style={{
+                                top: `${preview.top}px`,
+                                left: `${preview.left}px`,
+                            }}
+                        />
+                    ))}
                     <div style={{ opacity: hidePdfBackground ? 0 : 1, transition: 'opacity 0.2s' }}>
                         <PDFCanvas
                             pdfDoc={pdfDoc}
-                            containerRef={containerRef}
                             canvasRef={canvasRef}
-                            renderScale={effectiveRenderScale}
-                            layoutScale={RENDER_SCALE}
+                            renderScale={adaptiveRenderScale}
                             renderContent={!hidePdfBackground}
                             pageNum={pageNum}
                             onPageRendered={handlePageRendered}
