@@ -31,9 +31,13 @@ interface PDFPaneProps {
     isCtrlPressed: boolean
     scratchEraseEnabled?: boolean
     editableLayerId?: string
+    /** Per-layer display opacity. Stored path opacity remains unchanged. */
+    layerOpacities?: Readonly<Record<string, number>>
     // スプリット表示モード（高さフィット＋左寄せ）
     splitMode?: boolean
     hidePdfBackground?: boolean
+    /** Optional logical paper size for a blank drawing pane. */
+    blankCanvasSize?: { width: number; height: number }
 
     // レイアウト
     className?: string
@@ -76,8 +80,10 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         isCtrlPressed,
         scratchEraseEnabled = true,
         editableLayerId,
+        layerOpacities,
         splitMode = false,
         hidePdfBackground = false,
+        blankCanvasSize,
         className,
         style
     } = props
@@ -251,12 +257,27 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         // console.log('🏁 PDFPane: handlePageRendered triggered')
         if (!canvasRef.current || !containerRef.current) return
 
+        const renderScale = metrics.layoutWidth > 0 ? metrics.pixelWidth / metrics.layoutWidth : 1
+        const effectiveMetrics = hidePdfBackground && blankCanvasSize
+            ? {
+                layoutWidth: blankCanvasSize.width,
+                layoutHeight: blankCanvasSize.height,
+                pixelWidth: Math.max(1, Math.ceil(blankCanvasSize.width * renderScale)),
+                pixelHeight: Math.max(1, Math.ceil(blankCanvasSize.height * renderScale)),
+            }
+            : metrics
+
+        // The hidden PDF canvas still establishes the logical page geometry.
+        // Override its CSS size so a blank pane is not constrained to the source PDF ratio.
+        canvasRef.current.style.width = `${effectiveMetrics.layoutWidth}px`
+        canvasRef.current.style.height = `${effectiveMetrics.layoutHeight}px`
+
         setCanvasSize(current => current
-            && current.width === metrics.layoutWidth
-            && current.height === metrics.layoutHeight
+            && current.width === effectiveMetrics.layoutWidth
+            && current.height === effectiveMetrics.layoutHeight
             ? current
-            : { width: metrics.layoutWidth, height: metrics.layoutHeight })
-        setBitmapCanvasSize({ width: metrics.pixelWidth, height: metrics.pixelHeight })
+            : { width: effectiveMetrics.layoutWidth, height: effectiveMetrics.layoutHeight })
+        setBitmapCanvasSize({ width: effectiveMetrics.pixelWidth, height: effectiveMetrics.pixelHeight })
 
         // Log canvas size
         // console.log('📏 PDFPane: Canvas size captured', {
@@ -291,8 +312,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     if (!initialFitDoneRef.current) {
                         // console.log('📏 PDFPane: 初回フィット実行', { containerH, effectiveH, splitMode })
                         fitToScreen(
-                            metrics.layoutWidth,
-                            metrics.layoutHeight,
+                            effectiveMetrics.layoutWidth,
+                            effectiveMetrics.layoutHeight,
                             effectiveH,
                             splitMode ? { fitToHeight: true, alignLeft: true } : undefined
                         )
@@ -428,6 +449,27 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     // only once at pointer-up. This avoids serializing and saving the whole PDF
     // record for every Apple Pencil move event.
     const [erasingPaths, setErasingPaths] = useState<DrawingPath[] | null>(null)
+
+    const applyLayerOpacity = React.useCallback((paths: DrawingPath[]) => {
+        if (!layerOpacities) return paths
+        return paths.map(path => {
+            const layerOpacity = path.layerId ? layerOpacities[path.layerId] : undefined
+            if (layerOpacity === undefined || layerOpacity >= 1) return path
+            return {
+                ...path,
+                opacity: (path.opacity ?? 1) * Math.max(0, layerOpacity),
+            }
+        })
+    }, [layerOpacities])
+
+    const displayDrawingPaths = React.useMemo(
+        () => applyLayerOpacity(erasingPaths ?? drawingPaths),
+        [applyLayerOpacity, drawingPaths, erasingPaths],
+    )
+    const displayPreviewPath = React.useMemo(() => {
+        if (!previewPath) return null
+        return applyLayerOpacity([{ ...previewPath, layerId: previewPath.layerId || editableLayerId }])[0]
+    }, [applyLayerOpacity, editableLayerId, previewPath])
     const eraseWorkingPathsRef = useRef<DrawingPath[] | null>(null)
     const erasePendingPointsRef = useRef<Array<{ x: number; y: number }>>([])
     const eraseAnimationFrameRef = useRef<number | null>(null)
@@ -1338,7 +1380,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         visibility: isLayoutReady ? 'visible' : 'hidden'
                     }}
                 >
-                    {previewLayouts.map(preview => (
+                    {!hidePdfBackground && previewLayouts.map(preview => (
                         <PDFPagePreview
                             key={`preview-${preview.pageNum}`}
                             pdfDoc={pdfDoc}
@@ -1385,8 +1427,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         opacity={opacity}
                         strokeStyle={strokeStyle}
                         eraserSize={eraserSize}
-                        paths={erasingPaths ?? drawingPaths}
-                        previewPath={previewPath}
+                        paths={displayDrawingPaths}
+                        previewPath={displayPreviewPath}
                         isCtrlPressed={isCtrlPressed}
                         stylusOnly={false}
                         selectionState={selectionState}
