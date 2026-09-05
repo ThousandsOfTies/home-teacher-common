@@ -121,13 +121,9 @@ export const getAvailableModels = async (): Promise<AvailableModelsResponse> => 
   const text = await response.text()
   try {
     const result = JSON.parse(text) as AvailableModelsResponse
-    const defaultModel = AVAILABLE_MODELS.find(model => model.id === DEFAULT_MODEL_ID)
     return {
-      default: DEFAULT_MODEL_ID,
-      models: [
-        ...(defaultModel ? [defaultModel] : []),
-        ...(result.models || []).filter(model => model.id !== DEFAULT_MODEL_ID && model.id !== 'gemini-3.5-flash'),
-      ],
+      default: result.default || DEFAULT_MODEL_ID,
+      models: result.models || AVAILABLE_MODELS,
     }
   } catch (err) {
     console.error("Failed to parse models JSON. Response was:", text.substring(0, 100))
@@ -152,7 +148,8 @@ export const gradeWork = async (
       },
       body: JSON.stringify({
         croppedImageData,
-        model: model || DEFAULT_MODEL_ID,
+        // Omit the default selection so the API controls the deployed default.
+        ...(model && model !== 'default' ? { model } : {}),
         language,
         teacherMode,
         panesReversed,
