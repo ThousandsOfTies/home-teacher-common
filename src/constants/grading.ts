@@ -6,10 +6,10 @@
 // ----------------------------------------
 // 利用可能なモデル一覧
 // ----------------------------------------
-export const DEFAULT_MODEL_ID = 'gemini-3.6-flash'
+export const DEFAULT_MODEL_ID = 'gemini-3.8-flash'
 
 export const AVAILABLE_MODELS = [
-  { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', description: '最新世代・高速・高精度モデル（推奨・GA）' },
+  { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', description: '最新世代・高速・高精度モデル（推奨・GA）' },
   { id: 'gemini-3.5-pro', name: 'Gemini 3.5 Pro (Preview)', description: '最高精度の推論モデル（プレビュー版）' },
   { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro (Preview)', description: '高精度モデル（プレビュー版）' },
   { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite', description: '超高速・低コストモデル（GA）' },
