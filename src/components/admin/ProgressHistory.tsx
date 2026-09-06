@@ -66,7 +66,7 @@ export default function ProgressHistory({ onClose }: ProgressHistoryProps) {
     const counts = new Map<string, number>()
     const attempts = new Map<string, number>()
     ;[...records].sort((a, b) => a.timestamp - b.timestamp).forEach(record => {
-      const key = `${record.pdfId}:${record.pageNumber}`
+      const key = `${record.pdfId}:${(record.sourcePageNumbers ?? [record.pageNumber]).join(',')}`
       const count = (counts.get(key) || 0) + 1
       counts.set(key, count)
       attempts.set(record.id, count)
@@ -86,7 +86,7 @@ export default function ProgressHistory({ onClose }: ProgressHistoryProps) {
       ].some(value => value?.toLowerCase().includes(normalizedQuery)))
   }, [query, records])
 
-  const workCount = new Set(records.map(record => `${record.pdfId}:${record.pageNumber}`)).size
+  const workCount = new Set(records.map(record => `${record.pdfId}:${(record.sourcePageNumbers ?? [record.pageNumber]).join(',')}`)).size
 
   const handleDelete = async (record: GradingHistoryRecord) => {
     if (!confirm('この練習記録を削除しますか？')) return

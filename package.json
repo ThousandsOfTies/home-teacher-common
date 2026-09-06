@@ -4,6 +4,10 @@
   "private": false,
   "description": "Shared components, hooks, and utilities for TutoTuto/DoriDori apps",
   "type": "module",
+  "scripts": {
+    "test": "npm run test:auth",
+    "test:auth": "node --test tests/auth-context.test.cjs"
+  },
   "exports": {
     "./components/*": "./src/components/*",
     "./hooks/*": "./src/hooks/*",

@@ -39,13 +39,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
-            setUser(currentUser);
+        let disposed = false;
+        let authVersion = 0;
+        let unsubscribeDoc: (() => void) | undefined;
 
-            if (currentUser) {
+        const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+            if (disposed) return;
+            const version = ++authVersion;
+            const isCurrent = () => !disposed && version === authVersion;
+            unsubscribeDoc?.();
+            unsubscribeDoc = undefined;
+            setUser(currentUser);
+            setUserData(null);
+
+            if (!currentUser) {
+                setLoading(false);
+                return;
+            }
+
+            setLoading(true);
+            try {
                 // Sync user data to Firestore if it doesn't exist
                 const userRef = doc(db, 'users', currentUser.uid);
                 const userSnap = await getDoc(userRef);
+                if (!isCurrent()) return;
 
                 if (!userSnap.exists()) {
                     await setDoc(userRef, {
@@ -56,9 +73,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         createdAt: new Date()
                     });
                 }
+                if (!isCurrent()) return;
 
                 // Listen to user document changes
-                const unsubscribeDoc = onSnapshot(userRef, (docSnap) => {
+                unsubscribeDoc = onSnapshot(userRef, (docSnap) => {
+                    if (!isCurrent()) return;
                     if (docSnap.exists()) {
                         const data = docSnap.data();
                         setUserData({
@@ -70,18 +89,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             cancelAtPeriodEnd: data.cancelAtPeriodEnd,
                             currentPeriodEnd: data.currentPeriodEnd,
                         });
+                    } else {
+                        setUserData(null);
                     }
+                    setLoading(false);
+                }, (error) => {
+                    if (!isCurrent()) return;
+                    console.error('Failed to watch user data:', error);
+                    setUserData(null);
+                    setLoading(false);
                 });
-
-                setLoading(false);
-                return () => unsubscribeDoc();
-            } else {
+            } catch (error) {
+                if (!isCurrent()) return;
+                console.error('Failed to initialize user data:', error);
                 setUserData(null);
                 setLoading(false);
             }
         });
 
-        return () => unsubscribeAuth();
+        return () => {
+            disposed = true;
+            ++authVersion;
+            unsubscribeDoc?.();
+            unsubscribeAuth();
+        };
     }, []);
 
     const signInWithGoogle = async () => {

@@ -227,7 +227,7 @@ const GradingHistory = ({ onClose, onSelectHistory }: GradingHistoryProps) => {
                           {item.data.isCorrect ? '✓' : '✗'}
                         </span>
                         <span className="problem-info">
-                          {item.data.pdfFileName} - {t('gradingHistory.page')}{item.data.pageNumber} - {t('gradingHistory.problem')}{item.data.problemNumber}
+                          {item.data.pdfFileName} - {t('gradingHistory.page')}{(item.data.sourcePageNumbers ?? [item.data.pageNumber]).join(', ')} - {t('gradingHistory.problem')}{item.data.problemNumber}
                         </span>
                         <button
                           className="delete-btn"
@@ -281,7 +281,7 @@ const GradingHistory = ({ onClose, onSelectHistory }: GradingHistoryProps) => {
               <div className="detail-section">
                 <h4>{t('gradingHistory.problemInfo')}</h4>
                 <p><strong>{t('gradingHistory.workbook')}:</strong> {selectedHistory.pdfFileName}</p>
-                <p><strong>{t('gradingHistory.page')}:</strong> {selectedHistory.pageNumber}</p>
+                <p><strong>{t('gradingHistory.page')}:</strong> {(selectedHistory.sourcePageNumbers ?? [selectedHistory.pageNumber]).join(', ')}</p>
                 <p><strong>{t('gradingHistory.problemNumber')}:</strong> {selectedHistory.problemNumber}</p>
                 <p><strong>{t('gradingHistory.dateTime')}:</strong> {formatDate(selectedHistory.timestamp)}</p>
               </div>

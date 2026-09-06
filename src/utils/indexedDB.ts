@@ -52,6 +52,7 @@ export interface GradingHistoryRecord {
   pdfId: string; // PDFファイルのID
   pdfFileName: string; // 問題集の名称
   pageNumber: number; // ページ番号
+  sourcePageNumbers?: number[]; // 切り抜き時のページ。旧履歴はpageNumberを使用する。
   problemNumber: string; // 問題番号
   studentAnswer: string; // 生徒の解答
   isCorrect: boolean; // 正解/不正解
