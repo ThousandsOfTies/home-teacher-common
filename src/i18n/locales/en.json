@@ -1,4 +1,10 @@
 {
+    "editorLoading": {
+        "loading": "Loading the material editor…",
+        "failed": "The material editor could not be loaded. Check your internet connection and try again.",
+        "retry": "Try again",
+        "back": "Back to materials"
+    },
     "howToUse": {
         "title": "📖 How to Use",
         "step1": {

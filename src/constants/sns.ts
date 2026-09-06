@@ -1,4 +1,8 @@
-import * as SimpleIcons from 'simple-icons'
+import {
+  siYoutube, siX, siInstagram, siTiktok, siFacebook, siLine, siDiscord,
+  siTwitch, siReddit, siGithub, siNote, siZenn, siQiita, siNiconico, siPixiv,
+} from 'simple-icons'
+import type { SimpleIcon } from 'simple-icons'
 
 // 主要なSNSの定義
 export type PredefinedSNS = {
@@ -27,27 +31,15 @@ export const PREDEFINED_SNS: PredefinedSNS[] = [
   { id: 'amazon', name: 'Amazon', defaultUrl: 'https://www.amazon.co.jp/', icon: '📦' },
 ]
 
-// SNS IDからSimple Iconsのアイコンを取得
-export const getSNSIcon = (snsId: string): { svg: string; color: string } | null => {
-  const iconMap: Record<string, string> = {
-    'youtube': 'siYoutube',
-    'x': 'siX',
-    'instagram': 'siInstagram',
-    'tiktok': 'siTiktok',
-    'facebook': 'siFacebook',
-    'line': 'siLine',
-    'discord': 'siDiscord',
-    'twitch': 'siTwitch',
-    'reddit': 'siReddit',
-    'github': 'siGithub',
-    'note': 'siNote',
-    'zenn': 'siZenn',
-    'qiita': 'siQiita',
-    'niconico': 'siNiconico',
-    'pixiv': 'siPixiv',
-    'amazon': 'siAmazon',
-  }
+const iconMap: Record<string, SimpleIcon> = {
+  youtube: siYoutube, x: siX, instagram: siInstagram, tiktok: siTiktok,
+  facebook: siFacebook, line: siLine, discord: siDiscord, twitch: siTwitch,
+  reddit: siReddit, github: siGithub, note: siNote, zenn: siZenn,
+  qiita: siQiita, niconico: siNiconico, pixiv: siPixiv,
+}
 
+// SNS IDから使用中のアイコンだけを取得する。
+export const getSNSIcon = (snsId: string): { svg: string; color: string } | null => {
   // simple-icons から削除されたブランドの独自フォールバック
   if (snsId === 'amazon') {
     return {
@@ -56,9 +48,8 @@ export const getSNSIcon = (snsId: string): { svg: string; color: string } | null
     }
   }
 
-  const iconKey = iconMap[snsId]
-  if (iconKey && iconKey in SimpleIcons) {
-    const icon = SimpleIcons[iconKey as keyof typeof SimpleIcons] as SimpleIcons.SimpleIcon
+  const icon = Object.prototype.hasOwnProperty.call(iconMap, snsId) ? iconMap[snsId] : undefined
+  if (icon) {
     return {
       svg: icon.svg,
       color: `#${icon.hex}`

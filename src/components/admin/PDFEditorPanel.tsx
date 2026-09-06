@@ -8,7 +8,7 @@ import '../study/StudyPanel.css'; // Reuse study panel styles for layout
 import { PerspectiveCropper, DEFAULT_CORNERS } from './PerspectiveCropper';
 import { warpPerspectiveCanvas } from '../../utils/warpPerspective';
 
-interface PDFEditorPanelProps {
+export interface PDFEditorPanelProps {
     pdfRecord: PDFFileRecord;
     pdfId: string;
     onBack: () => void;

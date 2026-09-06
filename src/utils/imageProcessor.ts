@@ -1,5 +1,3 @@
-import heic2any from 'heic2any';
-
 /**
  * サポートされている画像形式
  */
@@ -35,6 +33,13 @@ export function isSupportedImageFile(file: File): boolean {
  * HEIC/HEIF形式をJPEGに変換
  */
 export async function convertHeicToJpeg(file: File): Promise<Blob> {
+    let heic2any: typeof import('heic2any')['default'];
+    try {
+        heic2any = (await import('heic2any')).default;
+    } catch (error) {
+        console.error('Failed to load HEIC converter:', error);
+        throw new Error('HEIC変換を読み込めませんでした。インターネット接続を確認し、ページを再読み込みしてから画像を選び直してください。');
+    }
     try {
         const result = await heic2any({
             blob: file,

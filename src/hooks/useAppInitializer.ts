@@ -3,14 +3,14 @@ import { getAppSettings, saveAppSettings, getPDFRecord, PDFFileRecord } from '..
 
 interface AppInitializerResult {
     isInitialized: boolean
-    initialView: 'admin' | 'viewer'
+    initialView: 'admin' | 'viewer' | 'editor'
     initialPDF: PDFFileRecord | null
     settingsVersion: number
 }
 
 export const useAppInitializer = () => {
     const [isInitialized, setIsInitialized] = useState(false)
-    const [initialView, setInitialView] = useState<'admin' | 'viewer'>('admin')
+    const [initialView, setInitialView] = useState<'admin' | 'viewer' | 'editor'>('admin')
     const [initialPDF, setInitialPDF] = useState<PDFFileRecord | null>(null)
     const [settingsVersion, setSettingsVersion] = useState(0)
 
@@ -55,7 +55,7 @@ export const useAppInitializer = () => {
                         if (record) {
                             console.log('📖 SNS終了後: ドリルを再開', { pdfId, fileName: record.fileName })
                             setInitialPDF(record)
-                            setInitialView('viewer')
+                            setInitialView(urlParams.get('edit') === '1' ? 'editor' : 'viewer')
                             // URLからパラメータを削除
                             window.history.replaceState({}, '', window.location.pathname)
                         }

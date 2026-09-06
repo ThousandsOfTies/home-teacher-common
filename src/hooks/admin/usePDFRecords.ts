@@ -3,7 +3,6 @@ import { getAllPDFRecords, deletePDFRecord, savePDFRecord, generatePDFId, PDFFil
 import * as pdfjsLib from 'pdfjs-dist'
 import { detectSubject } from '../../services/api'
 import { isSupportedImageFile, processImageFiles } from '../../utils/imageProcessor'
-import { convertImagesToPDF } from '../../services/pdfConverter'
 
 // Workerの設定
 // Workerの設定（ローカルファイルを使用）
@@ -256,6 +255,10 @@ export const usePDFRecords = () => {
       if (imageFiles.length > 0) {
         console.log(`📷 Converting ${imageFiles.length} image(s) to PDF...`)
         try {
+          const { convertImagesToPDF } = await import('../../services/pdfConverter').catch(error => {
+            console.error('Failed to load PDF converter:', error)
+            throw new Error('画像の取り込みを読み込めませんでした。インターネット接続を確認し、ページを再読み込みしてから画像を選び直してください。')
+          })
           console.log('  🔄 Step 1: Processing images...')
           const processedImages = await processImageFiles(imageFiles)
           console.log(`  ✅ Step 1 complete: ${processedImages.length} images processed`)
