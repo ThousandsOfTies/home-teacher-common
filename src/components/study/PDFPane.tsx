@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, forwardRef, useImperativeHandle, useState } from 'react'
 import { PDFFileRecord } from '../../utils/indexedDB'
 import PDFCanvas, { PDFRenderMetrics } from './components/PDFCanvas'
-import { PDFPagePreview } from './components/PDFPagePreview'
+import { PDFPagePreview, type PreviewStrokeRenderer } from './components/PDFPagePreview'
 import { DrawingPath, DrawingCanvas, useDrawing, useZoomPan, doPathsIntersect, isScratchPattern, useLassoSelection, DrawingCanvasHandle } from '@thousands-of-ties/drawing-common'
 import { INITIAL_PDF_RENDER_SCALE, MAX_PDF_RENDER_SCALE } from '../../constants/pdf'
 import { isIOSLikeDevice } from '../../utils/platform'
@@ -19,6 +19,7 @@ interface PDFPaneProps {
     // 描画ツール
     drawingPaths: DrawingPath[]
     drawingPathsByPage?: ReadonlyMap<number, DrawingPath[]>
+    drawPreviewStroke?: PreviewStrokeRenderer
     onPathAdd: (path: DrawingPath) => void
     onPathsChange: (paths: DrawingPath[]) => void
     onUndo?: () => void
@@ -26,7 +27,7 @@ interface PDFPaneProps {
     color: string
     size: number
     opacity?: number
-    strokeStyle?: 'pencil' | 'marker' | 'brush'
+    strokeStyle?: DrawingPath['style']
     eraserSize: number
     isCtrlPressed: boolean
     scratchEraseEnabled?: boolean
@@ -68,6 +69,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         onPageChange,
         drawingPaths,
         drawingPathsByPage,
+        drawPreviewStroke,
         onPathAdd,
         onPathsChange,
         onUndo,
@@ -1389,6 +1391,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                                 ? Math.min(adaptiveRenderScale, 2)
                                 : 0.75}
                             paths={drawingPathsByPage?.get(preview.pageNum) ?? EMPTY_PREVIEW_PATHS}
+                            drawPreviewStroke={drawPreviewStroke}
                             style={{
                                 top: `${preview.top}px`,
                                 left: `${preview.left}px`,

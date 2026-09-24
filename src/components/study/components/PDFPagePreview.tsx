@@ -1,12 +1,21 @@
 import { useEffect, useRef } from 'react'
 import type { DrawingPath } from '@thousands-of-ties/drawing-common'
 
+export type PreviewStrokeRenderer = (
+    context: CanvasRenderingContext2D,
+    path: DrawingPath,
+    canvasWidth: number,
+    canvasHeight: number,
+    renderScale: number,
+) => boolean
+
 interface PDFPagePreviewProps {
     pdfDoc: any
     pageNum: number
     renderScale: number
     paths: DrawingPath[]
     style: React.CSSProperties
+    drawPreviewStroke?: PreviewStrokeRenderer
 }
 
 // Serialize neighbouring-page renders so their temporary canvases do not all
@@ -17,7 +26,8 @@ const drawPaths = (
     ctx: CanvasRenderingContext2D,
     canvas: HTMLCanvasElement,
     paths: DrawingPath[],
-    renderScale: number
+    renderScale: number,
+    drawPreviewStroke?: PreviewStrokeRenderer,
 ) => {
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
@@ -30,6 +40,11 @@ const drawPaths = (
         ctx.fillStyle = path.color
         ctx.globalAlpha = path.opacity ?? 1
         const points = path.points
+
+        if (drawPreviewStroke?.(ctx, path, canvas.width, canvas.height, renderScale)) {
+            ctx.restore()
+            return
+        }
 
         if (points.length === 1) {
             ctx.beginPath()
@@ -77,7 +92,7 @@ const drawPaths = (
     })
 }
 
-export const PDFPagePreview = ({ pdfDoc, pageNum, renderScale, paths, style }: PDFPagePreviewProps) => {
+export const PDFPagePreview = ({ pdfDoc, pageNum, renderScale, paths, style, drawPreviewStroke }: PDFPagePreviewProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const renderTaskRef = useRef<any>(null)
 
@@ -117,7 +132,7 @@ export const PDFPagePreview = ({ pdfDoc, pageNum, renderScale, paths, style }: P
             const context = canvas.getContext('2d')
             if (!context) return
             context.drawImage(buffer, 0, 0)
-            drawPaths(context, canvas, paths, renderScale)
+            drawPaths(context, canvas, paths, renderScale, drawPreviewStroke)
             buffer.width = 1
             buffer.height = 1
         }
@@ -132,7 +147,7 @@ export const PDFPagePreview = ({ pdfDoc, pageNum, renderScale, paths, style }: P
             renderTaskRef.current?.cancel()
             renderTaskRef.current = null
         }
-    }, [pdfDoc, pageNum, paths, renderScale])
+    }, [pdfDoc, pageNum, paths, renderScale, drawPreviewStroke])
 
     useEffect(() => () => {
         if (canvasRef.current) {
