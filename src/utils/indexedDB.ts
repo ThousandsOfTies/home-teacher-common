@@ -2,9 +2,10 @@
 
 // 共通ライブラリの既定値はTutoTutoのまま維持し、各アプリのビルド設定で分離する。
 export const DB_NAME = import.meta.env.VITE_INDEXED_DB_NAME || 'TutoTutoDB';
-const DB_VERSION = 12; // 採点履歴をBlob参照形式へ一本化
+const DB_VERSION = 15; // v14までの他アプリ側スキーマと衝突せず、PDF学習マーカーを追加
 const STORE_NAME = 'pdfFiles';
 const DRAWING_STORE_NAME = 'drawings';
+const PDF_STUDY_MARKER_STORE_NAME = 'pdfStudyMarkers';
 const SNS_STORE_NAME = 'snsLinks';
 const GRADING_HISTORY_STORE_NAME = 'gradingHistory';
 const GRADING_IMAGE_STORE_NAME = 'gradingImages';
@@ -23,6 +24,48 @@ export interface PDFFileRecord {
   drawings: Record<number, string>; // ページ番号 -> JSON文字列のマップ
   textAnnotations?: Record<number, string>; // ページ番号 -> JSON文字列のマップ（テキストアノテーション）
   subjectId?: string; // 教科識別子 (math, japanese, etc)
+}
+
+export interface PDFStudyRegion {
+  pageNumber: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface PDFStudyAnswerState {
+  canvasWidth: number;
+  canvasHeight: number;
+  strokes: Array<{
+    points: Array<[number, number]>;
+    width: number;
+    color: string;
+    eraser: boolean;
+  }>;
+  texts: Array<{
+    id: string;
+    x: number;
+    y: number;
+    text: string;
+    fontSize: number;
+    color: string;
+    direction: 'horizontal' | 'vertical-rl' | 'vertical-lr';
+  }>;
+}
+
+export interface PDFStudyMarkerRecord {
+  id: string;
+  pdfId: string;
+  createdAt: number;
+  regions: PDFStudyRegion[];
+  sourcePageNumbers: number[];
+  answer?: PDFStudyAnswerState;
+  grading?: {
+    result: import('../services/api').GradingResponseResult;
+    modelName: string | null;
+    responseTime: number | null;
+  };
 }
 
 interface DrawingRecord {
@@ -155,6 +198,10 @@ function openDB(): Promise<IDBDatabase> {
         console.log('🔒 IndexedDB接続が閉じられました');
         dbInstance = null;
       };
+      db.onversionchange = () => {
+        db.close();
+        dbInstance = null;
+      };
 
       resolve(db);
     };
@@ -175,6 +222,11 @@ function openDB(): Promise<IDBDatabase> {
         const drawingStore = db.createObjectStore(DRAWING_STORE_NAME, { keyPath: 'id' });
         drawingStore.createIndex('pdfId', 'pdfId', { unique: false });
         drawingStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+      }
+
+      if (!db.objectStoreNames.contains(PDF_STUDY_MARKER_STORE_NAME)) {
+        const markerStore = db.createObjectStore(PDF_STUDY_MARKER_STORE_NAME, { keyPath: 'id' });
+        markerStore.createIndex('pdfId', 'pdfId', { unique: false });
       }
 
       // SNSリンク用オブジェクトストアが存在しない場合は作成
@@ -366,7 +418,7 @@ export async function deletePDFRecord(id: string): Promise<void> {
   const db = await openDB();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME, DRAWING_STORE_NAME], 'readwrite');
+    const transaction = db.transaction([STORE_NAME, DRAWING_STORE_NAME, PDF_STUDY_MARKER_STORE_NAME], 'readwrite');
     transaction.objectStore(STORE_NAME).delete(id);
     const drawingStore = transaction.objectStore(DRAWING_STORE_NAME);
     drawingStore.index('pdfId').openKeyCursor(IDBKeyRange.only(id)).onsuccess = (event) => {
@@ -375,9 +427,65 @@ export async function deletePDFRecord(id: string): Promise<void> {
       drawingStore.delete(cursor.primaryKey);
       cursor.continue();
     };
+    const markerStore = transaction.objectStore(PDF_STUDY_MARKER_STORE_NAME);
+    markerStore.index('pdfId').openKeyCursor(IDBKeyRange.only(id)).onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest<IDBCursor | null>).result;
+      if (!cursor) return;
+      markerStore.delete(cursor.primaryKey);
+      cursor.continue();
+    };
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(new Error('レコードの削除に失敗しました'));
     transaction.onabort = () => reject(new Error('レコードの削除に失敗しました'));
+  });
+}
+
+export async function savePDFStudyMarker(record: PDFStudyMarkerRecord): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_NAME, PDF_STUDY_MARKER_STORE_NAME], 'readwrite');
+    const pdfRequest = transaction.objectStore(STORE_NAME).getKey(record.pdfId);
+    pdfRequest.onsuccess = () => {
+      if (pdfRequest.result === undefined) {
+        transaction.abort();
+        return;
+      }
+      transaction.objectStore(PDF_STUDY_MARKER_STORE_NAME).put(record);
+    };
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('学習範囲の保存に失敗しました'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('PDFが見つかりません'));
+  });
+}
+
+export async function getPDFStudyMarker(id: string): Promise<PDFStudyMarkerRecord | null> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction([PDF_STUDY_MARKER_STORE_NAME], 'readonly')
+      .objectStore(PDF_STUDY_MARKER_STORE_NAME).get(id);
+    request.onsuccess = () => resolve(request.result ?? null);
+    request.onerror = () => reject(new Error('学習範囲の取得に失敗しました'));
+  });
+}
+
+export async function getPDFStudyMarkersByPdfId(pdfId: string): Promise<PDFStudyMarkerRecord[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction([PDF_STUDY_MARKER_STORE_NAME], 'readonly')
+      .objectStore(PDF_STUDY_MARKER_STORE_NAME).index('pdfId').getAll(IDBKeyRange.only(pdfId));
+    request.onsuccess = () => resolve(request.result as PDFStudyMarkerRecord[]);
+    request.onerror = () => reject(new Error('学習範囲の取得に失敗しました'));
+  });
+}
+
+export async function deletePDFStudyMarker(id: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([PDF_STUDY_MARKER_STORE_NAME], 'readwrite');
+    transaction.objectStore(PDF_STUDY_MARKER_STORE_NAME).delete(id);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('学習範囲の削除に失敗しました'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('学習範囲の削除に失敗しました'));
   });
 }
 

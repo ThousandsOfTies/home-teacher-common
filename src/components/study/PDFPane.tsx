@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, forwardRef, useImperativeHandle, useState } from 'react'
-import { PDFFileRecord } from '../../utils/indexedDB'
+import { PDFFileRecord, PDFStudyRegion } from '../../utils/indexedDB'
 import PDFCanvas, { PDFRenderMetrics } from './components/PDFCanvas'
 import { PDFPagePreview, type PreviewStrokeRenderer } from './components/PDFPagePreview'
 import { DrawingPath, DrawingCanvas, useDrawing, useZoomPan, doPathsIntersect, isScratchPattern, useLassoSelection, DrawingCanvasHandle } from '@thousands-of-ties/drawing-common'
@@ -39,6 +39,8 @@ interface PDFPaneProps {
     hidePdfBackground?: boolean
     /** Optional logical paper size for a blank drawing pane. */
     blankCanvasSize?: { width: number; height: number }
+    regionMarkers?: Array<{ id: string; region: PDFStudyRegion; completed?: boolean }>
+    onRegionMarkerClick?: (id: string) => void
 
     // レイアウト
     className?: string
@@ -86,6 +88,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         splitMode = false,
         hidePdfBackground = false,
         blankCanvasSize,
+        regionMarkers = [],
+        onRegionMarkerClick,
         className,
         style
     } = props
@@ -1408,6 +1412,41 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             onPageRendered={handlePageRendered}
                         />
                     </div>
+                    {canvasSize && regionMarkers.filter(marker => marker.region.pageNumber === pageNum).map((marker, index) => (
+                        <div
+                            key={`${marker.id}-${index}`}
+                            style={{
+                                position: 'absolute',
+                                left: `${marker.region.x * canvasSize.width}px`,
+                                top: `${marker.region.y * canvasSize.height}px`,
+                                width: `${marker.region.width * canvasSize.width}px`,
+                                height: `${marker.region.height * canvasSize.height}px`,
+                                border: `2px dashed ${marker.completed ? '#2e7d32' : '#1976d2'}`,
+                                boxSizing: 'border-box',
+                                pointerEvents: 'none',
+                                zIndex: 20,
+                            }}
+                        >
+                            <button
+                                type="button"
+                                data-study-trace-id={marker.id}
+                                title={marker.completed ? '採点済みの結果を開く' : '未採点の範囲を開く'}
+                                aria-label={marker.completed ? '採点済みの結果を開く' : '未採点の範囲を開く'}
+                                style={{
+                                    position: 'absolute', right: '-15px', top: '-15px',
+                                    width: '30px', height: '30px', borderRadius: '50%',
+                                    border: '2px solid white', background: marker.completed ? '#2e7d32' : '#1976d2', color: 'white',
+                                    boxShadow: '0 2px 6px #0005', cursor: 'pointer', pointerEvents: 'auto',
+                                    touchAction: 'manipulation', fontSize: '14px',
+                                }}
+                                onPointerDown={event => event.stopPropagation()}
+                                onMouseDown={event => event.stopPropagation()}
+                                onTouchStart={event => event.stopPropagation()}
+                                onTouchEnd={event => event.stopPropagation()}
+                                onClick={event => { event.stopPropagation(); onRegionMarkerClick?.(marker.id) }}
+                            >▶</button>
+                        </div>
+                    ))}
                     {(hidePdfBackground || tool !== 'none' || drawingPaths.length > 0) && <DrawingCanvas
                         key={`drawing-${pageNum}`}
                         ref={drawingCanvasRef}
