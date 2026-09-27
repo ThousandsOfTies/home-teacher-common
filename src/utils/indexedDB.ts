@@ -59,6 +59,7 @@ export interface PDFStudyRegion {
 export interface PDFStudyAnswerState {
   canvasWidth: number;
   canvasHeight: number;
+  questionLayout?: { x: number; y: number; width: number; height: number };
   strokes: Array<{
     points: Array<[number, number]>;
     width: number;
@@ -81,6 +82,11 @@ export interface PDFStudyMarkerRecord {
   pdfId: string;
   createdAt: number;
   regions: PDFStudyRegion[];
+  captureLayout?: {
+    width: number;
+    height: number;
+    regions: Array<{ x: number; y: number; width: number; height: number }>;
+  };
   sourcePageNumbers: number[];
   answer?: PDFStudyAnswerState;
   grading?: {
@@ -88,6 +94,15 @@ export interface PDFStudyMarkerRecord {
     modelName: string | null;
     responseTime: number | null;
   };
+  followUps?: PDFStudyFollowUp[];
+}
+
+export interface PDFStudyFollowUp {
+  id: string;
+  parentId: string;
+  region: { x: number; y: number; width: number; height: number };
+  answer?: PDFStudyAnswerState;
+  grading?: PDFStudyMarkerRecord['grading'];
 }
 
 export interface PDFStudyStep {
@@ -539,10 +554,17 @@ export async function deletePDFRecord(id: string): Promise<void> {
       drawingStore.delete(cursor.primaryKey);
       cursor.continue();
     };
+    const assetStore = transaction.objectStore(PDF_STUDY_ASSET_STORE_NAME);
     const markerStore = transaction.objectStore(PDF_STUDY_MARKER_STORE_NAME);
     markerStore.index('pdfId').openKeyCursor(IDBKeyRange.only(id)).onsuccess = (event) => {
       const cursor = (event.target as IDBRequest<IDBCursor | null>).result;
       if (!cursor) return;
+      assetStore.index('traceId').openKeyCursor(IDBKeyRange.only(cursor.primaryKey)).onsuccess = (assetEvent) => {
+        const assetCursor = (assetEvent.target as IDBRequest<IDBCursor | null>).result;
+        if (!assetCursor) return;
+        assetStore.delete(assetCursor.primaryKey);
+        assetCursor.continue();
+      };
       markerStore.delete(cursor.primaryKey);
       cursor.continue();
     };
@@ -554,7 +576,6 @@ export async function deletePDFRecord(id: string): Promise<void> {
       cursor.continue();
     };
     const traceStore = transaction.objectStore(PDF_STUDY_TRACE_STORE_NAME);
-    const assetStore = transaction.objectStore(PDF_STUDY_ASSET_STORE_NAME);
     traceStore.index('pdfId').openCursor(IDBKeyRange.only(id)).onsuccess = (event) => {
       const cursor = (event.target as IDBRequest<IDBCursorWithValue | null>).result;
       if (!cursor) return;
@@ -615,8 +636,15 @@ export async function getPDFStudyMarkersByPdfId(pdfId: string): Promise<PDFStudy
 export async function deletePDFStudyMarker(id: string): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([PDF_STUDY_MARKER_STORE_NAME], 'readwrite');
+    const transaction = db.transaction([PDF_STUDY_MARKER_STORE_NAME, PDF_STUDY_ASSET_STORE_NAME], 'readwrite');
     transaction.objectStore(PDF_STUDY_MARKER_STORE_NAME).delete(id);
+    const assetStore = transaction.objectStore(PDF_STUDY_ASSET_STORE_NAME);
+    assetStore.index('traceId').openKeyCursor(IDBKeyRange.only(id)).onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest<IDBCursor | null>).result;
+      if (!cursor) return;
+      assetStore.delete(cursor.primaryKey);
+      cursor.continue();
+    };
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error('学習範囲の削除に失敗しました'));
     transaction.onabort = () => reject(transaction.error ?? new Error('学習範囲の削除に失敗しました'));
@@ -624,6 +652,34 @@ export async function deletePDFStudyMarker(id: string): Promise<void> {
 }
 
 const studyAssetId = (traceId: string, stepId: string, kind: 'question' | 'drawing') => `${traceId}:${stepId}:${kind}`;
+
+export async function appendPDFStudyFollowUp(markerId: string, followUp: PDFStudyFollowUp, questionImage: Blob): Promise<PDFStudyMarkerRecord> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([PDF_STUDY_MARKER_STORE_NAME, PDF_STUDY_ASSET_STORE_NAME], 'readwrite');
+    const markerStore = transaction.objectStore(PDF_STUDY_MARKER_STORE_NAME);
+    const request = markerStore.get(markerId);
+    let updated: PDFStudyMarkerRecord | undefined;
+    request.onsuccess = () => {
+      const marker = request.result as PDFStudyMarkerRecord | undefined;
+      const parentHasGrading = followUp.parentId === markerId
+        ? Boolean(marker?.grading)
+        : Boolean(marker?.followUps?.some(item => item.id === followUp.parentId && item.grading));
+      if (!marker || !parentHasGrading || marker.followUps?.some(item => item.id === followUp.id)) {
+        transaction.abort();
+        return;
+      }
+      updated = { ...marker, followUps: [...(marker.followUps ?? []), followUp] };
+      markerStore.put(updated);
+      transaction.objectStore(PDF_STUDY_ASSET_STORE_NAME).put({
+        id: studyAssetId(markerId, followUp.id, 'question'), traceId: markerId, blob: questionImage
+      } satisfies PDFStudyAssetRecord);
+    };
+    transaction.oncomplete = () => resolve(updated!);
+    transaction.onerror = () => reject(transaction.error ?? new Error('追加の質問を保存できませんでした'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('元の採点結果が見つかりません'));
+  });
+}
 
 export async function createPDFStudyTrace(record: PDFStudyTraceRecord, questionImage: Blob): Promise<void> {
   const firstStep = record.steps[0];

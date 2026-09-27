@@ -175,6 +175,39 @@ export const gradeWork = async (
   }
 }
 
+// 採点結果からの質問は採点とは別の指示で処理する。
+export const askQuestion = async (
+  questionImageData: string,
+  parentResult: GradingResponseResult,
+  model?: string,
+  language: string = 'ja',
+): Promise<GradeResponse> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/ask-question`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        questionImageData,
+        parentResult,
+        ...(model && model !== 'default' ? { model } : {}),
+        language,
+      }),
+    })
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || `HTTP Error: ${response.status}`)
+    }
+    return await response.json() as GradeResponse
+  } catch (error) {
+    console.error('質問への回答に失敗しました:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+      result: { problems: [] },
+    }
+  }
+}
+
 // 後方互換性のための旧API（非推奨）
 export const gradeWorkWithContext = async (
   fullPageImageData: string,
