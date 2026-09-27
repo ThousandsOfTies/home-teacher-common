@@ -3,6 +3,7 @@ import { getAllPDFRecords, deletePDFRecord, savePDFRecord, generatePDFId, PDFFil
 import * as pdfjsLib from 'pdfjs-dist'
 import { detectSubject } from '../../services/api'
 import { isSupportedImageFile, processImageFiles } from '../../utils/imageProcessor'
+import { LARGE_PDF_THRESHOLD_BYTES, PDFBlobRangeTransport, getRangePDFDocument } from '../../utils/pdfRange'
 
 // Workerの設定
 // Workerの設定（ローカルファイルを使用）
@@ -10,7 +11,7 @@ const baseUrl = import.meta.env.BASE_URL
 const safeBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
 pdfjsLib.GlobalWorkerOptions.workerSrc = `${safeBaseUrl}pdf.worker.min.js`
 
-export const usePDFRecords = () => {
+export const usePDFRecords = (maxPDFFileSizeMB = 100) => {
   const [pdfRecords, setPdfRecords] = useState<PDFFileRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -30,27 +31,37 @@ export const usePDFRecords = () => {
   }
 
   // サムネイルを生成
-  const generateThumbnail = async (file: File): Promise<string> => {
-    const arrayBuffer = await file.arrayBuffer()
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
-    const pdf = await loadingTask.promise
+  const generateThumbnail = async (file: Blob): Promise<string> => {
+    let rangeError: (error: Error) => void = () => {}
+    const rangeFailure = new Promise<never>((_, reject) => { rangeError = reject })
+    let loadingTask: pdfjsLib.PDFDocumentLoadingTask | undefined
+    const range = file.size >= LARGE_PDF_THRESHOLD_BYTES
+      ? new PDFBlobRangeTransport(file.size, (begin, end) => file.slice(begin, end).arrayBuffer(), error => {
+          rangeError(error)
+          void loadingTask?.destroy()
+        })
+      : null
 
-    const page = await pdf.getPage(1)
-    const viewport = page.getViewport({ scale: 0.5 })
+    try {
+      loadingTask = range
+        ? getRangePDFDocument(range)
+        : pdfjsLib.getDocument({ data: await file.arrayBuffer() })
+      const pdf = await Promise.race([loadingTask.promise, rangeFailure])
+      const page = await pdf.getPage(1)
+      const viewport = page.getViewport({ scale: 0.5 })
 
-    const canvas = document.createElement('canvas')
-    const context = canvas.getContext('2d')
-    if (!context) throw new Error('Canvas context not available')
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')
+      if (!context) throw new Error('Canvas context not available')
 
-    canvas.height = viewport.height
-    canvas.width = viewport.width
-
-    await page.render({
-      canvasContext: context,
-      viewport: viewport,
-    }).promise
-
-    return canvas.toDataURL('image/jpeg', 0.7)
+      canvas.height = viewport.height
+      canvas.width = viewport.width
+      await page.render({ canvasContext: context, viewport }).promise
+      return canvas.toDataURL('image/jpeg', 0.7)
+    } finally {
+      range?.abort()
+      await loadingTask?.destroy()
+    }
   }
 
   // PDFファイルを追加
@@ -59,10 +70,7 @@ export const usePDFRecords = () => {
     try {
       const id = generatePDFId(fileName)
 
-      // サムネイルを生成（Fileの場合はFileとして、Blobの場合はBlobとして扱う）
-      // generateThumbnail takes File but Blob is compatible for arrayBuffer()
-      const thumbnailModel = new File([file], fileName, { type: 'application/pdf' })
-      const thumbnail = await generateThumbnail(thumbnailModel)
+      const thumbnail = await generateThumbnail(file)
 
       // 教科を自動検出（表紙画像を使用）
       let detectedSubjectId: string | undefined = undefined
@@ -95,7 +103,9 @@ export const usePDFRecords = () => {
       return true
     } catch (error) {
       console.error('Failed to add PDF:', error)
-      setErrorMessage(`Failed to add PDF: ${error}`)
+      setErrorMessage(error instanceof DOMException && error.name === 'QuotaExceededError'
+        ? '端末の保存領域が足りません。Storageの使用量を確認し、不要な教材を削除してください。'
+        : `Failed to add PDF: ${error}`)
       return false
     } finally {
       setUploading(false)
@@ -192,8 +202,8 @@ export const usePDFRecords = () => {
 
       // ファイル数制限チェック
       const MAX_FILES = 100
-      const MAX_FILE_SIZE_MB = 100
-      const MAX_TOTAL_SIZE_MB = 300
+      const MAX_IMAGE_FILE_SIZE_MB = 100
+      const MAX_TOTAL_SIZE_MB = Math.max(300, maxPDFFileSizeMB)
 
       if (files.length > MAX_FILES) {
         const message = `ファイル数が多すぎます。最大${MAX_FILES}枚まで選択できます。\n現在: ${files.length}枚`
@@ -203,7 +213,7 @@ export const usePDFRecords = () => {
         return
       }
 
-      // ファイルサイズチェック（各ファイル100MBまで）
+      // PDF and image imports have separate limits; apps can opt into large PDFs.
       console.log(`📁 Selected ${files.length} file(s)`)
       let totalSize = 0
 
@@ -211,8 +221,10 @@ export const usePDFRecords = () => {
         console.log(`  - ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB, ${file.type})`)
         totalSize += file.size
 
-        if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-          const message = `ファイルサイズが大きすぎます（最大${MAX_FILE_SIZE_MB}MB）\nファイル: ${file.name}\nサイズ: ${(file.size / 1024 / 1024).toFixed(2)}MB`
+        const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+        const maxFileSizeMB = isPDF ? maxPDFFileSizeMB : MAX_IMAGE_FILE_SIZE_MB
+        if (file.size > maxFileSizeMB * 1024 * 1024) {
+          const message = `ファイルサイズが大きすぎます（最大${maxFileSizeMB}MB）\nファイル: ${file.name}\nサイズ: ${(file.size / 1024 / 1024).toFixed(2)}MB`
           setErrorMessage(message)
           alert(message)
           setUploading(false)
@@ -225,7 +237,7 @@ export const usePDFRecords = () => {
       console.log(`📊 Total size: ${totalSizeMB.toFixed(2)}MB`)
 
       if (totalSizeMB > MAX_TOTAL_SIZE_MB) {
-        const message = `合計ファイルサイズが大きすぎます。\n最大: ${MAX_TOTAL_SIZE_MB}MB\n現在: ${totalSizeMB.toFixed(2)}MB\n\nファイル数を減らすか、小さい画像を選択してください。`
+        const message = `合計ファイルサイズが大きすぎます。\n最大: ${MAX_TOTAL_SIZE_MB}MB\n現在: ${totalSizeMB.toFixed(2)}MB\n\nファイル数を減らすか、小さいファイルを選択してください。`
         setErrorMessage(message)
         alert(message)
         setUploading(false)
@@ -273,7 +285,7 @@ export const usePDFRecords = () => {
             : 'converted-images.pdf'
 
           console.log(`  🔄 Step 3: Saving PDF as "${fileName}"...`)
-          await addPDF(pdfBlob, fileName)
+          if (!await addPDF(pdfBlob, fileName)) return
           console.log(`  ✅ Step 3 complete: PDF saved`)
         } catch (error) {
           console.error('❌ Image conversion failed:', error)
@@ -286,7 +298,7 @@ export const usePDFRecords = () => {
         console.log(`📄 Adding ${pdfFiles.length} PDF file(s)...`)
         for (const pdfFile of pdfFiles) {
           console.log(`  🔄 Adding: ${pdfFile.name}`)
-          await addPDF(pdfFile, pdfFile.name)
+          if (!await addPDF(pdfFile, pdfFile.name)) return
           console.log(`  ✅ Added: ${pdfFile.name}`)
         }
       }

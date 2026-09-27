@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
-import { PDFFileRecord, fetchPDFData } from '../../utils/indexedDB'
+import { PDFFileRecord, fetchPDFData, fetchPDFRange } from '../../utils/indexedDB'
 import { isIOSLikeDevice } from '../../utils/platform'
+import { LARGE_PDF_THRESHOLD_BYTES, PDFBlobRangeTransport, getRangePDFDocument } from '../../utils/pdfRange'
 
 // PDF.jsのworkerを設定（ローカルファイルを使用、Safari/Edge対応）
 // PDF.jsのworkerを設定
@@ -45,6 +46,7 @@ export const usePDFRenderer = (
     let isActive = true
     let loadingTask: { promise: Promise<pdfjsLib.PDFDocumentProxy>, destroy: () => Promise<void> } | null = null
     let loadedPdf: pdfjsLib.PDFDocumentProxy | null = null
+    let rangeTransport: PDFBlobRangeTransport | null = null
     let timeoutId: number | null = null
 
     const loadPDF = async () => {
@@ -63,41 +65,53 @@ export const usePDFRenderer = (
           optionsRef.current?.onLoadStart?.()
         }
 
-        // DBから最新のデータをArrayBufferとして取得（iPad対策）
-        // Propsで渡されたrecord.fileDataはStale（古い/無効）になっている可能性があるため使用しない
-        console.log('📥 PDFデータをDBから再取得中...', record.id)
-        const pdfData = await fetchPDFData(record.id)
-
-        if (!isActive) return
-
-        console.log('PDFを読み込み中...', {
-          dataSize: pdfData.byteLength,
-          userAgent: navigator.userAgent
-        })
-
-        // Safari対応: タイムアウトとキャンセル可能な読み込み
-        loadingTask = pdfjsLib.getDocument({
-          data: pdfData,
-          // Safari/iOSでのメモリ問題を回避
-          useWorkerFetch: false,
-          isEvalSupported: false,
-          // タイムアウトを設定
-          stopAtErrors: true
-        })
+        const fileSize = record.fileData instanceof Blob ? record.fileData.size : 0
+        let rangeFailure: Promise<never> | null = null
+        if (fileSize >= LARGE_PDF_THRESHOLD_BYTES) {
+          let rejectRangeRead: (error: Error) => void = () => {}
+          rangeFailure = new Promise<never>((_, reject) => { rejectRangeRead = reject })
+          rangeTransport = new PDFBlobRangeTransport(fileSize, (begin, end) => fetchPDFRange(record.id, begin, end), error => {
+            rejectRangeRead(error)
+            if (loadedPdf && isActive) {
+              const message = `PDFの読み込みに失敗しました: ${error.message}`
+              setError(message)
+              setPdfDoc(null)
+              setNumPages(0)
+              optionsRef.current?.onLoadError?.(message)
+            }
+            void loadingTask?.destroy()
+          })
+          loadingTask = getRangePDFDocument(rangeTransport, {
+            useWorkerFetch: false,
+            isEvalSupported: false,
+            stopAtErrors: true,
+          })
+        } else {
+          // Small PDFs retain the established full-buffer path. Read a fresh Blob
+          // from IndexedDB rather than a potentially stale Blob in props on iPad.
+          const pdfData = await fetchPDFData(record.id)
+          if (!isActive) return
+          loadingTask = pdfjsLib.getDocument({
+            data: pdfData,
+            useWorkerFetch: false,
+            isEvalSupported: false,
+            stopAtErrors: true,
+          })
+        }
 
         // タイムアウト処理（iPad/iPhoneでは60秒、それ以外は30秒）
         const timeoutMs = isIOS ? 60000 : 30000
-        const timeoutPromise = new Promise((_, reject) => {
+        const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutId = window.setTimeout(
             () => reject(new Error(`PDF読み込みがタイムアウトしました（${timeoutMs / 1000}秒）`)),
             timeoutMs
           )
         })
-
         const pdf = await Promise.race([
           loadingTask.promise,
-          timeoutPromise
-        ]) as pdfjsLib.PDFDocumentProxy
+          timeoutPromise,
+          ...(rangeFailure ? [rangeFailure] : []),
+        ])
         if (timeoutId !== null) {
           window.clearTimeout(timeoutId)
           timeoutId = null
@@ -127,6 +141,7 @@ export const usePDFRenderer = (
           window.clearTimeout(timeoutId)
           timeoutId = null
         }
+        rangeTransport?.abort()
         if (loadingTask) loadingTask.destroy().catch(() => { })
         if (isActive) {
           const errorMsg = error instanceof Error ? error.message : String(error)
@@ -143,6 +158,7 @@ export const usePDFRenderer = (
 
     return () => {
       isActive = false
+      rangeTransport?.abort()
       if (timeoutId !== null) window.clearTimeout(timeoutId)
       if (loadingTask) {
         loadingTask.destroy().catch(() => { })

@@ -6,10 +6,14 @@ if (typeof configuredDBName !== 'string' || !configuredDBName.trim()) {
   throw new Error('VITE_INDEXED_DB_NAME must be configured by the app');
 }
 export const DB_NAME = configuredDBName;
-const DB_VERSION = 15; // v14までの他アプリ側スキーマと衝突せず、PDF学習マーカーを追加
+const DB_VERSION = 16; // v15の学習マーカーに加え、PDF表示状態・文字注釈・質問履歴を追加
 const STORE_NAME = 'pdfFiles';
 const DRAWING_STORE_NAME = 'drawings';
 const PDF_STUDY_MARKER_STORE_NAME = 'pdfStudyMarkers';
+const PDF_VIEW_STATE_STORE_NAME = 'pdfViewState';
+const PDF_TEXT_ANNOTATION_STORE_NAME = 'pdfTextAnnotations';
+const PDF_STUDY_TRACE_STORE_NAME = 'pdfStudyTraces';
+const PDF_STUDY_ASSET_STORE_NAME = 'pdfStudyAssets';
 const SNS_STORE_NAME = 'snsLinks';
 const GRADING_HISTORY_STORE_NAME = 'gradingHistory';
 const GRADING_IMAGE_STORE_NAME = 'gradingImages';
@@ -30,9 +34,23 @@ export interface PDFFileRecord {
   subjectId?: string; // 教科識別子 (math, japanese, etc)
 }
 
+interface PDFViewStateRecord {
+  id: string;
+  lastPageNumberA?: number;
+  lastPageNumberB?: number;
+  lastOpened?: number;
+}
+
+interface PDFTextAnnotationRecord {
+  id: string;
+  pdfId: string;
+  pageNumber: number;
+  data: string;
+}
+
 export interface PDFStudyRegion {
   pageNumber: number;
-  x: number;
+  x: number; // PDF page coordinates normalized to 0-1
   y: number;
   width: number;
   height: number;
@@ -70,6 +88,30 @@ export interface PDFStudyMarkerRecord {
     modelName: string | null;
     responseTime: number | null;
   };
+}
+
+export interface PDFStudyStep {
+  id: string;
+  type: 'answer' | 'grading';
+  sourcePageNumbers: number[];
+  source?: 'pdf' | 'grading';
+  result?: import('../services/api').GradingResponseResult;
+  modelName?: string | null;
+  responseTime?: number | null;
+}
+
+export interface PDFStudyTraceRecord {
+  id: string;
+  pdfId: string;
+  createdAt: number;
+  regions: PDFStudyRegion[];
+  steps: PDFStudyStep[];
+}
+
+interface PDFStudyAssetRecord {
+  id: string;
+  traceId: string;
+  blob: Blob;
 }
 
 interface DrawingRecord {
@@ -186,6 +228,7 @@ function openDB(): Promise<IDBDatabase> {
       });
       reject(new Error('IndexedDBを開けませんでした'));
     };
+    request.onblocked = () => reject(new Error('別のタブで教材データが使用中です。DoriDoriの他のタブを閉じて再読み込みしてください'));
 
     request.onsuccess = () => {
       console.log('✅ IndexedDB開く成功:', {
@@ -231,6 +274,22 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(PDF_STUDY_MARKER_STORE_NAME)) {
         const markerStore = db.createObjectStore(PDF_STUDY_MARKER_STORE_NAME, { keyPath: 'id' });
         markerStore.createIndex('pdfId', 'pdfId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains(PDF_VIEW_STATE_STORE_NAME)) {
+        db.createObjectStore(PDF_VIEW_STATE_STORE_NAME, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(PDF_TEXT_ANNOTATION_STORE_NAME)) {
+        const annotationStore = db.createObjectStore(PDF_TEXT_ANNOTATION_STORE_NAME, { keyPath: 'id' });
+        annotationStore.createIndex('pdfId', 'pdfId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains(PDF_STUDY_TRACE_STORE_NAME)) {
+        const traceStore = db.createObjectStore(PDF_STUDY_TRACE_STORE_NAME, { keyPath: 'id' });
+        traceStore.createIndex('pdfId', 'pdfId', { unique: false });
+        traceStore.createIndex('createdAt', 'createdAt', { unique: false });
+      }
+      if (!db.objectStoreNames.contains(PDF_STUDY_ASSET_STORE_NAME)) {
+        const assetStore = db.createObjectStore(PDF_STUDY_ASSET_STORE_NAME, { keyPath: 'id' });
+        assetStore.createIndex('traceId', 'traceId', { unique: false });
       }
 
       // SNSリンク用オブジェクトストアが存在しない場合は作成
@@ -333,18 +392,33 @@ export async function getAllPDFRecords(): Promise<PDFFileRecord[]> {
   const db = await openDB();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
+    const transaction = db.transaction([STORE_NAME, PDF_VIEW_STATE_STORE_NAME], 'readonly');
     const objectStore = transaction.objectStore(STORE_NAME);
     const index = objectStore.index('lastOpened');
     const request = index.openCursor(null, 'prev'); // 最近開いた順
+    const viewRequest = transaction.objectStore(PDF_VIEW_STATE_STORE_NAME).getAll();
 
     const records: PDFFileRecord[] = [];
+    let viewStates: Map<string, PDFViewStateRecord> | null = null;
+    let recordsLoaded = false;
+    const finish = () => {
+      if (!recordsLoaded || !viewStates) return;
+      resolve(records.map(record => ({ ...record, ...viewStates!.get(record.id) }))
+        .sort((a, b) => b.lastOpened - a.lastOpened));
+    };
+
+    viewRequest.onsuccess = () => {
+      viewStates = new Map((viewRequest.result as PDFViewStateRecord[]).map(state => [state.id, state]));
+      finish();
+    };
+    viewRequest.onerror = () => reject(new Error('ページ位置の取得に失敗しました'));
 
     request.onsuccess = (event) => {
       const cursor = (event.target as IDBRequest).result;
       if (!cursor) {
         console.log(`✅ 全PDFレコード取得完了: ${records.length}件`);
-        resolve(records);
+        recordsLoaded = true;
+        finish();
         return;
       }
 
@@ -374,20 +448,38 @@ export async function savePDFRecord(record: PDFFileRecord): Promise<void> {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], 'readwrite');
     const objectStore = transaction.objectStore(STORE_NAME);
-    const request = objectStore.put(record);
-
-    request.onsuccess = () => {
-      resolve();
-    };
-
-    request.onerror = () => {
-      reject(new Error('レコードの保存に失敗しました'));
-    };
+    objectStore.put(record);
+    // Large Blob writes may fail when the transaction commits, after put() succeeds.
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('レコードの保存に失敗しました'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('レコードの保存が中断されました'));
   });
 }
 
 // PDFファイルレコードの一部を更新
 export async function updatePDFRecord(id: string, updates: Partial<PDFFileRecord>): Promise<void> {
+  const updateKeys = Object.keys(updates);
+  if (updateKeys.length > 0 && updateKeys.every(key => key === 'lastPageNumberA' || key === 'lastPageNumberB')) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME, PDF_VIEW_STATE_STORE_NAME], 'readwrite');
+      const pdfRequest = transaction.objectStore(STORE_NAME).getKey(id);
+      const viewStore = transaction.objectStore(PDF_VIEW_STATE_STORE_NAME);
+      pdfRequest.onsuccess = () => {
+        if (pdfRequest.result === undefined) {
+          transaction.abort();
+          return;
+        }
+        const viewRequest = viewStore.get(id);
+        viewRequest.onsuccess = () => {
+          viewStore.put({ id, ...(viewRequest.result as PDFViewStateRecord | undefined), ...updates });
+        };
+      };
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error ?? new Error('ページ位置の保存に失敗しました'));
+      transaction.onabort = () => reject(transaction.error ?? new Error('PDFレコードが見つかりません'));
+    });
+  }
   const record = await getPDFRecord(id);
   if (!record) {
     throw new Error(`PDF record not found: ${id}`);
@@ -401,17 +493,32 @@ export async function getPDFRecord(id: string): Promise<PDFFileRecord | null> {
   const db = await openDB();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
+    const transaction = db.transaction([STORE_NAME, PDF_VIEW_STATE_STORE_NAME], 'readonly');
     const objectStore = transaction.objectStore(STORE_NAME);
     const request = objectStore.get(id);
+    const viewRequest = transaction.objectStore(PDF_VIEW_STATE_STORE_NAME).get(id);
+    let record: PDFFileRecord | null | undefined;
+    let state: PDFViewStateRecord | undefined;
+    let viewLoaded = false;
+    const finish = () => {
+      if (record === undefined || !viewLoaded) return;
+      resolve(record ? { ...record, ...state } : null);
+    };
 
     request.onsuccess = () => {
-      resolve(request.result || null);
+      record = request.result || null;
+      finish();
+    };
+    viewRequest.onsuccess = () => {
+      state = viewRequest.result as PDFViewStateRecord | undefined;
+      viewLoaded = true;
+      finish();
     };
 
     request.onerror = () => {
       reject(new Error('レコードの取得に失敗しました'));
     };
+    viewRequest.onerror = () => reject(new Error('ページ位置の取得に失敗しました'));
   });
 }
 
@@ -422,8 +529,9 @@ export async function deletePDFRecord(id: string): Promise<void> {
   const db = await openDB();
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME, DRAWING_STORE_NAME, PDF_STUDY_MARKER_STORE_NAME], 'readwrite');
+    const transaction = db.transaction([STORE_NAME, DRAWING_STORE_NAME, PDF_STUDY_MARKER_STORE_NAME, PDF_VIEW_STATE_STORE_NAME, PDF_TEXT_ANNOTATION_STORE_NAME, PDF_STUDY_TRACE_STORE_NAME, PDF_STUDY_ASSET_STORE_NAME], 'readwrite');
     transaction.objectStore(STORE_NAME).delete(id);
+    transaction.objectStore(PDF_VIEW_STATE_STORE_NAME).delete(id);
     const drawingStore = transaction.objectStore(DRAWING_STORE_NAME);
     drawingStore.index('pdfId').openKeyCursor(IDBKeyRange.only(id)).onsuccess = (event) => {
       const cursor = (event.target as IDBRequest<IDBCursor | null>).result;
@@ -436,6 +544,28 @@ export async function deletePDFRecord(id: string): Promise<void> {
       const cursor = (event.target as IDBRequest<IDBCursor | null>).result;
       if (!cursor) return;
       markerStore.delete(cursor.primaryKey);
+      cursor.continue();
+    };
+    const annotationStore = transaction.objectStore(PDF_TEXT_ANNOTATION_STORE_NAME);
+    annotationStore.index('pdfId').openKeyCursor(IDBKeyRange.only(id)).onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest<IDBCursor | null>).result;
+      if (!cursor) return;
+      annotationStore.delete(cursor.primaryKey);
+      cursor.continue();
+    };
+    const traceStore = transaction.objectStore(PDF_STUDY_TRACE_STORE_NAME);
+    const assetStore = transaction.objectStore(PDF_STUDY_ASSET_STORE_NAME);
+    traceStore.index('pdfId').openCursor(IDBKeyRange.only(id)).onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest<IDBCursorWithValue | null>).result;
+      if (!cursor) return;
+      const traceId = (cursor.value as PDFStudyTraceRecord).id;
+      assetStore.index('traceId').openKeyCursor(IDBKeyRange.only(traceId)).onsuccess = (assetEvent) => {
+        const assetCursor = (assetEvent.target as IDBRequest<IDBCursor | null>).result;
+        if (!assetCursor) return;
+        assetStore.delete(assetCursor.primaryKey);
+        assetCursor.continue();
+      };
+      cursor.delete();
       cursor.continue();
     };
     transaction.oncomplete = () => resolve();
@@ -490,6 +620,137 @@ export async function deletePDFStudyMarker(id: string): Promise<void> {
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error('学習範囲の削除に失敗しました'));
     transaction.onabort = () => reject(transaction.error ?? new Error('学習範囲の削除に失敗しました'));
+  });
+}
+
+const studyAssetId = (traceId: string, stepId: string, kind: 'question' | 'drawing') => `${traceId}:${stepId}:${kind}`;
+
+export async function createPDFStudyTrace(record: PDFStudyTraceRecord, questionImage: Blob): Promise<void> {
+  const firstStep = record.steps[0];
+  if (!firstStep || firstStep.type !== 'answer') throw new Error('質問の記録が不正です');
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_NAME, PDF_STUDY_TRACE_STORE_NAME, PDF_STUDY_ASSET_STORE_NAME], 'readwrite');
+    const documentRequest = transaction.objectStore(STORE_NAME).getKey(record.pdfId);
+    documentRequest.onsuccess = () => {
+      if (documentRequest.result === undefined) {
+        transaction.abort();
+        return;
+      }
+      transaction.objectStore(PDF_STUDY_TRACE_STORE_NAME).add(record);
+      transaction.objectStore(PDF_STUDY_ASSET_STORE_NAME).put({
+        id: studyAssetId(record.id, firstStep.id, 'question'), traceId: record.id, blob: questionImage
+      } satisfies PDFStudyAssetRecord);
+    };
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('質問の保存に失敗しました'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('PDFが見つかりません'));
+  });
+}
+
+export async function appendPDFStudyStep(traceId: string, step: PDFStudyStep, questionImage?: Blob, afterStepId?: string): Promise<void> {
+  if (step.type === 'answer' && !questionImage) throw new Error('質問画像がありません');
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([PDF_STUDY_TRACE_STORE_NAME, PDF_STUDY_ASSET_STORE_NAME], 'readwrite');
+    const traceStore = transaction.objectStore(PDF_STUDY_TRACE_STORE_NAME);
+    const request = traceStore.get(traceId);
+    request.onsuccess = () => {
+      const trace = request.result as PDFStudyTraceRecord | undefined;
+      if (!trace) {
+        transaction.abort();
+        return;
+      }
+      const keepThrough = afterStepId ? trace.steps.findIndex(existing => existing.id === afterStepId) : trace.steps.length - 1;
+      if (keepThrough < 0) {
+        transaction.abort();
+        return;
+      }
+      const assetStore = transaction.objectStore(PDF_STUDY_ASSET_STORE_NAME);
+      for (const discarded of trace.steps.slice(keepThrough + 1)) {
+        if (discarded.type !== 'answer') continue;
+        assetStore.delete(studyAssetId(traceId, discarded.id, 'question'));
+        assetStore.delete(studyAssetId(traceId, discarded.id, 'drawing'));
+      }
+      traceStore.put({ ...trace, steps: [...trace.steps.slice(0, keepThrough + 1), step] });
+      if (questionImage) {
+        assetStore.put({
+          id: studyAssetId(traceId, step.id, 'question'), traceId, blob: questionImage
+        } satisfies PDFStudyAssetRecord);
+      }
+    };
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('質問の保存に失敗しました'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('質問の記録が見つかりません'));
+  });
+}
+
+export async function savePDFStudyDrawing(traceId: string, stepId: string, drawing: Blob): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([PDF_STUDY_TRACE_STORE_NAME, PDF_STUDY_ASSET_STORE_NAME], 'readwrite');
+    const request = transaction.objectStore(PDF_STUDY_TRACE_STORE_NAME).get(traceId);
+    request.onsuccess = () => {
+      const trace = request.result as PDFStudyTraceRecord | undefined;
+      if (!trace?.steps.some(step => step.id === stepId && step.type === 'answer')) {
+        transaction.abort();
+        return;
+      }
+      transaction.objectStore(PDF_STUDY_ASSET_STORE_NAME).put({
+        id: studyAssetId(traceId, stepId, 'drawing'), traceId, blob: drawing
+      } satisfies PDFStudyAssetRecord);
+    };
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('回答の保存に失敗しました'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('回答先の質問が見つかりません'));
+  });
+}
+
+export async function getPDFStudyAsset(traceId: string, stepId: string, kind: 'question' | 'drawing'): Promise<Blob | null> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction([PDF_STUDY_ASSET_STORE_NAME], 'readonly')
+      .objectStore(PDF_STUDY_ASSET_STORE_NAME).get(studyAssetId(traceId, stepId, kind));
+    request.onsuccess = () => resolve((request.result as PDFStudyAssetRecord | undefined)?.blob ?? null);
+    request.onerror = () => reject(new Error('質問画像の取得に失敗しました'));
+  });
+}
+
+export async function getPDFStudyTrace(id: string): Promise<PDFStudyTraceRecord | null> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction([PDF_STUDY_TRACE_STORE_NAME], 'readonly')
+      .objectStore(PDF_STUDY_TRACE_STORE_NAME).get(id);
+    request.onsuccess = () => resolve(request.result ?? null);
+    request.onerror = () => reject(new Error('質問の記録を取得できませんでした'));
+  });
+}
+
+export async function getPDFStudyTracesByPdfId(pdfId: string): Promise<PDFStudyTraceRecord[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction([PDF_STUDY_TRACE_STORE_NAME], 'readonly')
+      .objectStore(PDF_STUDY_TRACE_STORE_NAME).index('pdfId').getAll(IDBKeyRange.only(pdfId));
+    request.onsuccess = () => resolve(request.result as PDFStudyTraceRecord[]);
+    request.onerror = () => reject(new Error('質問の記録を取得できませんでした'));
+  });
+}
+
+export async function deletePDFStudyTrace(id: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([PDF_STUDY_TRACE_STORE_NAME, PDF_STUDY_ASSET_STORE_NAME], 'readwrite');
+    transaction.objectStore(PDF_STUDY_TRACE_STORE_NAME).delete(id);
+    const assetStore = transaction.objectStore(PDF_STUDY_ASSET_STORE_NAME);
+    assetStore.index('traceId').openKeyCursor(IDBKeyRange.only(id)).onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest<IDBCursor | null>).result;
+      if (!cursor) return;
+      assetStore.delete(cursor.primaryKey);
+      cursor.continue();
+    };
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('質問の記録を削除できませんでした'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('質問の記録を削除できませんでした'));
   });
 }
 
@@ -636,28 +897,63 @@ export async function deleteAllDrawings(id: string): Promise<void> {
 
 // テキストアノテーションを保存
 export async function saveTextAnnotation(id: string, pageNumber: number, textData: string): Promise<void> {
-  const record = await getPDFRecord(id);
-  if (!record) {
-    throw new Error('PDFレコードが見つかりません');
-  }
-
-  if (!record.textAnnotations) {
-    record.textAnnotations = {};
-  }
-  record.textAnnotations[pageNumber] = textData;
-  record.lastOpened = Date.now();
-
-  await savePDFRecord(record);
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_NAME, PDF_VIEW_STATE_STORE_NAME, PDF_TEXT_ANNOTATION_STORE_NAME], 'readwrite');
+    const pdfRequest = transaction.objectStore(STORE_NAME).getKey(id);
+    pdfRequest.onsuccess = () => {
+      if (pdfRequest.result === undefined) {
+        transaction.abort();
+        return;
+      }
+      const viewStore = transaction.objectStore(PDF_VIEW_STATE_STORE_NAME);
+      const viewRequest = viewStore.get(id);
+      viewRequest.onsuccess = () => {
+        viewStore.put({ id, ...(viewRequest.result as PDFViewStateRecord | undefined), lastOpened: Date.now() });
+        transaction.objectStore(PDF_TEXT_ANNOTATION_STORE_NAME).put({
+          id: `${id}:${pageNumber}`, pdfId: id, pageNumber, data: textData
+        } satisfies PDFTextAnnotationRecord);
+      };
+    };
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('テキストの保存に失敗しました'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('PDFレコードが見つかりません'));
+  });
 }
 
-// テキストアノテーションを取得
-export async function getTextAnnotation(id: string, pageNumber: number): Promise<string | null> {
-  const record = await getPDFRecord(id);
-  if (!record) {
-    return null;
-  }
+// Old annotations remain readable without rewriting a large PDF during upgrade.
+export async function getAllTextAnnotations(id: string): Promise<Record<number, string>> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_NAME, PDF_TEXT_ANNOTATION_STORE_NAME], 'readonly');
+    const pdfRequest = transaction.objectStore(STORE_NAME).get(id);
+    const annotationRequest = transaction.objectStore(PDF_TEXT_ANNOTATION_STORE_NAME)
+      .index('pdfId').getAll(IDBKeyRange.only(id));
+    let legacy: Record<number, string> | null = null;
+    let annotations: PDFTextAnnotationRecord[] | null = null;
+    const finish = () => {
+      if (!legacy || !annotations) return;
+      const merged = { ...legacy };
+      for (const annotation of annotations) {
+        if (annotation.data) merged[annotation.pageNumber] = annotation.data;
+        else delete merged[annotation.pageNumber];
+      }
+      resolve(merged);
+    };
+    pdfRequest.onsuccess = () => {
+      legacy = (pdfRequest.result as PDFFileRecord | undefined)?.textAnnotations ?? {};
+      finish();
+    };
+    annotationRequest.onsuccess = () => {
+      annotations = annotationRequest.result as PDFTextAnnotationRecord[];
+      finish();
+    };
+    transaction.onerror = () => reject(transaction.error ?? new Error('テキストの取得に失敗しました'));
+  });
+}
 
-  return record.textAnnotations?.[pageNumber] || null;
+export async function getTextAnnotation(id: string, pageNumber: number): Promise<string | null> {
+  return (await getAllTextAnnotations(id))[pageNumber] || null;
 }
 
 // IDを生成（ファイル名とタイムスタンプから）
@@ -737,13 +1033,13 @@ export function generateSNSLinkId(name: string): string {
   return `sns_${name}_${Date.now()}`;
 }
 
-const dataUrlToBlob = async (dataUrl: string): Promise<Blob> => {
+export const dataUrlToBlob = async (dataUrl: string): Promise<Blob> => {
   const response = await fetch(dataUrl);
   if (!response.ok) throw new Error('採点画像の変換に失敗しました');
   return response.blob();
 }
 
-const blobToDataUrl = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
+export const blobToDataUrl = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.onload = () => resolve(String(reader.result));
   reader.onerror = () => reject(new Error('採点画像の読み込みに失敗しました'));
@@ -1088,5 +1384,32 @@ export async function fetchPDFData(id: string): Promise<ArrayBuffer> {
     request.onerror = () => {
       reject(new Error('PDFデータの取得に失敗しました'));
     };
+  });
+}
+
+// Read only the bytes requested by PDF.js. Fetch the Blob inside each transaction
+// because a Blob retained from an older IndexedDB read can become stale on iPad.
+export async function fetchPDFRange(id: string, begin: number, end: number): Promise<ArrayBuffer> {
+  const db = await openDB();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_NAME], 'readonly');
+    const request = transaction.objectStore(STORE_NAME).get(id);
+
+    request.onsuccess = () => {
+      const blob = (request.result as PDFFileRecord | undefined)?.fileData;
+      if (!(blob instanceof Blob)) {
+        reject(new Error('PDFデータが見つかりません'));
+        return;
+      }
+      if (begin < 0 || end > blob.size || begin >= end) {
+        reject(new Error('PDFの読み込み範囲が不正です'));
+        return;
+      }
+
+      void blob.slice(begin, end).arrayBuffer().then(resolve, reject);
+    };
+
+    request.onerror = () => reject(new Error('PDFデータの取得に失敗しました'));
   });
 }

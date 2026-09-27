@@ -43,6 +43,7 @@ interface AdminPanelProps {
   historyVariant?: 'timeline' | 'progress';
   settingsVariant?: 'links' | 'teachers';
   guideVariant?: 'study' | 'copy';
+  maxPDFFileSizeMB?: number;
 }
 
 export default function AdminPanel({
@@ -54,7 +55,8 @@ export default function AdminPanel({
   storageIconSrc,
   historyVariant = 'timeline',
   settingsVariant = 'links',
-  guideVariant = 'study'
+  guideVariant = 'study',
+  maxPDFFileSizeMB = 100
 }: AdminPanelProps) {
   // i18n
   const { t, i18n } = useTranslation();
@@ -72,7 +74,7 @@ export default function AdminPanel({
     handleFileSelect,
     handleDeleteRecord,
     addPDF
-  } = usePDFRecords();
+  } = usePDFRecords(maxPDFFileSizeMB);
 
   const {
     snsLinks,
