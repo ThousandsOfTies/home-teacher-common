@@ -1443,7 +1443,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                                 title={marker.completed === undefined ? 'この範囲の質問を開く' : marker.completed ? '採点済みの結果を開く' : '未採点の範囲を開く'}
                                 aria-label={marker.completed === undefined ? 'この範囲の質問を開く' : marker.completed ? '採点済みの結果を開く' : '未採点の範囲を開く'}
                                 style={{
-                                    position: 'absolute', right: '-15px', top: '-15px',
+                                    position: 'absolute', right: '-15px', top: '50%', transform: 'translateY(-50%)',
                                     width: '30px', height: '30px', borderRadius: '50%',
                                     border: '2px solid white', background: marker.completed ? '#2e7d32' : '#1976d2', color: 'white',
                                     boxShadow: '0 2px 6px #0005', cursor: 'pointer', pointerEvents: 'auto',
