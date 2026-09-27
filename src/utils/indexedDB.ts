@@ -1,7 +1,11 @@
 // IndexedDB管理ユーティリティ
 
-// 共通ライブラリの既定値はTutoTutoのまま維持し、各アプリのビルド設定で分離する。
-export const DB_NAME = import.meta.env.VITE_INDEXED_DB_NAME || 'TutoTutoDB';
+// DB名は利用側のアプリが指定する。未設定時に別アプリのDBを開かない。
+const configuredDBName = import.meta.env.VITE_INDEXED_DB_NAME;
+if (typeof configuredDBName !== 'string' || !configuredDBName.trim()) {
+  throw new Error('VITE_INDEXED_DB_NAME must be configured by the app');
+}
+export const DB_NAME = configuredDBName;
 const DB_VERSION = 15; // v14までの他アプリ側スキーマと衝突せず、PDF学習マーカーを追加
 const STORE_NAME = 'pdfFiles';
 const DRAWING_STORE_NAME = 'drawings';

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, forwardRef, useImperativeHandle, useState } from 'react'
-import { PDFFileRecord, PDFStudyRegion } from '../../utils/indexedDB'
+import { PDFFileRecord } from '../../utils/indexedDB'
 import PDFCanvas, { PDFRenderMetrics } from './components/PDFCanvas'
 import { PDFPagePreview, type PreviewStrokeRenderer } from './components/PDFPagePreview'
 import { DrawingPath, DrawingCanvas, useDrawing, useZoomPan, doPathsIntersect, isScratchPattern, useLassoSelection, DrawingCanvasHandle } from '@thousands-of-ties/drawing-common'
@@ -10,7 +10,17 @@ import { ICON_SVG } from '../../constants/icons'
 
 const EMPTY_PREVIEW_PATHS: DrawingPath[] = []
 
-interface PDFPaneProps {
+interface RegionMarker {
+    id: string
+    region: { pageNumber: number; x: number; y: number; width: number; height: number }
+    completed?: boolean
+}
+
+type RegionMarkerProps =
+    | { regionMarkers?: never; onRegionMarkerClick?: never }
+    | { regionMarkers: RegionMarker[]; onRegionMarkerClick: (id: string) => void }
+
+interface PDFPaneBaseProps {
     pdfRecord: PDFFileRecord
     pdfDoc: any // pdfjsLib.PDFDocumentProxy | null
     pageNum: number
@@ -39,13 +49,13 @@ interface PDFPaneProps {
     hidePdfBackground?: boolean
     /** Optional logical paper size for a blank drawing pane. */
     blankCanvasSize?: { width: number; height: number }
-    regionMarkers?: Array<{ id: string; region: PDFStudyRegion; completed?: boolean }>
-    onRegionMarkerClick?: (id: string) => void
 
     // レイアウト
     className?: string
     style?: React.CSSProperties
 }
+
+type PDFPaneProps = PDFPaneBaseProps & RegionMarkerProps
 
 export interface PDFPaneHandle {
     resetZoom: () => void
@@ -1412,7 +1422,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             onPageRendered={handlePageRendered}
                         />
                     </div>
-                    {canvasSize && regionMarkers.filter(marker => marker.region.pageNumber === pageNum).map((marker, index) => (
+                    {canvasSize && onRegionMarkerClick && regionMarkers.filter(marker => marker.region.pageNumber === pageNum).map((marker, index) => (
                         <div
                             key={`${marker.id}-${index}`}
                             style={{
@@ -1443,7 +1453,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                                 onMouseDown={event => event.stopPropagation()}
                                 onTouchStart={event => event.stopPropagation()}
                                 onTouchEnd={event => event.stopPropagation()}
-                                onClick={event => { event.stopPropagation(); onRegionMarkerClick?.(marker.id) }}
+                                onClick={event => { event.stopPropagation(); onRegionMarkerClick(marker.id) }}
                             >▶</button>
                         </div>
                     ))}
