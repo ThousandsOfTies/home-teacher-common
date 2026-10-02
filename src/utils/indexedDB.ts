@@ -29,6 +29,7 @@ export interface PDFFileRecord {
   lastOpened: number; // タイムスタンプ
   lastPageNumberA?: number; // 最後に開いていたページ番号 (A面)
   lastPageNumberB?: number; // 最後に開いていたページ番号 (B面)
+  showStudyMarkers?: boolean; // PDF上の範囲選択履歴を表示（未設定時はON）
   drawings: Record<number, string>; // ページ番号 -> JSON文字列のマップ
   textAnnotations?: Record<number, string>; // ページ番号 -> JSON文字列のマップ（テキストアノテーション）
   subjectId?: string; // 教科識別子 (math, japanese, etc)
@@ -38,6 +39,7 @@ interface PDFViewStateRecord {
   id: string;
   lastPageNumberA?: number;
   lastPageNumberB?: number;
+  showStudyMarkers?: boolean;
   lastOpened?: number;
 }
 
@@ -110,6 +112,7 @@ export interface PDFStudyStep {
   type: 'answer' | 'grading';
   sourcePageNumbers: number[];
   source?: 'pdf' | 'grading';
+  answerTexts?: PDFStudyAnswerState['texts'];
   result?: import('../services/api').GradingResponseResult;
   modelName?: string | null;
   responseTime?: number | null;
@@ -474,7 +477,8 @@ export async function savePDFRecord(record: PDFFileRecord): Promise<void> {
 // PDFファイルレコードの一部を更新
 export async function updatePDFRecord(id: string, updates: Partial<PDFFileRecord>): Promise<void> {
   const updateKeys = Object.keys(updates);
-  if (updateKeys.length > 0 && updateKeys.every(key => key === 'lastPageNumberA' || key === 'lastPageNumberB')) {
+  if (updateKeys.length > 0 && updateKeys.every(key =>
+    key === 'lastPageNumberA' || key === 'lastPageNumberB' || key === 'showStudyMarkers')) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([STORE_NAME, PDF_VIEW_STATE_STORE_NAME], 'readwrite');
@@ -491,7 +495,7 @@ export async function updatePDFRecord(id: string, updates: Partial<PDFFileRecord
         };
       };
       transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error ?? new Error('ページ位置の保存に失敗しました'));
+      transaction.onerror = () => reject(transaction.error ?? new Error('PDF表示設定の保存に失敗しました'));
       transaction.onabort = () => reject(transaction.error ?? new Error('PDFレコードが見つかりません'));
     });
   }
@@ -759,6 +763,33 @@ export async function savePDFStudyDrawing(traceId: string, stepId: string, drawi
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error('回答の保存に失敗しました'));
     transaction.onabort = () => reject(transaction.error ?? new Error('回答先の質問が見つかりません'));
+  });
+}
+
+export async function savePDFStudyAnswerTexts(
+  traceId: string, stepId: string, answerTexts: PDFStudyAnswerState['texts']
+): Promise<void> {
+  if (answerTexts.length > 100 || answerTexts.some(item => item.text.length > 4000)) {
+    throw new Error('質問のテキストが長すぎます');
+  }
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([PDF_STUDY_TRACE_STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(PDF_STUDY_TRACE_STORE_NAME);
+    const request = store.get(traceId);
+    request.onsuccess = () => {
+      const trace = request.result as PDFStudyTraceRecord | undefined;
+      const step = trace?.steps.find(item => item.id === stepId && item.type === 'answer');
+      if (!trace || !step) {
+        transaction.abort();
+        return;
+      }
+      store.put({ ...trace, steps: trace.steps.map(item => item.id === stepId
+        ? { ...item, answerTexts } : item) });
+    };
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('質問のテキストを保存できませんでした'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('質問の記録が見つかりません'));
   });
 }
 
