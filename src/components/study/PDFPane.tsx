@@ -5,6 +5,7 @@ import { PDFPagePreview, type PreviewStrokeRenderer } from './components/PDFPage
 import { DrawingPath, DrawingCanvas, useDrawing, useZoomPan, doPathsIntersect, isScratchPattern, useLassoSelection, DrawingCanvasHandle } from '@thousands-of-ties/drawing-common'
 import { INITIAL_PDF_RENDER_SCALE, MAX_PDF_RENDER_SCALE } from '../../constants/pdf'
 import { isIOSLikeDevice } from '../../utils/platform'
+import { useWheelPageNavigation } from '../../hooks/pdf/useWheelPageNavigation'
 import './StudyPanel.css'
 import { ICON_SVG } from '../../constants/icons'
 
@@ -49,6 +50,10 @@ interface PDFPaneBaseProps {
     hidePdfBackground?: boolean
     /** Optional logical paper size for a blank drawing pane. */
     blankCanvasSize?: { width: number; height: number }
+    /** Opt into threshold-based page turns with an unmodified vertical wheel. */
+    wheelPageNavigation?: boolean
+    /** Optional containing surface for selection/text overlays above this pane. */
+    wheelEventTargetRef?: React.RefObject<HTMLDivElement>
 
     // レイアウト
     className?: string
@@ -98,6 +103,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         splitMode = false,
         hidePdfBackground = false,
         blankCanvasSize,
+        wheelPageNavigation = false,
+        wheelEventTargetRef,
         regionMarkers = [],
         onRegionMarkerClick,
         className,
@@ -106,6 +113,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
 
     const containerRef = useRef<HTMLDivElement>(null)
     const wrapperRef = useRef<HTMLDivElement>(null)
+    const pageLayerRef = useRef<HTMLDivElement>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const drawingCanvasRef = useRef<DrawingCanvasHandle>(null)
     const [previewPath, setPreviewPath] = useState<DrawingPath | null>(null)
@@ -345,6 +353,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 setIsLayoutReady(true)
             })
         })
+        wheelNavigation.onPageRendered(pageNum)
     }
 
     // Keep pinch tracking entirely CSS-driven. Once interaction settles, render
@@ -772,6 +781,20 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         clearSelection
     } = useLassoSelection(drawingPaths, onPathsChange, {
         onSelectionActivate: () => { } // cancelDrawing disabled
+    })
+
+    const wheelNavigation = useWheelPageNavigation({
+        enabled: wheelPageNavigation && !hidePdfBackground,
+        containerRef, layerRef: pageLayerRef, eventTargetRef: wheelEventTargetRef,
+        pdfDoc, pageNum, numPages, canvasSize, renderScale: adaptiveRenderScale,
+        zoom, panOffset, splitMode, ready: isLayoutReady,
+        busy: isPanning || isPinching || isDrawingInternal || !!selectionState?.isDragging,
+        pathsByPage: drawingPathsByPage, drawPreviewStroke, onPageChange,
+        onViewportChange: (newZoom, newPan) => {
+            resetOverscroll()
+            setZoom(newZoom)
+            setPanOffset(newPan)
+        },
     })
 
     // Undo via Parent
@@ -1387,13 +1410,14 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
             <div className="canvas-wrapper" ref={wrapperRef}>
                 <div
                     className="canvas-layer"
+                    ref={pageLayerRef}
                     style={{
-                        transform: `translate(${panOffset.x + overscroll.x}px, ${panOffset.y + overscroll.y}px) scale(${zoom})`,
+                        transform: `translate(${panOffset.x + overscroll.x}px, ${panOffset.y + overscroll.y + wheelNavigation.offset}px) scale(${zoom})`,
                         transformOrigin: '0 0',
                         // ピンチ/パン操作中、または初期表示時（トランジション有効化前）は無効化
-                        transition: (isPanning || gestureRef.current || !isTransitionEnabled) ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
-                        opacity: isLayoutReady ? 1 : 0,
-                        visibility: isLayoutReady ? 'visible' : 'hidden'
+                        transition: (isPanning || gestureRef.current || wheelNavigation.tracking || wheelNavigation.covered || !isTransitionEnabled) ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                        opacity: isLayoutReady && !wheelNavigation.covered ? 1 : 0,
+                        visibility: isLayoutReady && !wheelNavigation.covered ? 'visible' : 'hidden'
                     }}
                 >
                     {!hidePdfBackground && previewLayouts.map(preview => (
@@ -1489,6 +1513,11 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         onPathAdd={() => { }} // Display only - PDFPane handles path saving
                     />}
                 </div>
+                <div
+                    ref={wheelNavigation.overlayRef}
+                    aria-hidden="true"
+                    style={{ position: 'absolute', inset: 0, zIndex: 30, pointerEvents: 'none' }}
+                />
             </div>
 
             {/* Overscroll Indicators */}

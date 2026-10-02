@@ -22,7 +22,7 @@ interface PDFPagePreviewProps {
 // exist at once on memory-constrained browsers.
 let previewRenderQueue: Promise<void> = Promise.resolve()
 
-const drawPaths = (
+export const drawPreviewPaths = (
     ctx: CanvasRenderingContext2D,
     canvas: HTMLCanvasElement,
     paths: DrawingPath[],
@@ -98,6 +98,7 @@ export const PDFPagePreview = ({ pdfDoc, pageNum, renderScale, paths, style, dra
 
     useEffect(() => {
         let cancelled = false
+        if (canvasRef.current) canvasRef.current.dataset.rendered = 'false'
 
         const render = async () => {
             if (cancelled || !pdfDoc || !canvasRef.current) return
@@ -132,7 +133,8 @@ export const PDFPagePreview = ({ pdfDoc, pageNum, renderScale, paths, style, dra
             const context = canvas.getContext('2d')
             if (!context) return
             context.drawImage(buffer, 0, 0)
-            drawPaths(context, canvas, paths, renderScale, drawPreviewStroke)
+            drawPreviewPaths(context, canvas, paths, renderScale, drawPreviewStroke)
+            canvas.dataset.rendered = 'true'
             buffer.width = 1
             buffer.height = 1
         }
@@ -160,6 +162,7 @@ export const PDFPagePreview = ({ pdfDoc, pageNum, renderScale, paths, style, dra
         <canvas
             ref={canvasRef}
             className="pdf-page-preview"
+            data-page-number={pageNum}
             aria-hidden="true"
             style={{
                 position: 'absolute',
