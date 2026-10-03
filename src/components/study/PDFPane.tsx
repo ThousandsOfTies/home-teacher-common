@@ -8,6 +8,7 @@ import { isIOSLikeDevice } from '../../utils/platform'
 import { useWheelPageNavigation } from '../../hooks/pdf/useWheelPageNavigation'
 import './StudyPanel.css'
 import { ICON_SVG } from '../../constants/icons'
+import { StudyRegionMarker } from './StudyRegionMarker'
 
 const EMPTY_PREVIEW_PATHS: DrawingPath[] = []
 
@@ -18,8 +19,9 @@ interface RegionMarker {
 }
 
 type RegionMarkerProps =
-    | { regionMarkers?: never; onRegionMarkerClick?: never }
-    | { regionMarkers: RegionMarker[]; onRegionMarkerClick: (id: string) => void }
+    | { regionMarkers?: never; onRegionMarkerClick?: never; onRegionMarkerDelete?: never; regionMarkerDeleteDisabled?: never }
+    | { regionMarkers: RegionMarker[]; onRegionMarkerClick: (id: string) => void;
+        onRegionMarkerDelete?: (id: string) => void; regionMarkerDeleteDisabled?: boolean }
 
 interface PDFPaneBaseProps {
     pdfRecord: PDFFileRecord
@@ -107,6 +109,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         wheelEventTargetRef,
         regionMarkers = [],
         onRegionMarkerClick,
+        onRegionMarkerDelete,
+        regionMarkerDeleteDisabled,
         className,
         style
     } = props
@@ -1447,8 +1451,16 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         />
                     </div>
                     {canvasSize && onRegionMarkerClick && regionMarkers.filter(marker => marker.region.pageNumber === pageNum).map((marker, index) => (
-                        <div
+                        <StudyRegionMarker
                             key={`${marker.id}-${index}`}
+                            id={marker.id}
+                            completed={marker.completed}
+                            onOpen={onRegionMarkerClick}
+                            onDelete={onRegionMarkerDelete}
+                            deleteDisabled={regionMarkerDeleteDisabled}
+                            controlScale={1 / zoom}
+                            viewportRef={containerRef}
+                            openLabel={marker.completed === undefined ? 'この範囲の質問を開く' : marker.completed ? '採点済みの結果を開く' : '未採点の範囲を開く'}
                             style={{
                                 position: 'absolute',
                                 left: `${marker.region.x * canvasSize.width}px`,
@@ -1460,26 +1472,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                                 pointerEvents: 'none',
                                 zIndex: 20,
                             }}
-                        >
-                            <button
-                                type="button"
-                                data-study-trace-id={marker.id}
-                                title={marker.completed === undefined ? 'この範囲の質問を開く' : marker.completed ? '採点済みの結果を開く' : '未採点の範囲を開く'}
-                                aria-label={marker.completed === undefined ? 'この範囲の質問を開く' : marker.completed ? '採点済みの結果を開く' : '未採点の範囲を開く'}
-                                style={{
-                                    position: 'absolute', right: '-15px', top: '50%', transform: 'translateY(-50%)',
-                                    width: '30px', height: '30px', borderRadius: '50%',
-                                    border: '2px solid white', background: marker.completed ? '#2e7d32' : '#1976d2', color: 'white',
-                                    boxShadow: '0 2px 6px #0005', cursor: 'pointer', pointerEvents: 'auto',
-                                    touchAction: 'manipulation', fontSize: '14px',
-                                }}
-                                onPointerDown={event => event.stopPropagation()}
-                                onMouseDown={event => event.stopPropagation()}
-                                onTouchStart={event => event.stopPropagation()}
-                                onTouchEnd={event => event.stopPropagation()}
-                                onClick={event => { event.stopPropagation(); onRegionMarkerClick(marker.id) }}
-                            >▶</button>
-                        </div>
+                        />
                     ))}
                     {(hidePdfBackground || tool !== 'none' || drawingPaths.length > 0) && <DrawingCanvas
                         key={`drawing-${pageNum}`}

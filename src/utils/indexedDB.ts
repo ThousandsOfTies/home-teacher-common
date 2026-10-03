@@ -124,12 +124,30 @@ export interface PDFStudyTraceRecord {
   createdAt: number;
   regions: PDFStudyRegion[];
   steps: PDFStudyStep[];
+  parentTraceId?: string;
+  parentStepId?: string;
 }
 
 interface PDFStudyAssetRecord {
   id: string;
   traceId: string;
   blob: Blob;
+}
+
+/** A short-lived undo snapshot of removed traces and their existing assets, never the PDF. */
+export interface PDFStudyTraceDeletion {
+  pdfId: string;
+  traces: PDFStudyTraceRecord[];
+  assets: PDFStudyAssetRecord[];
+}
+
+/** A marker or a single follow-up branch, retained temporarily for undo. */
+export interface PDFStudyMarkerDeletion {
+  pdfId: string;
+  marker: PDFStudyMarkerRecord;
+  nodeId?: string;
+  removedNodeIds: string[];
+  assets: PDFStudyAssetRecord[];
 }
 
 interface DrawingRecord {
@@ -657,6 +675,99 @@ export async function deletePDFStudyMarker(id: string): Promise<void> {
 
 const studyAssetId = (traceId: string, stepId: string, kind: 'question' | 'drawing') => `${traceId}:${stepId}:${kind}`;
 
+function getPDFStudyMarkerBranchIds(marker: PDFStudyMarkerRecord, nodeId?: string): Set<string> {
+  if (!nodeId || nodeId === marker.id) return new Set([marker.id, ...(marker.followUps ?? []).map(node => node.id)]);
+  const ids = new Set([nodeId]);
+  const pending = [nodeId];
+  for (let index = 0; index < pending.length; index++) {
+    for (const child of marker.followUps ?? []) {
+      if (child.parentId !== pending[index] || ids.has(child.id)) continue;
+      ids.add(child.id);
+      pending.push(child.id);
+    }
+  }
+  return ids;
+}
+
+/** Remove a PDF marker or one follow-up branch without touching the PDF or grading list. */
+export async function deletePDFStudyMarkerBranch(pdfId: string, markerId: string, nodeId?: string): Promise<PDFStudyMarkerDeletion> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([PDF_STUDY_MARKER_STORE_NAME, PDF_STUDY_ASSET_STORE_NAME], 'readwrite');
+    const markerStore = transaction.objectStore(PDF_STUDY_MARKER_STORE_NAME);
+    const assetStore = transaction.objectStore(PDF_STUDY_ASSET_STORE_NAME);
+    const request = markerStore.get(markerId);
+    let snapshot: PDFStudyMarkerDeletion;
+    request.onsuccess = () => {
+      const marker = request.result as PDFStudyMarkerRecord | undefined;
+      const branchId = nodeId && nodeId !== markerId ? nodeId : undefined;
+      if (!marker || marker.pdfId !== pdfId || (branchId && !marker.followUps?.some(node => node.id === branchId))) {
+        transaction.abort();
+        return;
+      }
+      const ids = getPDFStudyMarkerBranchIds(marker, branchId);
+      snapshot = { pdfId, marker, nodeId: branchId, removedNodeIds: Array.from(ids), assets: [] };
+      if (branchId) markerStore.put({ ...marker, followUps: marker.followUps!.filter(node => !ids.has(node.id)) });
+      else markerStore.delete(markerId);
+      const assetIds = new Set(Array.from(ids).flatMap(id => [studyAssetId(markerId, id, 'question'), studyAssetId(markerId, id, 'drawing')]));
+      const assetsRequest = assetStore.index('traceId').getAll(IDBKeyRange.only(markerId));
+      assetsRequest.onsuccess = () => {
+        snapshot.assets = (assetsRequest.result as PDFStudyAssetRecord[]).filter(asset => !branchId || assetIds.has(asset.id));
+        for (const asset of snapshot.assets) assetStore.delete(asset.id);
+      };
+    };
+    transaction.oncomplete = () => resolve(snapshot);
+    transaction.onerror = () => reject(transaction.error ?? new Error('学習範囲を削除できませんでした'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('学習範囲を削除できませんでした'));
+  });
+}
+
+/** Merge a removed branch into the current marker, preserving subsequent sibling edits. */
+export async function restorePDFStudyMarkerDeletion(snapshot: PDFStudyMarkerDeletion): Promise<void> {
+  const { marker, nodeId } = snapshot;
+  const ids = getPDFStudyMarkerBranchIds(marker, nodeId);
+  const assetIds = new Set(Array.from(ids).flatMap(id => [studyAssetId(marker.id, id, 'question'), studyAssetId(marker.id, id, 'drawing')]));
+  if (marker.pdfId !== snapshot.pdfId || (nodeId && !marker.followUps?.some(node => node.id === nodeId)) ||
+      snapshot.assets.some(asset => asset.traceId !== marker.id || (nodeId && !assetIds.has(asset.id)))) {
+    throw new Error('削除履歴が不正です');
+  }
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_NAME, PDF_STUDY_MARKER_STORE_NAME, PDF_STUDY_ASSET_STORE_NAME], 'readwrite');
+    const markerStore = transaction.objectStore(PDF_STUDY_MARKER_STORE_NAME);
+    const assetStore = transaction.objectStore(PDF_STUDY_ASSET_STORE_NAME);
+    const pdfRequest = transaction.objectStore(STORE_NAME).getKey(snapshot.pdfId);
+    const restoreAssets = () => { for (const asset of snapshot.assets) assetStore.add(asset); };
+    pdfRequest.onsuccess = () => {
+      if (pdfRequest.result === undefined) { transaction.abort(); return; }
+      if (!nodeId) {
+        markerStore.add(marker);
+        restoreAssets();
+        return;
+      }
+      const request = markerStore.get(marker.id);
+      request.onsuccess = () => {
+        const current = request.result as PDFStudyMarkerRecord | undefined;
+        const removed = marker.followUps!.filter(node => ids.has(node.id));
+        const parentId = removed.find(node => node.id === nodeId)!.parentId;
+        if (!current || current.pdfId !== snapshot.pdfId || current.followUps?.some(node => ids.has(node.id)) ||
+            (parentId !== marker.id && !current.followUps?.some(node => node.id === parentId))) {
+          transaction.abort();
+          return;
+        }
+        const order = new Map(marker.followUps!.map((node, index) => [node.id, index]));
+        const followUps = [...(current.followUps ?? []), ...removed]
+          .sort((first, second) => (order.get(first.id) ?? order.size) - (order.get(second.id) ?? order.size));
+        markerStore.put({ ...current, followUps });
+        restoreAssets();
+      };
+    };
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('学習範囲を元に戻せませんでした'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('元のPDFまたは質問が見つかりません'));
+  });
+}
+
 export async function appendPDFStudyFollowUp(markerId: string, followUp: PDFStudyFollowUp, questionImage: Blob): Promise<PDFStudyMarkerRecord> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -838,6 +949,84 @@ export async function deletePDFStudyTrace(id: string): Promise<void> {
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error('質問の記録を削除できませんでした'));
     transaction.onabort = () => reject(transaction.error ?? new Error('質問の記録を削除できませんでした'));
+  });
+}
+
+/** Delete only the selected trace and its descendants, in one transaction. */
+export async function deletePDFStudyTraceTree(pdfId: string, traceId: string): Promise<PDFStudyTraceDeletion> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([PDF_STUDY_TRACE_STORE_NAME, PDF_STUDY_ASSET_STORE_NAME], 'readwrite');
+    const traceStore = transaction.objectStore(PDF_STUDY_TRACE_STORE_NAME);
+    const assetStore = transaction.objectStore(PDF_STUDY_ASSET_STORE_NAME);
+    const snapshot: PDFStudyTraceDeletion = { pdfId, traces: [], assets: [] };
+    const request = traceStore.index('pdfId').getAll(IDBKeyRange.only(pdfId));
+    request.onsuccess = () => {
+      const traces = request.result as PDFStudyTraceRecord[];
+      if (!traces.some(trace => trace.id === traceId)) {
+        transaction.abort();
+        return;
+      }
+      const ids = new Set([traceId]);
+      const pending = [traceId];
+      for (let index = 0; index < pending.length; index++) {
+        for (const child of traces.filter(trace => trace.parentTraceId === pending[index])) {
+          if (ids.has(child.id)) continue;
+          ids.add(child.id);
+          pending.push(child.id);
+        }
+      }
+      snapshot.traces = traces.filter(trace => ids.has(trace.id));
+      for (const id of ids) {
+        const assetsRequest = assetStore.index('traceId').getAll(IDBKeyRange.only(id));
+        assetsRequest.onsuccess = () => {
+          const assets = assetsRequest.result as PDFStudyAssetRecord[];
+          snapshot.assets.push(...assets);
+          for (const asset of assets) assetStore.delete(asset.id);
+        };
+        traceStore.delete(id);
+      }
+    };
+    transaction.oncomplete = () => resolve(snapshot);
+    transaction.onerror = () => reject(transaction.error ?? new Error('質問の記録を削除できませんでした'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('質問の記録を削除できませんでした'));
+  });
+}
+
+/** Restore the complete snapshot atomically; do not overwrite a newer record with the same ID. */
+export async function restorePDFStudyTraceDeletion(snapshot: PDFStudyTraceDeletion): Promise<void> {
+  const ids = new Set(snapshot.traces.map(trace => trace.id));
+  if (!ids.size || ids.size !== snapshot.traces.length ||
+      snapshot.traces.some(trace => trace.pdfId !== snapshot.pdfId) ||
+      snapshot.assets.some(asset => !ids.has(asset.traceId))) {
+    throw new Error('削除履歴が不正です');
+  }
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_NAME, PDF_STUDY_TRACE_STORE_NAME, PDF_STUDY_ASSET_STORE_NAME], 'readwrite');
+    const request = transaction.objectStore(STORE_NAME).getKey(snapshot.pdfId);
+    request.onsuccess = () => {
+      if (request.result === undefined) {
+        transaction.abort();
+        return;
+      }
+      const traceStore = transaction.objectStore(PDF_STUDY_TRACE_STORE_NAME);
+      for (const trace of snapshot.traces) {
+        if (trace.parentTraceId && !ids.has(trace.parentTraceId)) {
+          const parentRequest = traceStore.get(trace.parentTraceId);
+          parentRequest.onsuccess = () => {
+            const parent = parentRequest.result as PDFStudyTraceRecord | undefined;
+            if (!parent || parent.pdfId !== snapshot.pdfId) transaction.abort();
+          };
+        }
+        traceStore.add(trace);
+      }
+      const assetStore = transaction.objectStore(PDF_STUDY_ASSET_STORE_NAME);
+      for (const asset of snapshot.assets) assetStore.add(asset);
+    };
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('質問の記録を元に戻せませんでした'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('元のPDFまたは質問が見つかりません'));
   });
 }
 
