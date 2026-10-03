@@ -50,7 +50,7 @@ export const StudyRegionMarker = ({ id, completed, style, className = '', onOpen
   // Keep separate 44px touch targets even for a single-line selection.
   const scale = onDelete ? controlScale : 1
   const target = (onDelete ? 44 : 30) * scale
-  const deleteOffset = Math.max(0, 52 * scale - controls.height / 2)
+  const separateHorizontally = controls.height / 2 + 4 * scale < 52 * scale
   const color = completed ? '#2e7d32' : '#1976d2'
   const controlStyle: CSSProperties = { width: target, height: target, right: -target / 2,
     visibility: controls.visible ? undefined : 'hidden' }
@@ -72,7 +72,8 @@ export const StudyRegionMarker = ({ id, completed, style, className = '', onOpen
         <button type="button" className="study-region-delete" data-study-trace-delete-id={id}
           disabled={deleteDisabled} title="この選択跡と続く履歴を削除" aria-label="この選択跡と続く履歴を削除"
           style={controls.deleteLeft === undefined
-            ? { ...controlStyle, top: -deleteOffset - target / 2 }
+            ? { ...controlStyle, top: -4 * scale - target / 2,
+              right: (separateHorizontally ? 52 * scale : 0) - target / 2 }
             : { ...controlStyle, right: 'auto', left: controls.deleteLeft, top: controls.deleteTop }}
           onPointerDown={stopPointer} onMouseDown={stopPointer} onTouchStart={stopPointer} onTouchEnd={stopPointer}
           onClick={event => { event.stopPropagation(); onDelete(id) }}>

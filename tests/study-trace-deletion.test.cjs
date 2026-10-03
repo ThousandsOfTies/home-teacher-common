@@ -263,5 +263,8 @@ test('short, tall, and edge selections keep 44px control targets apart and insid
             assert.ok(target.y - 22 >= viewport.top && target.y + 22 <= viewport.top + viewport.height)
         }
     }
+    const short = exports.getStudyRegionControlPositions({ left: 60, top: 180, width: 200, height: 10 }, viewport)
+    assert.equal(short.remove.y, 176, 'the delete icon stays just above the selection, rather than floating above it')
+    assert.equal(short.remove.x, short.open.x - 52, 'short selections separate the targets along the upper edge')
     assert.equal(exports.getStudyRegionControlPositions({ left: 60, top: 900, width: 200, height: 20 }, viewport).visible, false)
 })

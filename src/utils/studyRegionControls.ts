@@ -1,6 +1,6 @@
 type Bounds = { left: number; top: number; width: number; height: number }
 
-/** Screen coordinates: 44px controls with an 8px gap, including small regions at the viewport edge. */
+/** Keep the delete icon beside the upper edge, with separate 44px targets and an 8px gap. */
 export function getStudyRegionControlPositions(region: Bounds, viewport: Bounds) {
   const inset = 24
   const separation = 52
@@ -12,7 +12,7 @@ export function getStudyRegionControlPositions(region: Bounds, viewport: Bounds)
   const open = { x: clamp(region.left + region.width, minX, maxX),
     y: clamp(region.top + region.height / 2, minY, maxY) }
   const remove = { x: open.x,
-    y: clamp(region.top - Math.max(0, separation - region.height / 2), minY, maxY) }
+    y: clamp(region.top - 4, minY, maxY) }
   if (Math.abs(remove.y - open.y) < separation) {
     if (open.x - separation >= minX) remove.x = open.x - separation
     else if (open.y - separation >= minY) remove.y = open.y - separation
