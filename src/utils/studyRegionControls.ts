@@ -2,11 +2,12 @@ type Bounds = { left: number; top: number; width: number; height: number }
 
 export const STUDY_REGION_DELETE_ICON_SIZE = 12.6
 export const STUDY_REGION_DELETE_ICON_GAP = 2
+export const STUDY_REGION_UNDO_ICON_SIZE = 16
 
 /** Put play inside the region and leave a small gap beside its upper-right corner for delete. */
-export function getStudyRegionControlPositions(region: Bounds, viewport: Bounds) {
+export function getStudyRegionControlPositions(region: Bounds, viewport: Bounds,
+  deleteIconSize = STUDY_REGION_DELETE_ICON_SIZE) {
   const halfTarget = 22
-  const deleteIconSize = STUDY_REGION_DELETE_ICON_SIZE
   const gap = 4
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
   // Clamp the visible icons, not their transparent touch targets, so the icons stay attached to the frame.

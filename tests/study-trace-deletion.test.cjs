@@ -247,9 +247,9 @@ test('play stays inside the selection and delete has a small gap at the upper-ri
     vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, '../src/utils/studyRegionControls.ts'), 'utf8'), {
         compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
     }).outputText, { exports })
-    const deleteIconSize = exports.STUDY_REGION_DELETE_ICON_SIZE
     const epsilon = 1e-6 // Fractional icon sizes can differ by floating-point rounding at an edge.
     const viewport = { left: 0, top: 54, width: 320, height: 500 }
+    for (const deleteIconSize of [exports.STUDY_REGION_DELETE_ICON_SIZE, exports.STUDY_REGION_UNDO_ICON_SIZE]) {
     for (const region of [
         { left: 60, top: 180, width: 200, height: 150 },
         { left: 60, top: 180, width: 200, height: 10 },
@@ -257,7 +257,7 @@ test('play stays inside the selection and delete has a small gap at the upper-ri
         { left: 0, top: 54, width: 10, height: 10 },
         { left: 290, top: 530, width: 30, height: 10 },
     ]) {
-        const { open, remove, openIcon, visible } = exports.getStudyRegionControlPositions(region, viewport)
+        const { open, remove, openIcon, visible } = exports.getStudyRegionControlPositions(region, viewport, deleteIconSize)
         assert.equal(visible, true)
         assert.ok(remove.x - open.x >= 48, 'transparent 44px touch targets have a 4px gap')
         assert.ok(open.x + 22 - openIcon.width >= Math.max(region.left, viewport.left))
@@ -266,6 +266,7 @@ test('play stays inside the selection and delete has a small gap at the upper-ri
         assert.ok(open.y + openIcon.height / 2 <= Math.min(region.top + region.height, viewport.top + viewport.height))
         assert.ok(remove.x - 22 >= viewport.left - epsilon && remove.x - 22 + deleteIconSize <= viewport.left + viewport.width + epsilon)
         assert.ok(remove.y + 22 - deleteIconSize >= viewport.top - epsilon && remove.y + 22 <= viewport.top + viewport.height + epsilon)
+    }
     }
     const short = exports.getStudyRegionControlPositions({ left: 60, top: 180, width: 200, height: 10 }, viewport)
     assert.equal(short.remove.x - 22, 262, 'the delete icon has 2px of clearance to the right of the frame')

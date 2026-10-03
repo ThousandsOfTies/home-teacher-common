@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type SyntheticEvent, type RefObject } from 'react'
 import { getStudyRegionControlPositions, STUDY_REGION_DELETE_ICON_SIZE,
-  STUDY_REGION_DELETE_ICON_GAP } from '../../utils/studyRegionControls'
+  STUDY_REGION_DELETE_ICON_GAP, STUDY_REGION_UNDO_ICON_SIZE } from '../../utils/studyRegionControls'
+import { StudyTraceUndoButton } from './StudyTraceUndoButton'
 import './StudyRegionMarker.css'
 
 interface StudyRegionMarkerProps {
@@ -10,6 +11,7 @@ interface StudyRegionMarkerProps {
   className?: string
   onOpen: (id: string) => void
   onDelete?: (id: string) => void
+  onUndo?: () => void
   deleteDisabled?: boolean
   openLabel?: string
   /** Inverse of the containing page's zoom, keeping opt-in touch controls at screen size. */
@@ -17,15 +19,16 @@ interface StudyRegionMarkerProps {
   viewportRef?: RefObject<HTMLElement>
 }
 
-export const StudyRegionMarker = ({ id, completed, style, className = '', onOpen, onDelete,
+export const StudyRegionMarker = ({ id, completed, style, className = '', onOpen, onDelete, onUndo,
   deleteDisabled = false, openLabel = 'この範囲の質問を開く', controlScale = 1, viewportRef }: StudyRegionMarkerProps) => {
+  const hasControls = !!(onDelete || onUndo)
   const markerRef = useRef<HTMLDivElement>(null)
   const [controls, setControls] = useState<{ openIconWidth: number; openIconHeight: number;
     openLeft?: number; openTop?: number; deleteLeft?: number; deleteTop?: number; visible: boolean }>({
     openIconWidth: 18, openIconHeight: 22, visible: true,
   })
   useLayoutEffect(() => {
-    if (!onDelete || !markerRef.current) return
+    if (!hasControls || !markerRef.current) return
     const marker = markerRef.current
     const viewport = viewportRef?.current
     const measure = () => {
@@ -33,7 +36,8 @@ export const StudyRegionMarker = ({ id, completed, style, className = '', onOpen
       const bounds = viewport?.getBoundingClientRect() ?? {
         left: rect.left - 44, top: rect.top - 44, width: rect.width + 88, height: rect.height + 88,
       }
-      const positions = getStudyRegionControlPositions(rect, bounds)
+      const positions = getStudyRegionControlPositions(rect, bounds,
+        onUndo ? STUDY_REGION_UNDO_ICON_SIZE : STUDY_REGION_DELETE_ICON_SIZE)
       const next = { visible: positions.visible,
         openIconWidth: positions.openIcon.width * controlScale,
         openIconHeight: positions.openIcon.height * controlScale,
@@ -52,15 +56,26 @@ export const StudyRegionMarker = ({ id, completed, style, className = '', onOpen
       viewport.addEventListener('scroll', measure, true)
     }
     return () => { observer.disconnect(); viewport?.removeEventListener('scroll', measure, true) }
-  }, [!!onDelete, controlScale, viewportRef, style])
+  }, [hasControls, !!onUndo, controlScale, viewportRef, style])
 
   // Keep separate 44px touch targets even for a single-line selection.
-  const scale = onDelete ? controlScale : 1
-  const target = (onDelete ? 44 : 30) * scale
+  const scale = hasControls ? controlScale : 1
+  const target = (hasControls ? 44 : 30) * scale
   const color = completed ? '#2e7d32' : '#1976d2'
   const controlStyle: CSSProperties = { width: target, height: target, right: -target / 2,
     visibility: controls.visible ? undefined : 'hidden' }
   const stopPointer = (event: SyntheticEvent) => event.stopPropagation()
+  const deleteStyle: CSSProperties = controls.deleteLeft === undefined
+    ? { ...controlStyle, top: -target - 2 - STUDY_REGION_DELETE_ICON_GAP * scale,
+      right: -target - 2 - STUDY_REGION_DELETE_ICON_GAP * scale }
+    : { ...controlStyle, right: 'auto', left: controls.deleteLeft, top: controls.deleteTop }
+
+  if (onUndo) return (
+    <div ref={markerRef} className={`study-region-marker ${className}`} style={{ ...style, borderColor: 'transparent' }}>
+      <StudyTraceUndoButton available busy={deleteDisabled} onUndo={onUndo} inline traceId={id}
+        style={deleteStyle} controlScale={scale} />
+    </div>
+  )
 
   return (
     <div ref={markerRef} className={`study-region-marker ${className}`} style={{ ...style, borderColor: color }}>
@@ -85,10 +100,7 @@ export const StudyRegionMarker = ({ id, completed, style, className = '', onOpen
       {onDelete && (
         <button type="button" className="study-region-delete" data-study-trace-delete-id={id}
           disabled={deleteDisabled} title="この選択跡と続く履歴を削除" aria-label="この選択跡と続く履歴を削除"
-          style={controls.deleteLeft === undefined
-            ? { ...controlStyle, top: -target - 2 - STUDY_REGION_DELETE_ICON_GAP * scale,
-              right: -target - 2 - STUDY_REGION_DELETE_ICON_GAP * scale }
-            : { ...controlStyle, right: 'auto', left: controls.deleteLeft, top: controls.deleteTop }}
+          style={deleteStyle}
           onPointerDown={stopPointer} onMouseDown={stopPointer} onTouchStart={stopPointer} onTouchEnd={stopPointer}
           onClick={event => { event.stopPropagation(); onDelete(id) }}>
           <svg aria-hidden="true" width={STUDY_REGION_DELETE_ICON_SIZE * scale}

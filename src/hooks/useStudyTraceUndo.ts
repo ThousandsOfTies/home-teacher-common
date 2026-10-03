@@ -12,6 +12,7 @@ export const useStudyTraceUndo = <Target, Snapshot extends { pdfId: string }>(pd
   const busyRef = useRef(false)
   const scopeRef = useRef(0)
   const [undoAvailable, setUndoAvailable] = useState(false)
+  const [undoSnapshot, setUndoSnapshot] = useState<Snapshot | null>(null)
   const [busy, setBusy] = useState(false)
 
   const clearTimer = () => {
@@ -21,11 +22,13 @@ export const useStudyTraceUndo = <Target, Snapshot extends { pdfId: string }>(pd
   const restartExpiry = () => {
     clearTimer()
     setUndoAvailable(historyRef.current.length > 0)
+    setUndoSnapshot(historyRef.current[historyRef.current.length - 1] ?? null)
     if (!historyRef.current.length) return
     timerRef.current = setTimeout(() => {
       historyRef.current = []
       timerRef.current = null
       setUndoAvailable(false)
+      setUndoSnapshot(null)
     }, STUDY_TRACE_UNDO_MS)
   }
 
@@ -36,6 +39,7 @@ export const useStudyTraceUndo = <Target, Snapshot extends { pdfId: string }>(pd
     busyRef.current = false
     setBusy(false)
     setUndoAvailable(false)
+    setUndoSnapshot(null)
     return () => {
       scopeRef.current++
       clearTimer()
@@ -87,5 +91,5 @@ export const useStudyTraceUndo = <Target, Snapshot extends { pdfId: string }>(pd
     }
   }
 
-  return { deleteTrace, undoDelete, undoAvailable, busy }
+  return { deleteTrace, undoDelete, undoAvailable, undoSnapshot, busy }
 }

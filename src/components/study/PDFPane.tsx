@@ -16,12 +16,14 @@ interface RegionMarker {
     id: string
     region: { pageNumber: number; x: number; y: number; width: number; height: number }
     completed?: boolean
+    undo?: boolean
 }
 
 type RegionMarkerProps =
-    | { regionMarkers?: never; onRegionMarkerClick?: never; onRegionMarkerDelete?: never; regionMarkerDeleteDisabled?: never }
+    | { regionMarkers?: never; onRegionMarkerClick?: never; onRegionMarkerDelete?: never;
+        onRegionMarkerUndo?: never; regionMarkerDeleteDisabled?: never }
     | { regionMarkers: RegionMarker[]; onRegionMarkerClick: (id: string) => void;
-        onRegionMarkerDelete?: (id: string) => void; regionMarkerDeleteDisabled?: boolean }
+        onRegionMarkerDelete?: (id: string) => void; onRegionMarkerUndo?: () => void; regionMarkerDeleteDisabled?: boolean }
 
 interface PDFPaneBaseProps {
     pdfRecord: PDFFileRecord
@@ -110,6 +112,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         regionMarkers = [],
         onRegionMarkerClick,
         onRegionMarkerDelete,
+        onRegionMarkerUndo,
         regionMarkerDeleteDisabled,
         className,
         style
@@ -1456,7 +1459,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             id={marker.id}
                             completed={marker.completed}
                             onOpen={onRegionMarkerClick}
-                            onDelete={onRegionMarkerDelete}
+                            onDelete={marker.undo ? undefined : onRegionMarkerDelete}
+                            onUndo={marker.undo ? onRegionMarkerUndo : undefined}
                             deleteDisabled={regionMarkerDeleteDisabled}
                             controlScale={1 / zoom}
                             viewportRef={containerRef}
