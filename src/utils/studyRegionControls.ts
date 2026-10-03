@@ -1,7 +1,7 @@
 type Bounds = { left: number; top: number; width: number; height: number }
 
 export const STUDY_REGION_DELETE_ICON_SIZE = 12.6
-export const STUDY_REGION_DELETE_ICON_GAP = 3
+export const STUDY_REGION_DELETE_ICON_GAP = 2
 
 /** Put play inside the region and leave a small gap beside its upper-right corner for delete. */
 export function getStudyRegionControlPositions(region: Bounds, viewport: Bounds) {

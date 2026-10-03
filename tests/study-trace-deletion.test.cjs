@@ -268,8 +268,8 @@ test('play stays inside the selection and delete has a small gap at the upper-ri
         assert.ok(remove.y + 22 - deleteIconSize >= viewport.top - epsilon && remove.y + 22 <= viewport.top + viewport.height + epsilon)
     }
     const short = exports.getStudyRegionControlPositions({ left: 60, top: 180, width: 200, height: 10 }, viewport)
-    assert.equal(short.remove.x - 22, 263, 'the delete icon has 3px of clearance to the right of the frame')
-    assert.equal(short.remove.y + 22, 177, 'the delete icon has 3px of clearance above the frame')
+    assert.equal(short.remove.x - 22, 262, 'the delete icon has 2px of clearance to the right of the frame')
+    assert.equal(short.remove.y + 22, 178, 'the delete icon has 2px of clearance above the frame')
     assert.equal(short.open.x + 22, 256, 'play is inset 4px from the right edge')
     assert.equal(exports.getStudyRegionControlPositions({ left: 60, top: 900, width: 200, height: 20 }, viewport).visible, false)
 })
