@@ -92,9 +92,9 @@ export const StudyRegionMarker = ({ id, completed, style, className = '', onOpen
           onPointerDown={stopPointer} onMouseDown={stopPointer} onTouchStart={stopPointer} onTouchEnd={stopPointer}
           onClick={event => { event.stopPropagation(); onDelete(id) }}>
           <svg aria-hidden="true" width={STUDY_REGION_DELETE_ICON_SIZE * scale}
-            height={STUDY_REGION_DELETE_ICON_SIZE * scale} viewBox="0 0 18 18"
-            fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M1 1L17 17M17 1L1 17" />
+            height={STUDY_REGION_DELETE_ICON_SIZE * scale} viewBox="0 0 18 18">
+            <circle cx="9" cy="9" r="9" fill="currentColor" />
+            <path d="M5 5L13 13M13 5L5 13" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </button>
       )}
