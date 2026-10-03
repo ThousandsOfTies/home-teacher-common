@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import type { DrawingPath } from '@thousands-of-ties/drawing-common'
 import type { PreviewStrokeRenderer } from '../../components/study/components/PDFPagePreview'
 import { createPageTurnSnapshot, disposePageTurnSnapshot } from '../../utils/pdfPageTurnSnapshot'
@@ -41,11 +41,14 @@ export const useWheelPageNavigation = (options: WheelPageNavigationOptions) => {
     latest.current = options
     const gesture = useRef(new WheelPageGesture())
     const pending = useRef<Turn | null>(null)
+    const retiringSnapshots = useRef(new Set<HTMLElement>())
+    const mounted = useRef(false)
     const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
     const overlayRef = useRef<HTMLDivElement>(null)
     const [offset, setOffset] = useState(0)
     const [tracking, setTracking] = useState(false)
     const [covered, setCovered] = useState(false)
+    const [releaseCommit, setReleaseCommit] = useState(0)
 
     const clearTurn = useCallback((updateState = true) => {
         const turn = pending.current
@@ -53,7 +56,19 @@ export const useWheelPageNavigation = (options: WheelPageNavigationOptions) => {
         turn?.controller.abort()
         if (turn?.timer) clearTimeout(turn.timer)
         if (turn?.frame !== undefined) cancelAnimationFrame(turn.frame)
-        if (turn?.snapshot) disposePageTurnSnapshot(turn.snapshot)
+        if (turn?.snapshot) {
+            if (updateState) {
+                retiringSnapshots.current.add(turn.snapshot)
+                // Commit even if the turn was cancelled before covered=true was painted.
+                setReleaseCommit(value => value + 1)
+            } else {
+                disposePageTurnSnapshot(turn.snapshot)
+            }
+        }
+        if (!updateState) {
+            retiringSnapshots.current.forEach(disposePageTurnSnapshot)
+            retiringSnapshots.current.clear()
+        }
         if (idleTimer.current) clearTimeout(idleTimer.current)
         idleTimer.current = null
         if (updateState) {
@@ -62,6 +77,21 @@ export const useWheelPageNavigation = (options: WheelPageNavigationOptions) => {
             setOffset(0)
         }
     }, [])
+
+    useLayoutEffect(() => {
+        if (covered) return
+        // React has made the real page visible. Remove the cover before the same paint.
+        retiringSnapshots.current.forEach(disposePageTurnSnapshot)
+        retiringSnapshots.current.clear()
+    }, [covered, releaseCommit])
+
+    useLayoutEffect(() => {
+        mounted.current = true
+        return () => {
+            mounted.current = false
+            clearTurn(false)
+        }
+    }, [clearTurn])
 
     const startTurn = useCallback(async (direction: PageTurnDirection, startOffset: number) => {
         const current = latest.current
@@ -177,11 +207,12 @@ export const useWheelPageNavigation = (options: WheelPageNavigationOptions) => {
                 'input, textarea, select, button, [contenteditable="true"], [role="dialog"], [data-wheel-page-navigation-ignore]',
             )) return
             const delta = normalizeWheelDelta(event, bounds.height)
-            if (!delta || !current.ready || (!pending.current && current.busy)) return
+            const turning = pending.current !== null || retiringSnapshots.current.size > 0
+            if (!delta || !current.ready || (!turning && current.busy)) return
             event.preventDefault()
             event.stopPropagation()
             const now = performance.now()
-            if (pending.current) {
+            if (turning) {
                 gesture.current.hold(now)
                 return
             }
@@ -201,7 +232,7 @@ export const useWheelPageNavigation = (options: WheelPageNavigationOptions) => {
         surface.addEventListener('wheel', onWheel, { passive: false })
         return () => {
             surface.removeEventListener('wheel', onWheel)
-            clearTurn(false)
+            clearTurn(mounted.current)
             gesture.current.reset()
         }
     }, [options.enabled, options.pdfDoc, options.containerRef, options.eventTargetRef, clearTurn, startTurn])

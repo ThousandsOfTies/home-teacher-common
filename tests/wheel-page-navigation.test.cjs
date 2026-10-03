@@ -69,37 +69,51 @@ class ElementAdapter {
     closest() { return this.editable ? this : null }
 }
 function harness({ enabled = true, left = 0, right = 800, snapshot, surface } = {}) {
-    let now = 0, nextId = 1, cursor = 0, effects = []
+    let now = 0, nextId = 1, cursor = 0, effects = [], layoutEffects = [], mounted = true
     const cells = [], timers = new Map(), frames = new Map(), pages = [], views = []
+    const disposalLog = [], snapshotRequests = []
+    const mainLayer = { style: { visibility: 'visible' } }
     surface ??= {
         listeners: new Set(),
         addEventListener(_, listener, options) { assert.equal(options.passive, false); this.listeners.add(listener) },
         removeEventListener(_, listener) { this.listeners.delete(listener) },
     }
     const same = (a, b) => a && b && a.length === b.length && a.every((value, index) => Object.is(value, b[index]))
+    const effect = (queue, callback, deps) => {
+        const i = cursor++
+        if (!same(cells[i]?.deps, deps)) queue.push(() => {
+            cells[i]?.cleanup?.()
+            cells[i] = { deps, cleanup: callback() }
+        })
+    }
     const react = {
         useRef(value) { const i = cursor++; cells[i] ??= { current: value }; return cells[i] },
-        useState(value) { const i = cursor++; if (!(i in cells)) cells[i] = value; return [cells[i], value => { cells[i] = value }] },
+        useState(value) {
+            const i = cursor++
+            if (!(i in cells)) cells[i] = value
+            return [cells[i], value => { cells[i] = typeof value === 'function' ? value(cells[i]) : value }]
+        },
         useCallback(callback, deps) {
             const i = cursor++
             if (!same(cells[i]?.deps, deps)) cells[i] = { value: callback, deps }
             return cells[i].value
         },
-        useEffect(callback, deps) {
-            const i = cursor++
-            if (!same(cells[i]?.deps, deps)) effects.push(() => {
-                cells[i]?.cleanup?.()
-                cells[i] = { deps, cleanup: callback() }
-            })
-        },
+        useEffect: (callback, deps) => effect(effects, callback, deps),
+        useLayoutEffect: (callback, deps) => effect(layoutEffects, callback, deps),
     }
     const clone = { style: {}, getBoundingClientRect: () => ({}), disposed: 0 }
     const snapshots = {
-        createPageTurnSnapshot: snapshot ?? (async options => ({
-            layer: clone, width: 600, height: 800, left: 0,
-            top: options.direction === 1 ? 820 : -820,
-        })),
-        disposePageTurnSnapshot: layer => { layer.disposed++ },
+        createPageTurnSnapshot: options => {
+            snapshotRequests.push(options)
+            return snapshot ? snapshot(options) : Promise.resolve({
+                layer: clone, width: 600, height: 800, left: 0,
+                top: options.direction === 1 ? 820 : -820,
+            })
+        },
+        disposePageTurnSnapshot: layer => {
+            disposalLog.push({ layer, mounted, visibility: mainLayer.style.visibility })
+            layer.disposed++
+        },
     }
     const hook = load('hooks/pdf/useWheelPageNavigation.ts', {
         react, '../../utils/wheelPageGesture': wheel, '../../utils/pdfPageTurnSnapshot': snapshots,
@@ -116,7 +130,7 @@ function harness({ enabled = true, left = 0, right = 800, snapshot, surface } = 
         getBoundingClientRect: () => ({ left, right, top: 0, bottom: 1000, width: right - left, height: 1000 }),
     }
     const options = {
-        enabled, containerRef: { current: pane }, layerRef: { current: {} }, eventTargetRef: { current: surface },
+        enabled, containerRef: { current: pane }, layerRef: { current: mainLayer }, eventTargetRef: { current: surface },
         pdfDoc: {}, pageNum: 2, numPages: 10, canvasSize: { width: 600, height: 800 },
         renderScale: 1, zoom: 1, panOffset: { x: 100, y: 100 }, splitMode: false, ready: true, busy: false,
         onPageChange: page => { pages.push(page); options.pageNum = page },
@@ -124,9 +138,12 @@ function harness({ enabled = true, left = 0, right = 800, snapshot, surface } = 
     }
     let result
     const render = () => {
-        cursor = 0; effects = []
+        cursor = 0; effects = []; layoutEffects = []
         result = hook.useWheelPageNavigation(options)
         result.overlayRef.current = { append() {} }
+        // PDFPane applies visibility during the DOM commit, before layout effects.
+        mainLayer.style.visibility = result.covered ? 'hidden' : 'visible'
+        layoutEffects.forEach(effect => effect())
         effects.forEach(effect => effect())
         return result
     }
@@ -152,8 +169,9 @@ function harness({ enabled = true, left = 0, right = 800, snapshot, surface } = 
         const callbacks = [...frames.values()]; frames.clear()
         now += 16; callbacks.forEach(callback => callback())
     }
-    const unmount = () => cells.forEach(cell => cell?.cleanup?.())
-    return { render, emit, advance, frame, unmount, options, pages, views, clone, surface }
+    const unmount = () => { mounted = false; cells.forEach(cell => cell?.cleanup?.()) }
+    return { render, emit, advance, frame, unmount, options, pages, views, clone, surface,
+        mainLayer, disposalLog, snapshotRequests }
 }
 
 test('wheel navigation is opt-in, leaves Ctrl/Command zoom and editable controls alone', () => {
@@ -201,8 +219,16 @@ test('slide completes before page selection, and its snapshot lasts until the ne
     assert.equal(app.render().covered, true)
     app.render().onPageRendered(3)
     app.frame(); app.frame()
+    // A busy React render can postpone the commit beyond the readiness frames.
+    app.advance(500); app.frame(); app.frame()
+    assert.equal(app.mainLayer.style.visibility, 'hidden')
+    assert.equal(app.clone.disposed, 0)
+    app.emit(); app.advance(50); app.emit()
+    await new Promise(setImmediate)
+    assert.equal(app.snapshotRequests.length, 1)
     assert.equal(app.render().covered, false)
     assert.equal(app.clone.disposed, 1)
+    assert.equal(app.disposalLog[0].visibility, 'visible')
     for (let i = 0; i < 20; i++) { app.advance(50); app.emit() }
     await new Promise(setImmediate)
     app.frame(); app.advance(310)
@@ -237,8 +263,69 @@ test('a different paper size slides to its fitted destination and a missing bitm
     assert.equal(app.views[0].pan.y, 305)
     assert.equal(app.render().covered, true)
     app.advance(8000)
+    assert.equal(app.mainLayer.style.visibility, 'hidden')
+    assert.equal(layer.disposed, 0)
     assert.equal(app.render().covered, false)
     assert.equal(layer.disposed, 1)
+    assert.equal(app.disposalLog[0].visibility, 'visible')
+    app.unmount()
+})
+
+test('cancelling a visible slide retains its cover until the main page is committed', async () => {
+    for (const cancel of ['zoom', 'disable', 'document', 'page']) {
+        const app = harness()
+        app.emit(); app.advance(50); app.emit()
+        await new Promise(setImmediate)
+        assert.equal(app.render().covered, true)
+        app.frame()
+        if (cancel === 'zoom') app.emit({ ctrlKey: true })
+        else {
+            if (cancel === 'disable') app.options.enabled = false
+            if (cancel === 'document') app.options.pdfDoc = {}
+            if (cancel === 'page') app.options.pageNum = 7
+            app.render()
+        }
+        assert.equal(app.clone.disposed, 0)
+        assert.equal(app.mainLayer.style.visibility, 'hidden')
+        app.advance(9000); app.frame(); app.frame()
+        assert.deepEqual(app.pages, [])
+        assert.equal(app.clone.disposed, 0)
+        assert.equal(app.render().covered, false)
+        assert.equal(app.clone.disposed, 1)
+        assert.equal(app.disposalLog[0].visibility, 'visible')
+        app.unmount()
+        assert.equal(app.clone.disposed, 1)
+    }
+})
+
+test('unmount releases active and retiring snapshots immediately, without a late page change', async () => {
+    for (const retiring of [false, true]) {
+        const app = harness()
+        app.emit(); app.advance(50); app.emit()
+        await new Promise(setImmediate)
+        assert.equal(app.render().covered, true)
+        app.frame()
+        if (retiring) app.emit({ ctrlKey: true })
+        app.unmount()
+        assert.equal(app.clone.disposed, 1)
+        assert.equal(app.disposalLog[0].mounted, false)
+        app.advance(9000); app.frame(); app.frame()
+        assert.deepEqual(app.pages, [])
+        assert.equal(app.clone.disposed, 1)
+        assert.equal(app.surface.listeners.size, 0)
+    }
+})
+
+test('cancellation before the cover is painted still releases the appended snapshot', async () => {
+    const app = harness()
+    app.emit(); app.advance(50); app.emit()
+    await new Promise(setImmediate)
+    app.emit({ ctrlKey: true })
+    assert.equal(app.mainLayer.style.visibility, 'visible')
+    assert.equal(app.clone.disposed, 0)
+    assert.equal(app.render().covered, false)
+    assert.equal(app.clone.disposed, 1)
+    assert.equal(app.disposalLog[0].visibility, 'visible')
     app.unmount()
 })
 
