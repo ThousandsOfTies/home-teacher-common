@@ -1,8 +1,9 @@
 type Bounds = { left: number; top: number; width: number; height: number }
 
 export const STUDY_REGION_DELETE_ICON_SIZE = 12.6
+export const STUDY_REGION_DELETE_ICON_GAP = 3
 
-/** Put play inside the region and the delete icon's lower-left corner at its upper-right corner. */
+/** Put play inside the region and leave a small gap beside its upper-right corner for delete. */
 export function getStudyRegionControlPositions(region: Bounds, viewport: Bounds) {
   const halfTarget = 22
   const deleteIconSize = STUDY_REGION_DELETE_ICON_SIZE
@@ -23,7 +24,12 @@ export function getStudyRegionControlPositions(region: Bounds, viewport: Bounds)
     y: clamp(region.top + region.height / 2, visibleTop + openIcon.height / 2,
       Math.max(visibleTop + openIcon.height / 2, visibleBottom - openIcon.height / 2)) }
   // Separate the 44px touch targets horizontally, even when the selection is a single line.
-  const remove = { x: cornerX + halfTarget, y: cornerY - halfTarget }
+  const remove = {
+    x: clamp(cornerX + STUDY_REGION_DELETE_ICON_GAP, viewport.left,
+      Math.max(viewport.left, viewport.left + viewport.width - deleteIconSize)) + halfTarget,
+    y: clamp(cornerY - STUDY_REGION_DELETE_ICON_GAP, viewport.top + deleteIconSize,
+      Math.max(viewport.top + deleteIconSize, viewport.top + viewport.height)) - halfTarget,
+  }
   const visible = region.left < viewport.left + viewport.width && region.left + region.width > viewport.left &&
     region.top < viewport.top + viewport.height && region.top + region.height > viewport.top
   return { open, remove, openIcon, visible }

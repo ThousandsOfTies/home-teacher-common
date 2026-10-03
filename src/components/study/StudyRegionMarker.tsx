@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type SyntheticEvent, type RefObject } from 'react'
-import { getStudyRegionControlPositions, STUDY_REGION_DELETE_ICON_SIZE } from '../../utils/studyRegionControls'
+import { getStudyRegionControlPositions, STUDY_REGION_DELETE_ICON_SIZE,
+  STUDY_REGION_DELETE_ICON_GAP } from '../../utils/studyRegionControls'
 import './StudyRegionMarker.css'
 
 interface StudyRegionMarkerProps {
@@ -85,7 +86,8 @@ export const StudyRegionMarker = ({ id, completed, style, className = '', onOpen
         <button type="button" className="study-region-delete" data-study-trace-delete-id={id}
           disabled={deleteDisabled} title="この選択跡と続く履歴を削除" aria-label="この選択跡と続く履歴を削除"
           style={controls.deleteLeft === undefined
-            ? { ...controlStyle, top: -target - 2, right: -target - 2 }
+            ? { ...controlStyle, top: -target - 2 - STUDY_REGION_DELETE_ICON_GAP * scale,
+              right: -target - 2 - STUDY_REGION_DELETE_ICON_GAP * scale }
             : { ...controlStyle, right: 'auto', left: controls.deleteLeft, top: controls.deleteTop }}
           onPointerDown={stopPointer} onMouseDown={stopPointer} onTouchStart={stopPointer} onTouchEnd={stopPointer}
           onClick={event => { event.stopPropagation(); onDelete(id) }}>

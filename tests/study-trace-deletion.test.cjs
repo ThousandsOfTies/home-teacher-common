@@ -242,7 +242,7 @@ test('marker undo refuses a missing PDF, a removed parent, or data belonging to 
     await assert.rejects(store.restorePDFStudyMarkerDeletion({ ...removed, pdfId: 'other-book' }), /不正/)
 })
 
-test('play stays inside the selection and delete stays at the upper-right corner with separate touch targets', () => {
+test('play stays inside the selection and delete has a small gap at the upper-right with separate touch targets', () => {
     const exports = {}
     vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, '../src/utils/studyRegionControls.ts'), 'utf8'), {
         compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
@@ -268,8 +268,8 @@ test('play stays inside the selection and delete stays at the upper-right corner
         assert.ok(remove.y + 22 - deleteIconSize >= viewport.top - epsilon && remove.y + 22 <= viewport.top + viewport.height + epsilon)
     }
     const short = exports.getStudyRegionControlPositions({ left: 60, top: 180, width: 200, height: 10 }, viewport)
-    assert.equal(short.remove.x - 22, 260, 'the lower-left of the delete icon matches the upper-right of the frame')
-    assert.equal(short.remove.y + 22, 180)
+    assert.equal(short.remove.x - 22, 263, 'the delete icon has 3px of clearance to the right of the frame')
+    assert.equal(short.remove.y + 22, 177, 'the delete icon has 3px of clearance above the frame')
     assert.equal(short.open.x + 22, 256, 'play is inset 4px from the right edge')
     assert.equal(exports.getStudyRegionControlPositions({ left: 60, top: 900, width: 200, height: 20 }, viewport).visible, false)
 })
