@@ -242,7 +242,7 @@ test('marker undo refuses a missing PDF, a removed parent, or data belonging to 
     await assert.rejects(store.restorePDFStudyMarkerDeletion({ ...removed, pdfId: 'other-book' }), /不正/)
 })
 
-test('short, tall, and edge selections keep 44px control targets apart and inside the viewport', () => {
+test('play stays inside the selection and delete stays at the upper-right corner with separate touch targets', () => {
     const exports = {}
     vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, '../src/utils/studyRegionControls.ts'), 'utf8'), {
         compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
@@ -255,16 +255,19 @@ test('short, tall, and edge selections keep 44px control targets apart and insid
         { left: 0, top: 54, width: 10, height: 10 },
         { left: 290, top: 530, width: 30, height: 10 },
     ]) {
-        const { open, remove, visible } = exports.getStudyRegionControlPositions(region, viewport)
+        const { open, remove, openIcon, visible } = exports.getStudyRegionControlPositions(region, viewport)
         assert.equal(visible, true)
-        assert.ok(Math.abs(open.x - remove.x) >= 52 || Math.abs(open.y - remove.y) >= 52)
-        for (const target of [open, remove]) {
-            assert.ok(target.x - 22 >= viewport.left && target.x + 22 <= viewport.left + viewport.width)
-            assert.ok(target.y - 22 >= viewport.top && target.y + 22 <= viewport.top + viewport.height)
-        }
+        assert.ok(remove.x - open.x >= 48, 'transparent 44px touch targets have a 4px gap')
+        assert.ok(open.x + 22 - openIcon.width >= Math.max(region.left, viewport.left))
+        assert.ok(open.x + 22 <= Math.min(region.left + region.width, viewport.left + viewport.width))
+        assert.ok(open.y - openIcon.height / 2 >= Math.max(region.top, viewport.top))
+        assert.ok(open.y + openIcon.height / 2 <= Math.min(region.top + region.height, viewport.top + viewport.height))
+        assert.ok(remove.x - 22 >= viewport.left && remove.x - 22 + 18 <= viewport.left + viewport.width)
+        assert.ok(remove.y + 22 - 18 >= viewport.top && remove.y + 22 <= viewport.top + viewport.height)
     }
     const short = exports.getStudyRegionControlPositions({ left: 60, top: 180, width: 200, height: 10 }, viewport)
-    assert.equal(short.remove.y, 176, 'the delete icon stays just above the selection, rather than floating above it')
-    assert.equal(short.remove.x, short.open.x - 52, 'short selections separate the targets along the upper edge')
+    assert.equal(short.remove.x - 22, 260, 'the lower-left of the delete icon matches the upper-right of the frame')
+    assert.equal(short.remove.y + 22, 180)
+    assert.equal(short.open.x + 22, 256, 'play is inset 4px from the right edge')
     assert.equal(exports.getStudyRegionControlPositions({ left: 60, top: 900, width: 200, height: 20 }, viewport).visible, false)
 })

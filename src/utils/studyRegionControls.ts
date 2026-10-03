@@ -1,25 +1,28 @@
 type Bounds = { left: number; top: number; width: number; height: number }
 
-/** Keep the delete icon beside the upper edge, with separate 44px targets and an 8px gap. */
+/** Put play inside the region and the delete icon's lower-left corner at its upper-right corner. */
 export function getStudyRegionControlPositions(region: Bounds, viewport: Bounds) {
-  const inset = 24
-  const separation = 52
-  const minX = viewport.left + inset
-  const maxX = Math.max(minX, viewport.left + viewport.width - inset)
-  const minY = viewport.top + inset
-  const maxY = Math.max(minY, viewport.top + viewport.height - inset)
+  const halfTarget = 22
+  const deleteIconSize = 18
+  const gap = 4
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
-  const open = { x: clamp(region.left + region.width, minX, maxX),
-    y: clamp(region.top + region.height / 2, minY, maxY) }
-  const remove = { x: open.x,
-    y: clamp(region.top - 4, minY, maxY) }
-  if (Math.abs(remove.y - open.y) < separation) {
-    if (open.x - separation >= minX) remove.x = open.x - separation
-    else if (open.y - separation >= minY) remove.y = open.y - separation
-    else if (open.y + separation <= maxY) remove.y = open.y + separation
-    else remove.x = Math.min(maxX, open.x + separation)
+  // Clamp the visible icons, not their transparent touch targets, so the icons stay attached to the frame.
+  const cornerX = clamp(region.left + region.width, viewport.left,
+    Math.max(viewport.left, viewport.left + viewport.width - deleteIconSize))
+  const cornerY = clamp(region.top, viewport.top + deleteIconSize,
+    Math.max(viewport.top + deleteIconSize, viewport.top + viewport.height))
+  const visibleTop = Math.max(region.top, viewport.top)
+  const visibleBottom = Math.min(region.top + region.height, viewport.top + viewport.height)
+  const openIcon = {
+    width: Math.min(18, Math.max(0, cornerX - gap - Math.max(region.left, viewport.left))),
+    height: Math.min(22, Math.max(0, visibleBottom - visibleTop - gap)),
   }
+  const open = { x: cornerX - gap - halfTarget,
+    y: clamp(region.top + region.height / 2, visibleTop + openIcon.height / 2,
+      Math.max(visibleTop + openIcon.height / 2, visibleBottom - openIcon.height / 2)) }
+  // Separate the 44px touch targets horizontally, even when the selection is a single line.
+  const remove = { x: cornerX + halfTarget, y: cornerY - halfTarget }
   const visible = region.left < viewport.left + viewport.width && region.left + region.width > viewport.left &&
     region.top < viewport.top + viewport.height && region.top + region.height > viewport.top
-  return { open, remove, visible }
+  return { open, remove, openIcon, visible }
 }
