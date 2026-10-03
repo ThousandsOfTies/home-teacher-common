@@ -28,7 +28,7 @@ export const StudyTraceUndoButton = ({ available, busy, onUndo,
       {inline ? (
         <span className="study-trace-undo-icon" aria-hidden="true"
           style={{ width: STUDY_REGION_UNDO_ICON_SIZE * controlScale, height: STUDY_REGION_UNDO_ICON_SIZE * controlScale }}>
-          <FiRotateCcw size={12 * controlScale} />
+          <FiRotateCcw size={STUDY_REGION_UNDO_ICON_SIZE * 0.75 * controlScale} />
         </span>
       ) : <FiRotateCcw size={22} aria-hidden="true" />}
     </button>
