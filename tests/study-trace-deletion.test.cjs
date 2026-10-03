@@ -247,6 +247,8 @@ test('play stays inside the selection and delete stays at the upper-right corner
     vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, '../src/utils/studyRegionControls.ts'), 'utf8'), {
         compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
     }).outputText, { exports })
+    const deleteIconSize = exports.STUDY_REGION_DELETE_ICON_SIZE
+    const epsilon = 1e-6 // Fractional icon sizes can differ by floating-point rounding at an edge.
     const viewport = { left: 0, top: 54, width: 320, height: 500 }
     for (const region of [
         { left: 60, top: 180, width: 200, height: 150 },
@@ -262,8 +264,8 @@ test('play stays inside the selection and delete stays at the upper-right corner
         assert.ok(open.x + 22 <= Math.min(region.left + region.width, viewport.left + viewport.width))
         assert.ok(open.y - openIcon.height / 2 >= Math.max(region.top, viewport.top))
         assert.ok(open.y + openIcon.height / 2 <= Math.min(region.top + region.height, viewport.top + viewport.height))
-        assert.ok(remove.x - 22 >= viewport.left && remove.x - 22 + 18 <= viewport.left + viewport.width)
-        assert.ok(remove.y + 22 - 18 >= viewport.top && remove.y + 22 <= viewport.top + viewport.height)
+        assert.ok(remove.x - 22 >= viewport.left - epsilon && remove.x - 22 + deleteIconSize <= viewport.left + viewport.width + epsilon)
+        assert.ok(remove.y + 22 - deleteIconSize >= viewport.top - epsilon && remove.y + 22 <= viewport.top + viewport.height + epsilon)
     }
     const short = exports.getStudyRegionControlPositions({ left: 60, top: 180, width: 200, height: 10 }, viewport)
     assert.equal(short.remove.x - 22, 260, 'the lower-left of the delete icon matches the upper-right of the frame')

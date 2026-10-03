@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type SyntheticEvent, type RefObject } from 'react'
-import { getStudyRegionControlPositions } from '../../utils/studyRegionControls'
+import { getStudyRegionControlPositions, STUDY_REGION_DELETE_ICON_SIZE } from '../../utils/studyRegionControls'
 import './StudyRegionMarker.css'
 
 interface StudyRegionMarkerProps {
@@ -89,7 +89,8 @@ export const StudyRegionMarker = ({ id, completed, style, className = '', onOpen
             : { ...controlStyle, right: 'auto', left: controls.deleteLeft, top: controls.deleteTop }}
           onPointerDown={stopPointer} onMouseDown={stopPointer} onTouchStart={stopPointer} onTouchEnd={stopPointer}
           onClick={event => { event.stopPropagation(); onDelete(id) }}>
-          <svg aria-hidden="true" width={18 * scale} height={18 * scale} viewBox="0 0 18 18"
+          <svg aria-hidden="true" width={STUDY_REGION_DELETE_ICON_SIZE * scale}
+            height={STUDY_REGION_DELETE_ICON_SIZE * scale} viewBox="0 0 18 18"
             fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M1 1L17 17M17 1L1 17" />
           </svg>
