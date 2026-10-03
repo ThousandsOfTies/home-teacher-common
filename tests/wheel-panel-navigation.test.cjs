@@ -49,7 +49,7 @@ class ElementAdapter {
     closest() { return this.editable ? this : null }
 }
 function harness(overrides = {}) {
-    let now = 0, cursor = 0
+    let now = 0, cursor = 0, navigation
     const cells = [], effects = [], directions = []
     const surface = {
         clientWidth: 1000, listeners: new Set(),
@@ -62,6 +62,16 @@ function harness(overrides = {}) {
     const same = (a, b) => a && b && a.length === b.length && a.every((value, index) => Object.is(value, b[index]))
     const react = {
         useRef(value) { const i = cursor++; cells[i] ??= { current: value }; return cells[i] },
+        useState(value) {
+            const i = cursor++
+            cells[i] ??= { value }
+            return [cells[i].value, next => { cells[i].value = next }]
+        },
+        useCallback(callback, deps) {
+            const i = cursor++
+            if (!same(cells[i]?.deps, deps)) cells[i] = { deps, callback }
+            return cells[i].callback
+        },
         useEffect(callback, deps) {
             const i = cursor++
             if (!same(cells[i]?.deps, deps)) effects.push(() => {
@@ -78,7 +88,7 @@ function harness(overrides = {}) {
         canGoBack: true, canGoForward: true, busy: false,
         onNavigate: direction => { directions.push(direction) }, ...overrides,
     }
-    const render = () => { cursor = 0; useWheelPanelNavigation(options); while (effects.length) effects.shift()() }
+    const render = () => { cursor = 0; navigation = useWheelPanelNavigation(options); while (effects.length) effects.shift()() }
     const emit = (overrides = {}) => {
         const event = {
             deltaX: 100, deltaY: 0, deltaMode: 0, buttons: 0,
@@ -93,6 +103,7 @@ function harness(overrides = {}) {
     render()
     return {
         options, directions, surface, emit, render,
+        get navigation() { return navigation },
         advance: ms => { now += ms },
         unmount: () => { for (const cell of cells) cell?.cleanup?.() },
     }
@@ -169,5 +180,47 @@ test('changing the screen through a breadcrumb discards a partially accumulated 
     app.emit(); await flush(); assert.deepEqual(app.directions, [])
     app.advance(300); app.emit(); app.advance(50); app.emit(); await flush()
     assert.deepEqual(app.directions, [1])
+    app.unmount()
+})
+
+test('button navigation obeys the same fork, busy and end-of-route rules as the wheel', async () => {
+    const app = harness({ canGoForward: false })
+    await app.navigation.navigate(1)
+    assert.deepEqual(app.directions, [])
+    app.options.canGoForward = true; app.options.busy = true; app.render()
+    await app.navigation.navigate(1)
+    assert.deepEqual(app.directions, [])
+    app.options.busy = false; app.render()
+    await app.navigation.navigate(1)
+    assert.deepEqual(app.directions, [1])
+    app.options.canGoForward = false; app.options.canGoBack = false; app.render()
+    await app.navigation.navigate(1); await app.navigation.navigate(-1)
+    assert.deepEqual(app.directions, [1])
+    app.unmount()
+    app.options.canGoForward = true; app.render()
+    await app.navigation.navigate(1)
+    assert.deepEqual(app.directions, [1])
+})
+
+test('button clicks and wheel gestures share one pending restoration and suppress its inertial tail', async () => {
+    let resolve
+    const app = harness({ onNavigate: direction => {
+        app.directions.push(direction)
+        return new Promise(yes => { resolve = yes })
+    } })
+    const pending = app.navigation.navigate(1)
+    app.render(); assert.equal(app.navigation.isNavigating, true)
+    await app.navigation.navigate(1)
+    app.advance(1000); app.emit(); app.advance(50); app.emit(); await flush()
+    assert.deepEqual(app.directions, [1])
+    resolve(); await pending
+    app.render(); assert.equal(app.navigation.isNavigating, false)
+    app.emit(); app.advance(50); app.emit(); await flush()
+    assert.deepEqual(app.directions, [1])
+    app.advance(300); app.emit(); app.advance(50); app.emit(); await flush()
+    assert.deepEqual(app.directions, [1, 1])
+    await app.navigation.navigate(1)
+    assert.deepEqual(app.directions, [1, 1])
+    resolve(); await flush()
     app.unmount()
 })
