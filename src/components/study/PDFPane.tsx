@@ -56,7 +56,7 @@ interface PDFPaneBaseProps {
     blankCanvasSize?: { width: number; height: number }
     /** Opt into threshold-based page turns with an unmodified vertical wheel. */
     wheelPageNavigation?: boolean
-    /** Optional containing surface for selection/text overlays above this pane. */
+    /** Optional containing surface for page and zoom wheel events above this pane. */
     wheelEventTargetRef?: React.RefObject<HTMLDivElement>
 
     // レイアウト
@@ -144,7 +144,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         overscroll,
         setOverscroll,
         resetOverscroll
-    } = useZoomPan(containerRef, 0.1, () => { }, canvasRef)
+    } = useZoomPan(containerRef, 0.1, () => { }, canvasRef, { wheelEventTargetRef })
 
     // ページナビゲーション
     const numPages = pdfDoc ? pdfDoc.numPages : 0
