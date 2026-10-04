@@ -655,24 +655,6 @@ export async function getPDFStudyMarkersByPdfId(pdfId: string): Promise<PDFStudy
   });
 }
 
-export async function deletePDFStudyMarker(id: string): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([PDF_STUDY_MARKER_STORE_NAME, PDF_STUDY_ASSET_STORE_NAME], 'readwrite');
-    transaction.objectStore(PDF_STUDY_MARKER_STORE_NAME).delete(id);
-    const assetStore = transaction.objectStore(PDF_STUDY_ASSET_STORE_NAME);
-    assetStore.index('traceId').openKeyCursor(IDBKeyRange.only(id)).onsuccess = (event) => {
-      const cursor = (event.target as IDBRequest<IDBCursor | null>).result;
-      if (!cursor) return;
-      assetStore.delete(cursor.primaryKey);
-      cursor.continue();
-    };
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error ?? new Error('学習範囲の削除に失敗しました'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('学習範囲の削除に失敗しました'));
-  });
-}
-
 const studyAssetId = (traceId: string, stepId: string, kind: 'question' | 'drawing') => `${traceId}:${stepId}:${kind}`;
 
 function getPDFStudyMarkerBranchIds(marker: PDFStudyMarkerRecord, nodeId?: string): Set<string> {
@@ -934,24 +916,6 @@ export async function getPDFStudyTracesByPdfId(pdfId: string): Promise<PDFStudyT
   });
 }
 
-export async function deletePDFStudyTrace(id: string): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction([PDF_STUDY_TRACE_STORE_NAME, PDF_STUDY_ASSET_STORE_NAME], 'readwrite');
-    transaction.objectStore(PDF_STUDY_TRACE_STORE_NAME).delete(id);
-    const assetStore = transaction.objectStore(PDF_STUDY_ASSET_STORE_NAME);
-    assetStore.index('traceId').openKeyCursor(IDBKeyRange.only(id)).onsuccess = (event) => {
-      const cursor = (event.target as IDBRequest<IDBCursor | null>).result;
-      if (!cursor) return;
-      assetStore.delete(cursor.primaryKey);
-      cursor.continue();
-    };
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error ?? new Error('質問の記録を削除できませんでした'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('質問の記録を削除できませんでした'));
-  });
-}
-
 /** Delete only the selected trace and its descendants, in one transaction. */
 export async function deletePDFStudyTraceTree(pdfId: string, traceId: string): Promise<PDFStudyTraceDeletion> {
   const db = await openDB();
@@ -1114,24 +1078,6 @@ async function waitForDrawingSaves(id: string, pageNumber?: number): Promise<voi
   );
 }
 
-// ペン跡を取得
-export async function getDrawing(id: string, pageNumber: number): Promise<string | null> {
-  await flushDrawingSaves(id, pageNumber);
-  const db = await openDB();
-  const stored = await new Promise<DrawingRecord | null>((resolve, reject) => {
-    const request = db.transaction([DRAWING_STORE_NAME], 'readonly')
-      .objectStore(DRAWING_STORE_NAME)
-      .get(`${id}:${pageNumber}`);
-    request.onsuccess = () => resolve(request.result || null);
-    request.onerror = () => reject(new Error('ペン跡の取得に失敗しました'));
-  });
-  if (stored) return stored.data;
-
-  // v10移行前データに対する安全なフォールバック。
-  const record = await getPDFRecord(id);
-  return record?.drawings?.[pageNumber] || null;
-}
-
 export async function getAllDrawings(id: string): Promise<Record<number, string>> {
   await flushDrawingSaves(id);
   const db = await openDB();
@@ -1150,25 +1096,6 @@ export async function getAllDrawings(id: string): Promise<Record<number, string>
     Object.assign(result, legacyRecord?.drawings || {});
   }
   return result;
-}
-
-export async function deleteAllDrawings(id: string): Promise<void> {
-  cancelScheduledDrawingSaves(id);
-  await waitForDrawingSaves(id);
-  const db = await openDB();
-  await new Promise<void>((resolve, reject) => {
-    const transaction = db.transaction([DRAWING_STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(DRAWING_STORE_NAME);
-    store.index('pdfId').openKeyCursor(IDBKeyRange.only(id)).onsuccess = (event) => {
-      const cursor = (event.target as IDBRequest<IDBCursor | null>).result;
-      if (!cursor) return;
-      store.delete(cursor.primaryKey);
-      cursor.continue();
-    };
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(new Error('ペン跡の削除に失敗しました'));
-    transaction.onabort = () => reject(new Error('ペン跡の削除に失敗しました'));
-  });
 }
 
 // テキストアノテーションを保存
@@ -1226,10 +1153,6 @@ export async function getAllTextAnnotations(id: string): Promise<Record<number, 
     };
     transaction.onerror = () => reject(transaction.error ?? new Error('テキストの取得に失敗しました'));
   });
-}
-
-export async function getTextAnnotation(id: string, pageNumber: number): Promise<string | null> {
-  return (await getAllTextAnnotations(id))[pageNumber] || null;
 }
 
 // IDを生成（ファイル名とタイムスタンプから）
@@ -1302,11 +1225,6 @@ export async function deleteSNSLink(id: string): Promise<void> {
       reject(new Error('SNSリンクの削除に失敗しました'));
     };
   });
-}
-
-// SNSリンクIDを生成
-export function generateSNSLinkId(name: string): string {
-  return `sns_${name}_${Date.now()}`;
 }
 
 export const dataUrlToBlob = async (dataUrl: string): Promise<Blob> => {
@@ -1417,56 +1335,6 @@ export async function getAllGradingHistory(): Promise<GradingHistoryRecord[]> {
   return hydrateGradingImages(records);
 }
 
-// 特定のPDFの採点履歴を取得
-export async function getGradingHistoryByPdfId(pdfId: string): Promise<GradingHistoryRecord[]> {
-  const db = await openDB();
-
-  const records = await new Promise<GradingHistoryRecord[]>((resolve, reject) => {
-    const transaction = db.transaction([GRADING_HISTORY_STORE_NAME], 'readonly');
-    const objectStore = transaction.objectStore(GRADING_HISTORY_STORE_NAME);
-    const index = objectStore.index('pdfId');
-    const request = index.openCursor(IDBKeyRange.only(pdfId), 'prev');
-
-    const records: GradingHistoryRecord[] = [];
-
-    request.onsuccess = (event) => {
-      const cursor = (event.target as IDBRequest).result;
-      if (cursor) {
-        records.push(cursor.value);
-        cursor.continue();
-      } else {
-        resolve(records);
-      }
-    };
-
-    request.onerror = () => {
-      reject(new Error('採点履歴の取得に失敗しました'));
-    };
-  });
-  return hydrateGradingImages(records);
-}
-
-// 特定の採点履歴を取得
-export async function getGradingHistory(id: string): Promise<GradingHistoryRecord | null> {
-  const db = await openDB();
-
-  const record = await new Promise<GradingHistoryRecord | null>((resolve, reject) => {
-    const transaction = db.transaction([GRADING_HISTORY_STORE_NAME], 'readonly');
-    const objectStore = transaction.objectStore(GRADING_HISTORY_STORE_NAME);
-    const request = objectStore.get(id);
-
-    request.onsuccess = () => {
-      resolve(request.result || null);
-    };
-
-    request.onerror = () => {
-      reject(new Error('採点履歴の取得に失敗しました'));
-    };
-  });
-  if (!record) return null;
-  return (await hydrateGradingImages([record]))[0];
-}
-
 // 採点履歴を削除
 export async function deleteGradingHistory(id: string): Promise<void> {
   const db = await openDB();
@@ -1557,33 +1425,6 @@ export async function saveAppSettings(settings: AppSettings): Promise<void> {
 // 採点履歴IDを生成
 export function generateGradingHistoryId(): string {
   return `grading_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-}
-
-// SNS利用履歴を保存
-export async function saveSNSUsageHistory(record: Omit<SNSUsageHistoryRecord, 'id'>): Promise<void> {
-  return new Promise((resolve, reject) => {
-    openDB().then((db) => {
-      const transaction = db.transaction([SNS_USAGE_HISTORY_STORE_NAME], 'readwrite');
-      const objectStore = transaction.objectStore(SNS_USAGE_HISTORY_STORE_NAME);
-
-      const historyRecord: SNSUsageHistoryRecord = {
-        id: `sns_usage_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-        ...record
-      };
-
-      const request = objectStore.add(historyRecord);
-
-      transaction.oncomplete = () => {
-        console.log('✅ SNS利用履歴を保存:', historyRecord);
-        resolve();
-      };
-
-      request.onerror = () => {
-        console.error('❌ SNS利用履歴の保存に失敗:', request.error);
-        reject(new Error('SNS利用履歴の保存に失敗しました'));
-      };
-    }).catch(reject);
-  });
 }
 
 // SNS利用履歴を取得（新しい順）

@@ -11,7 +11,6 @@ export const ParentSettings: React.FC<ParentSettingsProps> = ({ variant = 'tutot
     const { t } = useTranslation();
     const { user, userData, loading, signInWithGoogle, logout } = useAuth();
     const [isUpdating, setIsUpdating] = useState(false);
-    const [minutes, setMinutes] = useState(userData?.snsRewardMinutes || 60);
     const isCopiCopi = variant === 'copicopi';
     const title = isCopiCopi ? 'CopiCopi Premium' : t('parentSettings.title');
     const getBaseUrl = () => window.location.origin + window.location.pathname.replace(/\/$/, '');
@@ -71,28 +70,6 @@ export const ParentSettings: React.FC<ParentSettingsProps> = ({ variant = 'tutot
         } catch (error) {
             console.error('Portal session error:', error);
             alert('エラーが発生しました');
-        } finally {
-            setIsUpdating(false);
-        }
-    };
-
-    const handleUpdateMinutes = async () => {
-        try {
-            setIsUpdating(true);
-            const token = await auth.currentUser?.getIdToken();
-            const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3003'}/api/update-sns-time`;
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ snsRewardMinutes: minutes })
-            });
-            if (response.ok) {
-                alert(`設定を ${minutes} 分に更新しました`);
-            } else {
-                alert('設定の更新に失敗しました');
-            }
-        } catch (error) {
-            console.error('Update error:', error);
         } finally {
             setIsUpdating(false);
         }

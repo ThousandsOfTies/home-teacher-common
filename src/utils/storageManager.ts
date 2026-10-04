@@ -21,23 +21,6 @@ export async function requestPersistentStorage(): Promise<boolean> {
 }
 
 /**
- * ストレージが永続化されているかチェック
- * @returns 永続化されているかどうか
- */
-export async function isStoragePersisted(): Promise<boolean> {
-  if (!navigator.storage || !navigator.storage.persisted) {
-    return false;
-  }
-
-  try {
-    return await navigator.storage.persisted();
-  } catch (error) {
-    console.error('Error checking storage persistence:', error);
-    return false;
-  }
-}
-
-/**
  * ストレージ使用量を取得
  * @returns 使用量と割り当て量（バイト）
  */

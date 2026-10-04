@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 
 export type Corners = [number, number, number, number, number, number, number, number];
 
@@ -91,9 +91,6 @@ export const PerspectiveCropper: React.FC<PerspectiveCropperProps> = ({
             return acc;
         }, [])
         .join(' ');
-
-    const HANDLE_R = 1.8; // radius % of viewBox
-    const HANDLE_LABELS = ['', '', '', ''];
 
     return (
         <div

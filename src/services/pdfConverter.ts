@@ -11,15 +11,6 @@ export interface ImageData {
 }
 
 /**
- * 画像をPDFページとして追加するための情報
- */
-interface ImagePageInfo {
-    dataUrl: string;
-    width: number;
-    height: number;
-}
-
-/**
  * BlobをData URLに変換
  */
 function blobToDataURL(blob: Blob): Promise<string> {

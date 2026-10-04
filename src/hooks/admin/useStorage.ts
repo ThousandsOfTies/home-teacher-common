@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { requestPersistentStorage, getStorageEstimate, getPlatformInfo, getStorageAdviceMessage } from '../../utils/storageManager'
 import { useTranslation } from 'react-i18next'
 import { deleteAppDatabase } from '../../utils/indexedDB'

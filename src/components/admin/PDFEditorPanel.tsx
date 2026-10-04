@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { PDFFileRecord, updatePDFRecord } from '../../utils/indexedDB';
 import { EditorToolbar } from './EditorToolbar';
 import { usePDFRenderer } from '../../hooks/pdf/usePDFRenderer';
@@ -59,8 +59,6 @@ export default function PDFEditorPanel({ pdfRecord, pdfId, onBack }: PDFEditorPa
     const [isExtracting, setIsExtracting] = useState(false);
 
     const [isSaving, setIsSaving] = useState(false);
-
-    const [previewImageSrc, setPreviewImageSrc] = useState<string | null>(null);
 
     // No live warp preview - corners are shown inline; warp is applied on save/page change
 

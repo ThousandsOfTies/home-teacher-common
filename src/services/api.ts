@@ -208,17 +208,6 @@ export const askQuestion = async (
   }
 }
 
-// 後方互換性のための旧API（非推奨）
-export const gradeWorkWithContext = async (
-  fullPageImageData: string,
-  croppedImageData: string,
-  pageNumber: number,
-  model?: string
-): Promise<GradeResponse> => {
-  console.warn('⚠️ gradeWorkWithContext is deprecated, use gradeWork instead')
-  return gradeWork(croppedImageData, model)
-}
-
 
 // ==========================================
 // Subject Management (Server-Driven)

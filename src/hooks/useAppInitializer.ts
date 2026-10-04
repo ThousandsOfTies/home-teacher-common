@@ -1,13 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAppSettings, saveAppSettings, getPDFRecord, PDFFileRecord } from '../utils/indexedDB'
 
-interface AppInitializerResult {
-    isInitialized: boolean
-    initialView: 'admin' | 'viewer' | 'editor'
-    initialPDF: PDFFileRecord | null
-    settingsVersion: number
-}
-
 export const useAppInitializer = () => {
     const [isInitialized, setIsInitialized] = useState(false)
     const [initialView, setInitialView] = useState<'admin' | 'viewer' | 'editor'>('admin')

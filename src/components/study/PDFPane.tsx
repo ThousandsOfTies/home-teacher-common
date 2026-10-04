@@ -2,7 +2,7 @@ import React, { useRef, useEffect, forwardRef, useImperativeHandle, useState } f
 import { PDFFileRecord } from '../../utils/indexedDB'
 import PDFCanvas, { PDFRenderMetrics } from './components/PDFCanvas'
 import { PDFPagePreview, type PreviewStrokeRenderer } from './components/PDFPagePreview'
-import { DrawingPath, DrawingCanvas, useDrawing, useZoomPan, doPathsIntersect, isScratchPattern, useLassoSelection, DrawingCanvasHandle } from '@thousands-of-ties/drawing-common'
+import { DrawingPath, DrawingCanvas, useDrawing, useZoomPan, doPathsIntersect, useLassoSelection, DrawingCanvasHandle } from '@thousands-of-ties/drawing-common'
 import { INITIAL_PDF_RENDER_SCALE, MAX_PDF_RENDER_SCALE } from '../../constants/pdf'
 import { isIOSLikeDevice } from '../../utils/platform'
 import { useWheelPageNavigation } from '../../hooks/pdf/useWheelPageNavigation'
@@ -739,10 +739,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     const {
         isDrawing: isDrawingInternal,
         startDrawing,
-        draw,
         drawBatch,
-        stopDrawing,
-        cancelDrawing
+        stopDrawing
     } = useDrawing(drawingCanvasRef, {
         width: size,
         color: color,
@@ -1319,11 +1317,6 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
 
                         const x = (t.clientX - rect.left - panOffset.x) / zoom
                         const y = (t.clientY - rect.top - panOffset.y) / zoom
-
-                        // 正規化座標に変換
-                        const cw = canvasSize?.width || canvasRef.current?.width || 1
-                        const ch = canvasSize?.height || canvasRef.current?.height || 1
-                        const normalizedPoint = { x: x / cw, y: y / ch }
 
                         // Eraser needs Touch Events for immediate feedback
                         if (tool === 'eraser') {

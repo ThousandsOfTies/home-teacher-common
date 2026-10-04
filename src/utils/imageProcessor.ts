@@ -168,47 +168,6 @@ export async function resizeImage(
 }
 
 /**
- * 画像を回転
- */
-export async function rotateImage(blob: Blob, degrees: number): Promise<Blob> {
-    const canvas = await loadImageToCanvas(blob);
-    const { width, height } = canvas;
-
-    // 90度または270度の回転の場合、幅と高さを入れ替える
-    const needsSwap = degrees === 90 || degrees === 270;
-    const newWidth = needsSwap ? height : width;
-    const newHeight = needsSwap ? width : height;
-
-    const rotatedCanvas = document.createElement('canvas');
-    rotatedCanvas.width = newWidth;
-    rotatedCanvas.height = newHeight;
-
-    const ctx = rotatedCanvas.getContext('2d');
-    if (!ctx) {
-        throw new Error('Canvas context not available');
-    }
-
-    // 中心を原点として回転
-    ctx.translate(newWidth / 2, newHeight / 2);
-    ctx.rotate((degrees * Math.PI) / 180);
-    ctx.drawImage(canvas, -width / 2, -height / 2);
-
-    return new Promise((resolve, reject) => {
-        rotatedCanvas.toBlob(
-            (blob) => {
-                if (blob) {
-                    resolve(blob);
-                } else {
-                    reject(new Error('画像の回転に失敗しました'));
-                }
-            },
-            'image/jpeg',
-            0.9
-        );
-    });
-}
-
-/**
  * サムネイル生成
  */
 export async function generateThumbnail(

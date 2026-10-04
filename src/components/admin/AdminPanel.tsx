@@ -28,10 +28,8 @@ import { BiEraser } from 'react-icons/bi';
 import { ImFilePdf } from 'react-icons/im';
 import { VscDatabase } from 'react-icons/vsc';
 import { MdNewReleases, MdHistory, MdNotificationsNone, MdAccessTime, MdOutlineCollections, MdBalance } from 'react-icons/md';
-import { ICON_SVG } from '../../constants/icons';
 import { useTranslation } from 'react-i18next';
-import { getSubjects, SubjectInfo, SubjectsResponse } from '../../services/api';
-import { updatePDFRecord } from '../../utils/indexedDB';
+import { getSubjects, SubjectInfo } from '../../services/api';
 
 interface AdminPanelProps {
   onSelectPDF: (record: PDFFileRecord) => void;
@@ -77,12 +75,9 @@ export default function AdminPanel({
   } = usePDFRecords(maxPDFFileSizeMB);
 
   const {
-    snsLinks,
     selectedSNS,
-    customUrls,
     loadSNSLinks,
     toggleSNS,
-    updateCustomUrl,
     saveSNSSettings: saveSNSSettingsHook
   } = useSNSLinks();
 
@@ -101,7 +96,6 @@ export default function AdminPanel({
 
   // PDF Settings/Edit
   const [subjectsList, setSubjectsList] = useState<SubjectInfo[]>([]);
-  const [subjectLoading, setSubjectLoading] = useState(true);
 
   const [showGradingHistory, setShowGradingHistory] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
@@ -136,14 +130,11 @@ export default function AdminPanel({
   // Load subject list
   const loadSubjects = async () => {
     try {
-      setSubjectLoading(true);
       const response = await getSubjects();
       setSubjectsList(response.subjects);
       console.log('📚 Loaded subjects:', response.subjects);
     } catch (error) {
       console.error('Failed to load subjects:', error);
-    } finally {
-      setSubjectLoading(false);
     }
   };
 
@@ -205,13 +196,6 @@ export default function AdminPanel({
     if (!deleteConfirm) return;
     await handleDeleteRecord(deleteConfirm.id);
     setDeleteConfirm(null);
-  };
-
-  // 言語切り替え
-  const toggleLanguage = () => {
-    const newLang = i18n.language === 'ja' ? 'en' : 'ja';
-    i18n.changeLanguage(newLang);
-    localStorage.setItem('language', newLang);
   };
 
   // SNS設定を保存
