@@ -43,6 +43,7 @@ interface AdminPanelProps {
   guideVariant?: 'study' | 'copy';
   maxPDFFileSizeMB?: number;
   renderPDFStatus?: (record: PDFFileRecord) => ReactNode;
+  renderPDFThumbnail?: (record: PDFFileRecord) => ReactNode;
 }
 
 export default function AdminPanel({
@@ -56,7 +57,8 @@ export default function AdminPanel({
   settingsVariant = 'links',
   guideVariant = 'study',
   maxPDFFileSizeMB = 100,
-  renderPDFStatus
+  renderPDFStatus,
+  renderPDFThumbnail
 }: AdminPanelProps) {
   // i18n
   const { t, i18n } = useTranslation();
@@ -1220,7 +1222,7 @@ export default function AdminPanel({
                       {renderPDFStatus?.(record)}
 
                       {/* Thumbnail */}
-                      <div className="icon-container" style={{
+                      {renderPDFThumbnail ? renderPDFThumbnail(record) : <div className="icon-container" style={{
                         width: '64px',
                         height: '64px',
                         display: 'flex',
@@ -1256,7 +1258,7 @@ export default function AdminPanel({
                             <polyline points="10 9 9 9 8 9" />
                           </svg>
                         )}
-                      </div>
+                      </div>}
 
                       {/* File name */}
                       <div className="file-name">
