@@ -4,6 +4,7 @@ import * as pdfjsLib from 'pdfjs-dist'
 import { detectSubject } from '../../services/api'
 import { isSupportedImageFile, processImageFiles } from '../../utils/imageProcessor'
 import { LARGE_PDF_THRESHOLD_BYTES, PDFBlobRangeTransport, getRangePDFDocument } from '../../utils/pdfRange'
+import { inspectPDFText, type PDFTextInspection } from '../../utils/pdfTextInspection'
 
 // Workerの設定
 // Workerの設定（ローカルファイルを使用）
@@ -11,10 +12,11 @@ const baseUrl = import.meta.env.BASE_URL
 const safeBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
 pdfjsLib.GlobalWorkerOptions.workerSrc = `${safeBaseUrl}pdf.worker.min.js`
 
-export const usePDFRecords = (maxPDFFileSizeMB = 100) => {
+export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = false) => {
   const [pdfRecords, setPdfRecords] = useState<PDFFileRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [textInspectionProgress, setTextInspectionProgress] = useState<{ checkedPages: number; totalPages: number } | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const loadPDFRecords = async () => {
@@ -31,7 +33,7 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100) => {
   }
 
   // サムネイルを生成
-  const generateThumbnail = async (file: Blob): Promise<string> => {
+  const preparePDF = async (file: Blob): Promise<{ thumbnail: string; textInspection?: PDFTextInspection }> => {
     let rangeError: (error: Error) => void = () => {}
     const rangeFailure = new Promise<never>((_, reject) => { rangeError = reject })
     let loadingTask: pdfjsLib.PDFDocumentLoadingTask | undefined
@@ -57,7 +59,9 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100) => {
       canvas.height = viewport.height
       canvas.width = viewport.width
       await page.render({ canvasContext: context, viewport }).promise
-      return canvas.toDataURL('image/jpeg', 0.7)
+      const thumbnail = canvas.toDataURL('image/jpeg', 0.7)
+      const textInspection = checkPDFTextOnImport ? await inspectPDFText(pdf, setTextInspectionProgress) : undefined
+      return { thumbnail, textInspection }
     } finally {
       range?.abort()
       await loadingTask?.destroy()
@@ -67,10 +71,12 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100) => {
   // PDFファイルを追加
   const addPDF = async (file: Blob, fileName: string) => {
     setUploading(true)
+    setTextInspectionProgress(null)
     try {
       const id = generatePDFId(fileName)
 
-      const thumbnail = await generateThumbnail(file)
+      const { thumbnail, textInspection } = await preparePDF(file)
+      setTextInspectionProgress(null)
 
       // 教科を自動検出（表紙画像を使用）
       let detectedSubjectId: string | undefined = undefined
@@ -93,6 +99,7 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100) => {
         fileName,
         fileData: file,
         thumbnail,
+        ...(textInspection ? { textInspection } : {}),
         lastOpened: Date.now(),
         drawings: {},
         subjectId: detectedSubjectId, // 検出された教科ID（未検出の場合はundefined）
@@ -109,6 +116,7 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100) => {
       return false
     } finally {
       setUploading(false)
+      setTextInspectionProgress(null)
     }
   }
 
@@ -327,6 +335,7 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100) => {
     pdfRecords,
     loading,
     uploading,
+    textInspectionProgress,
     errorMessage,
     setErrorMessage,
     loadPDFRecords,

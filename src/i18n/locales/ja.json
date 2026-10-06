@@ -1,4 +1,8 @@
 {
+    "pdfImport": {
+        "checkingText": "文字情報を確認中：{{checked}}/{{total}}ページ",
+        "localTextCheck": "端末内で確認しています。文字判定のためのAI通信は行いません。"
+    },
     "editorLoading": {
         "loading": "教材編集を読み込んでいます…",
         "failed": "教材編集を読み込めませんでした。インターネット接続を確認して、もう一度お試しください。",

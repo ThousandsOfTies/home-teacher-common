@@ -42,6 +42,7 @@ interface AdminPanelProps {
   settingsVariant?: 'links' | 'teachers';
   guideVariant?: 'study' | 'copy';
   maxPDFFileSizeMB?: number;
+  checkPDFTextOnImport?: boolean;
   renderPDFStatus?: (record: PDFFileRecord) => ReactNode;
   renderPDFThumbnail?: (record: PDFFileRecord) => ReactNode;
 }
@@ -57,6 +58,7 @@ export default function AdminPanel({
   settingsVariant = 'links',
   guideVariant = 'study',
   maxPDFFileSizeMB = 100,
+  checkPDFTextOnImport = false,
   renderPDFStatus,
   renderPDFThumbnail
 }: AdminPanelProps) {
@@ -70,13 +72,14 @@ export default function AdminPanel({
     pdfRecords,
     loading,
     uploading,
+    textInspectionProgress,
     errorMessage: pdfError,
     setErrorMessage: setPdfError,
     loadPDFRecords,
     handleFileSelect,
     handleDeleteRecord,
     addPDF
-  } = usePDFRecords(maxPDFFileSizeMB);
+  } = usePDFRecords(maxPDFFileSizeMB, checkPDFTextOnImport);
 
   const {
     selectedSNS,
@@ -302,8 +305,10 @@ export default function AdminPanel({
           gap: '20px'
         }}>
           <div style={{ fontSize: '48px' }}>⏳</div>
-          <div>Loading PDF...</div>
-          <div style={{ fontSize: '14px', color: '#ccc' }}>Please wait</div>
+          <div role="status">{textInspectionProgress ? t('pdfImport.checkingText', {
+            checked: textInspectionProgress.checkedPages, total: textInspectionProgress.totalPages
+          }) : 'Loading PDF...'}</div>
+          <div style={{ fontSize: '14px', color: '#ccc' }}>{textInspectionProgress ? t('pdfImport.localTextCheck') : 'Please wait'}</div>
         </div>
       )}
 

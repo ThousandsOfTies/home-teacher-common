@@ -1,4 +1,5 @@
 // IndexedDB管理ユーティリティ
+import type { PDFTextInspection } from './pdfTextInspection';
 
 // DB名は利用側のアプリが指定する。未設定時に別アプリのDBを開かない。
 const configuredDBName = import.meta.env.VITE_INDEXED_DB_NAME;
@@ -25,6 +26,7 @@ export interface PDFFileRecord {
   id: string; // ユニークID (ファイル名 + タイムスタンプ)
   fileName: string;
   thumbnail?: string; // 先頭ページのサムネイル画像（Base64）
+  textInspection?: PDFTextInspection; // 登録時の文字情報確認（本文は保存しない）
   fileData?: Blob; // Blob形式のPDFデータ（v6から）
   lastOpened: number; // タイムスタンプ
   lastPageNumberA?: number; // 最後に開いていたページ番号 (A面)
