@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || 'TutoTuto';
 import { PDFFileRecord, deleteAppDatabase, getAppSettings, saveAppSettings } from '../../utils/indexedDB';
@@ -42,6 +42,7 @@ interface AdminPanelProps {
   settingsVariant?: 'links' | 'teachers';
   guideVariant?: 'study' | 'copy';
   maxPDFFileSizeMB?: number;
+  renderPDFStatus?: (record: PDFFileRecord) => ReactNode;
 }
 
 export default function AdminPanel({
@@ -54,7 +55,8 @@ export default function AdminPanel({
   historyVariant = 'timeline',
   settingsVariant = 'links',
   guideVariant = 'study',
-  maxPDFFileSizeMB = 100
+  maxPDFFileSizeMB = 100,
+  renderPDFStatus
 }: AdminPanelProps) {
   // i18n
   const { t, i18n } = useTranslation();
@@ -1214,6 +1216,8 @@ export default function AdminPanel({
                           })()}
                         </div>
                       )}
+
+                      {renderPDFStatus?.(record)}
 
                       {/* Thumbnail */}
                       <div className="icon-container" style={{

@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { PDFFileRecord, updatePDFRecord } from '../../utils/indexedDB';
 import { EditorToolbar } from './EditorToolbar';
 import { usePDFRenderer } from '../../hooks/pdf/usePDFRenderer';
@@ -12,9 +13,10 @@ export interface PDFEditorPanelProps {
     pdfRecord: PDFFileRecord;
     pdfId: string;
     onBack: () => void;
+    renderAdditionalSettings?: (context: { pdfDoc: PDFDocumentProxy | null; numPages: number }) => ReactNode;
 }
 
-export default function PDFEditorPanel({ pdfRecord, pdfId, onBack }: PDFEditorPanelProps) {
+export default function PDFEditorPanel({ pdfRecord, pdfId, onBack, renderAdditionalSettings }: PDFEditorPanelProps) {
     const [currentPage, setCurrentPage] = useState(1);
     const [sliderValue, setSliderValue] = useState<number | null>(null);
     const [subjectId, setSubjectId] = useState<string | undefined>(pdfRecord.subjectId);
@@ -330,6 +332,8 @@ export default function PDFEditorPanel({ pdfRecord, pdfId, onBack }: PDFEditorPa
                 }}
                 disabled={isSaving}
             />
+
+            {renderAdditionalSettings?.({ pdfDoc, numPages: pdfDoc?.numPages || 0 })}
 
             <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
                 {statusMessage && (
