@@ -8,6 +8,7 @@ import { PDFDocument } from 'pdf-lib';
 import '../study/StudyPanel.css'; // Reuse study panel styles for layout
 import { PerspectiveCropper, DEFAULT_CORNERS } from './PerspectiveCropper';
 import { warpPerspectiveCanvas } from '../../utils/warpPerspective';
+import { useTranslation } from 'react-i18next';
 
 export interface PDFEditorPanelProps {
     pdfRecord: PDFFileRecord;
@@ -17,6 +18,7 @@ export interface PDFEditorPanelProps {
 }
 
 export default function PDFEditorPanel({ pdfRecord, pdfId, onBack, renderAdditionalSettings }: PDFEditorPanelProps) {
+    const { t } = useTranslation();
     const [currentPage, setCurrentPage] = useState(1);
     const [sliderValue, setSliderValue] = useState<number | null>(null);
     const [subjectId, setSubjectId] = useState<string | undefined>(pdfRecord.subjectId);
@@ -102,7 +104,7 @@ export default function PDFEditorPanel({ pdfRecord, pdfId, onBack, renderAdditio
                 }
             } catch (err) {
                 console.error("Failed to extract page", err);
-                addStatusMessage('❌ ページの読み込みに失敗しました');
+                addStatusMessage('pdfEditor.pageFailed');
             } finally {
                 setIsExtracting(false);
             }
@@ -116,10 +118,10 @@ export default function PDFEditorPanel({ pdfRecord, pdfId, onBack, renderAdditio
         setSubjectId(newSubjectId);
         try {
             await updatePDFRecord(pdfId, { subjectId: newSubjectId });
-            addStatusMessage('✅ 教科を更新しました');
+            addStatusMessage('pdfEditor.subjectUpdated');
         } catch (error) {
             console.error(error);
-            addStatusMessage('❌ 教科の更新に失敗しました');
+            addStatusMessage('pdfEditor.subjectFailed');
         }
     };
 
@@ -136,7 +138,7 @@ export default function PDFEditorPanel({ pdfRecord, pdfId, onBack, renderAdditio
         }
 
         setIsSaving(true);
-        addStatusMessage('⏳ 保存中...');
+        addStatusMessage('pdfEditor.saving');
 
         try {
             const originalBytes = await pdfRecord.fileData.arrayBuffer();
@@ -293,13 +295,13 @@ export default function PDFEditorPanel({ pdfRecord, pdfId, onBack, renderAdditio
             }
             await updatePDFRecord(pdfRecord.id, updates);
 
-            addStatusMessage(`✅ 保存しました`);
+            addStatusMessage('pdfEditor.saved');
             setTimeout(() => {
                 onBack();
             }, 500);
         } catch (error) {
             console.error(error);
-            addStatusMessage(`❌ 保存に失敗しました`);
+            addStatusMessage('pdfEditor.saveFailed');
             setIsSaving(false);
         }
     };
@@ -338,7 +340,7 @@ export default function PDFEditorPanel({ pdfRecord, pdfId, onBack, renderAdditio
             <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
                 {statusMessage && (
                     <div className="status-message popup" style={{ position: 'absolute', top: 16, right: 16, zIndex: 1000, backgroundColor: 'rgba(0,0,0,0.8)', color: 'white', padding: '8px 16px', borderRadius: '4px' }}>
-                        {statusMessage}
+                        {t(statusMessage)}
                     </div>
                 )}
 
@@ -358,7 +360,7 @@ export default function PDFEditorPanel({ pdfRecord, pdfId, onBack, renderAdditio
                             animation: 'spin 1s linear infinite',
                             marginBottom: '16px'
                         }}></div>
-                        <p style={{ fontWeight: 'bold' }}>ページの準備中...</p>
+                        <p style={{ fontWeight: 'bold' }}>{t('pdfEditor.preparing')}</p>
                         <style>{`
                             @keyframes spin {
                                 0% { transform: rotate(0deg); }
@@ -375,7 +377,7 @@ export default function PDFEditorPanel({ pdfRecord, pdfId, onBack, renderAdditio
                         display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
                         backgroundColor: 'white', zIndex: 1000, padding: '20px', textAlign: 'center'
                     }}>
-                        <p style={{ color: '#e74c3c', marginBottom: '16px', fontWeight: 'bold' }}>PDFの読み込みに失敗しました</p>
+                        <p style={{ color: '#e74c3c', marginBottom: '16px', fontWeight: 'bold' }}>{t('pdfEditor.loadFailed')}</p>
                         <p style={{ fontSize: '12px', color: '#666', maxWidth: '300px', wordBreak: 'break-all', marginBottom: '20px' }}>{pdfError}</p>
                         <button
                             onClick={() => window.location.reload()}
@@ -384,7 +386,7 @@ export default function PDFEditorPanel({ pdfRecord, pdfId, onBack, renderAdditio
                                 borderRadius: '4px', cursor: 'pointer', fontSize: '16px', boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
                             }}
                         >
-                            再読み込み
+                            {t('pdfEditor.reload')}
                         </button>
                     </div>
                 )}
@@ -474,7 +476,7 @@ export default function PDFEditorPanel({ pdfRecord, pdfId, onBack, renderAdditio
                             className="page-nav-button"
                             onClick={() => setCurrentPage(p => Math.max(1, p - 10))}
                             disabled={currentPage <= 1 || isSaving}
-                            title="前の10ページ"
+                            title={t('pdfNavigation.previousTen')}
                         >
                             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '0.6' }}>
                                 <span>▲</span><span>▲</span>
@@ -484,7 +486,7 @@ export default function PDFEditorPanel({ pdfRecord, pdfId, onBack, renderAdditio
                             className="page-nav-button"
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                             disabled={currentPage <= 1 || isSaving}
-                            title="前のページ"
+                            title={t('pdfNavigation.previous')}
                         >
                             <span>▲</span>
                         </button>
@@ -509,7 +511,7 @@ export default function PDFEditorPanel({ pdfRecord, pdfId, onBack, renderAdditio
                                     setSliderValue(null)
                                 }}
                                 className="page-slider"
-                                title="ページ移動"
+                                title={t('pdfNavigation.page')}
                                 disabled={isSaving}
                             />
                         </div>
@@ -517,7 +519,7 @@ export default function PDFEditorPanel({ pdfRecord, pdfId, onBack, renderAdditio
                             className="page-nav-button"
                             onClick={() => setCurrentPage(p => Math.min(pdfDoc?.numPages || 1, p + 1))}
                             disabled={currentPage >= pdfDoc.numPages || isSaving}
-                            title="次のページ"
+                            title={t('pdfNavigation.next')}
                         >
                             <span>▼</span>
                         </button>
@@ -525,7 +527,7 @@ export default function PDFEditorPanel({ pdfRecord, pdfId, onBack, renderAdditio
                             className="page-nav-button"
                             onClick={() => setCurrentPage(p => Math.min(pdfDoc?.numPages || 1, p + 10))}
                             disabled={currentPage >= pdfDoc.numPages || isSaving}
-                            title="次の10ページ"
+                            title={t('pdfNavigation.nextTen')}
                         >
                             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '0.6' }}>
                                 <span>▼</span><span>▼</span>

@@ -1279,7 +1279,7 @@ export default function AdminPanel({
                         // Call onEditPDF callback to open editor panel
                         onEditPDF?.(record);
                       }}
-                      title="設定"
+                      title={t('pdfImport.settings')}
                       style={{ color: '#95a5a6' }}
                     >
                       <IoMdSettings style={{ fontSize: '20px' }} />
@@ -1292,7 +1292,7 @@ export default function AdminPanel({
                         e.stopPropagation();
                         setDeleteConfirm({ id: record.id, fileName: record.fileName });
                       }}
-                      title="削除"
+                      title={t('pdfImport.delete')}
                       style={{ color: '#95a5a6' }}
                     >
                       <svg
@@ -1365,7 +1365,7 @@ export default function AdminPanel({
                     border: 'none',
                     borderRadius: 0
                   }}
-                  title={importMode === 'pdf' ? 'PDFファイルを取り込む' : '画像ファイルを取り込む'}
+                  title={t(importMode === 'pdf' ? 'pdfImport.pdf' : 'pdfImport.images')}
                 >
                   <IoIosFolderOpen style={{ fontSize: '24px', width: '24px', height: '24px', color: '#f39c12' }} />
                   <div style={{ fontSize: '16px', color: '#95a5a6' }}>→</div>
@@ -1394,7 +1394,7 @@ export default function AdminPanel({
                     alignItems: 'center',
                     justifyContent: 'center'
                   }}
-                  title={importMode === 'pdf' ? '画像モードに切り替え' : 'PDFモードに切り替え'}
+                  title={t(importMode === 'pdf' ? 'pdfImport.switchToImages' : 'pdfImport.switchToPDF')}
                 >
                   {importMode === 'pdf'
                     ? <FiImage style={{ fontSize: '20px', color: '#7f8c8d' }} />

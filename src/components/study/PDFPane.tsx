@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, forwardRef, useImperativeHandle, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { PDFFileRecord } from '../../utils/indexedDB'
 import PDFCanvas, { PDFRenderMetrics } from './components/PDFCanvas'
 import { PDFPagePreview, type PreviewStrokeRenderer } from './components/PDFPagePreview'
@@ -83,6 +84,7 @@ export interface PDFPaneHandle {
 }
 
 export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
+    const { t } = useTranslation()
     const {
         pdfRecord,
         pdfDoc,
@@ -1457,7 +1459,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             deleteDisabled={regionMarkerDeleteDisabled}
                             controlScale={1 / zoom}
                             viewportRef={containerRef}
-                            openLabel={marker.completed === undefined ? 'この範囲の質問を開く' : marker.completed ? '採点済みの結果を開く' : '未採点の範囲を開く'}
+                            openLabel={t(marker.completed === undefined ? 'pdfNavigation.openQuestion' : marker.completed ? 'pdfNavigation.openResult' : 'pdfNavigation.openUngraded')}
                             style={{
                                 position: 'absolute',
                                 left: `${marker.region.x * canvasSize.width}px`,
@@ -1533,7 +1535,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                                 zIndex: 10000,
                                 userSelect: 'none'
                             }}>
-                                {overscroll.y > SWIPE_THRESHOLD ? '↑ 離して前のページへ' : '↓ 引っ張って前のページ'}
+                                {t(overscroll.y > SWIPE_THRESHOLD ? 'pdfNavigation.releasePrevious' : 'pdfNavigation.pullPrevious')}
                             </div>
                         )}
 
@@ -1556,7 +1558,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                                 zIndex: 10000,
                                 userSelect: 'none'
                             }}>
-                                {overscroll.y < -SWIPE_THRESHOLD ? '↓ 離して次のページへ' : '↑ 引っ張って次のページ'}
+                                {t(overscroll.y < -SWIPE_THRESHOLD ? 'pdfNavigation.releaseNext' : 'pdfNavigation.pullNext')}
                             </div>
                         )}
                     </>
@@ -1624,7 +1626,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                                     )
                                 }
                             }}
-                            title="画面に合わせる"
+                            title={t('pdfNavigation.fit')}
                              style={{ marginBottom: '8px', borderRadius: '4px' }}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1639,7 +1641,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             className="page-nav-button"
                             onClick={goToPrev10Pages}
                             disabled={pageNum <= 1}
-                            title="前の10ページ"
+                            title={t('pdfNavigation.previousTen')}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M17 11l-5-5-5 5M17 17l-5-5-5 5" />
@@ -1651,7 +1653,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             className="page-nav-button"
                             onClick={goToPrevPage}
                             disabled={pageNum <= 1}
-                            title="前のページ"
+                            title={t('pdfNavigation.previous')}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M18 15l-6-6-6 6" />
@@ -1680,7 +1682,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                                     setSliderValue(null)
                                 }}
                                 className="page-slider"
-                                title="ページ移動"
+                                title={t('pdfNavigation.page')}
                             />
                         </div>
 
@@ -1689,7 +1691,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             className="page-nav-button"
                             onClick={goToNextPage}
                             disabled={pageNum >= numPages}
-                            title="次のページ"
+                            title={t('pdfNavigation.next')}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M6 9l6 6 6-6" />
@@ -1701,7 +1703,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             className="page-nav-button"
                             onClick={goToNext10Pages}
                             disabled={pageNum >= numPages}
-                            title="次の10ページ"
+                            title={t('pdfNavigation.nextTen')}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M7 13l5 5 5-5M7 7l5 5 5-5" />
