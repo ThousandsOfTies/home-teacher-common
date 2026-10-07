@@ -1756,7 +1756,7 @@ export default function AdminPanel({
           >
             {t('footer.terms')}</button>
           <a
-            href="https://thousandsofties.github.io/tokushoho.html"
+            href={`${import.meta.env.BASE_URL}tokushoho.html`}
             target="_blank"
             rel="noopener noreferrer"
             style={{
