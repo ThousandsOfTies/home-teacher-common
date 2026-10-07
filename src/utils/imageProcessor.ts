@@ -1,3 +1,4 @@
+import messages from '../i18n/locales/ja.json'
 /**
  * サポートされている画像形式
  */
@@ -38,7 +39,7 @@ export async function convertHeicToJpeg(file: File): Promise<Blob> {
         heic2any = (await import('heic2any')).default;
     } catch (error) {
         console.error('Failed to load HEIC converter:', error);
-        throw new Error('HEIC変換を読み込めませんでした。インターネット接続を確認し、ページを再読み込みしてから画像を選び直してください。');
+        throw new Error(messages.errors.heicLoad);
     }
     try {
         const result = await heic2any({
@@ -54,7 +55,7 @@ export async function convertHeicToJpeg(file: File): Promise<Blob> {
         return result;
     } catch (error) {
         console.error('HEIC conversion failed:', error);
-        throw new Error('HEIC形式の変換に失敗しました');
+        throw new Error(messages.errors.heicConvert);
     }
 }
 
@@ -102,7 +103,7 @@ export function loadImageToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
 
         img.onerror = () => {
             URL.revokeObjectURL(url);
-            reject(new Error('画像の読み込みに失敗しました'));
+            reject(new Error(messages.errors.imageLoad));
         };
 
         img.src = url;
@@ -158,7 +159,7 @@ export async function resizeImage(
                 if (blob) {
                     resolve(blob);
                 } else {
-                    reject(new Error('画像のリサイズに失敗しました'));
+                    reject(new Error(messages.errors.imageResize));
                 }
             },
             'image/jpeg',

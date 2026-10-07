@@ -17,7 +17,9 @@
         "subjectFailed": "❌ 教科の更新に失敗しました",
         "saving": "⏳ 保存中...",
         "saved": "✅ 保存しました",
-        "saveFailed": "❌ 保存に失敗しました"
+        "saveFailed": "❌ 保存に失敗しました",
+        "loadFailureDetail": "PDFの読み込みに失敗しました: {{detail}}",
+        "timeout": "PDF読み込みがタイムアウトしました（{{seconds}}秒）"
     },
     "pdfNavigation": {
         "previousTen": "前の10ページ",
@@ -32,7 +34,9 @@
         "releasePrevious": "↑ 離して前のページへ",
         "pullPrevious": "↓ 引っ張って前のページ",
         "releaseNext": "↓ 離して次のページへ",
-        "pullNext": "↑ 引っ張って次のページ"
+        "pullNext": "↑ 引っ張って次のページ",
+        "deleteTrace": "この選択跡と続く履歴を削除",
+        "undoTrace": "直前の選択跡の削除を取り消す"
     },
     "pdfImport": {
         "settings": "設定",
@@ -42,7 +46,17 @@
         "switchToImages": "画像モードに切り替え",
         "switchToPDF": "PDFモードに切り替え",
         "checkingText": "文字情報を確認中：{{checked}}/{{total}}ページ",
-        "localTextCheck": "端末内で確認しています。文字判定のためのAI通信は行いません。"
+        "localTextCheck": "端末内で確認しています。文字判定のためのAI通信は行いません。",
+        "loading": "PDFを読み込んでいます…",
+        "loadFailed": "PDF一覧の読み込みに失敗しました",
+        "addFailed": "PDFの追加に失敗しました: {{detail}}",
+        "selectFailed": "ファイルの選択に失敗しました: {{detail}}",
+        "deleteFailed": "削除に失敗しました",
+        "storageFull": "端末の保存領域が足りません。Storageの使用量を確認し、不要な教材を削除してください。",
+        "tooManyFiles": "ファイル数が多すぎます。最大{{max}}枚まで選択できます。\n現在: {{count}}枚",
+        "fileTooLarge": "ファイルサイズが大きすぎます（最大{{max}}MB）\nファイル: {{name}}\nサイズ: {{size}}MB",
+        "totalTooLarge": "合計ファイルサイズが大きすぎます。\n最大: {{max}}MB\n現在: {{size}}MB\n\nファイル数を減らすか、小さいファイルを選択してください。",
+        "wait": "Please wait"
     },
     "editorLoading": {
         "loading": "教材編集を読み込んでいます…",
@@ -179,7 +193,19 @@
         "explanation": "解説",
         "gradingImage": "採点時の画像",
         "closeButton": "Close",
-        "minutes_short": "分"
+        "minutes_short": "分",
+        "showAll": "すべて表示",
+        "onlyGrading": "採点のみ",
+        "onlySNS": "SNSのみ",
+        "onlyCorrect": "正解のみ",
+        "onlyIncorrect": "不正解のみ",
+        "answerPreview": "解答:",
+        "noAnswer": "(なし)",
+        "matchingMetadata": "Matching Metadata (Debug)",
+        "method": "Method:",
+        "confidence": "Confidence:",
+        "similarity": "Similarity:",
+        "reasoning": "Reasoning:"
     },
     "storage": {
         "title": "Storage Information",
@@ -278,7 +304,91 @@
         "openSite": "サイトを開く",
         "tipsTitle": "💡 使い方のヒント：",
         "tipsContent": "「ふたば問題集」は新学習指導要領に対応した全単元カバーのプリントが揃っています。<br />PDFをダウンロードしたら、コンビニで両面印刷すれば市販ドリルのように使えます！",
-        "disclaimer": "※ 各サイトの教材は、それぞれのサイトの利用規約に従ってご利用ください。<br />HomeTeacherは教材の配布元ではなく、リンクを紹介しているのみです。"
+        "disclaimer": "※ 各サイトの教材は、それぞれのサイトの利用規約に従ってご利用ください。<br />HomeTeacherは教材の配布元ではなく、リンクを紹介しているのみです。",
+        "sites": [
+            {
+                "name": "ThousandsOfTies ドリル",
+                "description": "HomeTeacherの開発者によるサンプル問題集です。動作確認やデモに使用できます。",
+                "url": "https://thousandsofties.github.io/drills/",
+                "highlight": "🎥 公式サンプル",
+                "subjects": [
+                    "算数",
+                    "その他"
+                ],
+                "grades": [
+                    "全学年"
+                ]
+            },
+            {
+                "name": "ふたば問題集",
+                "description": "文部科学省の新学習指導要領に対応。小学校で習う算数の全分野をカバーした無料プリント集です。",
+                "url": "https://futaba-workbook.com/",
+                "highlight": "🏆 全単元カバー",
+                "subjects": [
+                    "算数"
+                ],
+                "grades": [
+                    "小1〜小6"
+                ]
+            },
+            {
+                "name": "すきるまドリル",
+                "description": "市販ドリルに近い構成。単元の導入→練習→まとめの流れが作りやすく、家庭学習に最適です。",
+                "url": "https://sukiruma.net/",
+                "highlight": "📚 市販ドリル風の構成",
+                "subjects": [
+                    "算数",
+                    "国語",
+                    "英語"
+                ],
+                "grades": [
+                    "小1〜小6",
+                    "中1〜中3"
+                ]
+            },
+            {
+                "name": "ちびむすドリル",
+                "description": "非常に細かく単元が分かれており、苦手なところだけを重点的に練習したい時に最適です。",
+                "url": "https://happylilac.net/syogaku.html",
+                "highlight": "🎯 苦手克服に最適",
+                "subjects": [
+                    "算数",
+                    "国語",
+                    "理科",
+                    "社会",
+                    "英語"
+                ],
+                "grades": [
+                    "幼児",
+                    "小1〜小6",
+                    "中1〜中3"
+                ]
+            },
+            {
+                "name": "算願（さんがん）",
+                "description": "計算ドリル、筆算、文章題、図形など、算数に特化した豊富なプリント集。",
+                "url": "https://www.sangan.jp/",
+                "highlight": "🔢 算数特化",
+                "subjects": [
+                    "算数・数学"
+                ],
+                "grades": [
+                    "小1〜中3"
+                ]
+            },
+            {
+                "name": "計算プリント.com",
+                "description": "計算問題に特化したシンプルなドリル。繰り返し練習に最適です。",
+                "url": "https://keipri.com/",
+                "highlight": "✏️ 計算練習特化",
+                "subjects": [
+                    "算数（計算）"
+                ],
+                "grades": [
+                    "小1〜小6"
+                ]
+            }
+        ]
     },
     "drawingCatalog": {
         "title": "🎨 おすすめ無料お絵描き素材",
@@ -286,7 +396,52 @@
         "openSite": "素材を探す",
         "tipsTitle": "💡 おすすめ：",
         "tipsContent": "初めてなら<strong>ひよこドリル</strong>の1つずつ練習がおすすめです。<br />見本と描く場所が同じページにあるPDFも、CopiCopiではA面を見ながら白いB面へ模写できます。",
-        "disclaimer": "※ 素材は各サイトの利用規約に従ってご利用ください。<br />CopiCopiは素材を再配布せず、公式の掲載ページへのリンクのみを紹介しています。"
+        "disclaimer": "※ 素材は各サイトの利用規約に従ってご利用ください。<br />CopiCopiは素材を再配布せず、公式の掲載ページへのリンクのみを紹介しています。",
+        "sites": [
+            {
+                "name": "ひよこドリル",
+                "description": "動物や食べ物などを、1つずつまたはドリル形式で練習できる子ども・初心者向けの無料イラスト教材です。",
+                "url": "https://hiyokodrill.com/illustration/",
+                "highlight": "🐣 はじめての模写に",
+                "subjects": [
+                    "動物",
+                    "食べ物",
+                    "かんたんイラスト"
+                ],
+                "grades": [
+                    "幼児〜初心者"
+                ]
+            },
+            {
+                "name": "学習プリント.com お絵描き",
+                "description": "簡単な図形からかわいいイラストへ段階的に進める、無料のお絵描きPDFプリントです。",
+                "url": "https://xn--fdk3a7ctb5192box5b.com/yo/oekaki/",
+                "highlight": "✏️ 段階練習",
+                "subjects": [
+                    "図形",
+                    "運筆",
+                    "イラスト"
+                ],
+                "grades": [
+                    "幼児〜小学生"
+                ]
+            },
+            {
+                "name": "SuperColoring Drawing Tutorials",
+                "description": "動物、人物、乗り物などの描き方を段階ごとに見られる、豊富な印刷用チュートリアル集です。",
+                "url": "https://www.supercoloring.com/section/drawing-tutorials",
+                "highlight": "🌎 テーマが豊富",
+                "subjects": [
+                    "動物",
+                    "人物",
+                    "乗り物",
+                    "植物"
+                ],
+                "grades": [
+                    "子ども〜大人"
+                ]
+            }
+        ]
     },
     "textMode": {
         "placeholder": "テキストを入力..."
@@ -308,9 +463,15 @@
         "conversionError": "PDFへの変換に失敗しました"
     },
     "common": {
-        "cancel": "キャンセル"
+        "cancel": "キャンセル",
+        "ok": "OK",
+        "close": "閉じる",
+        "delete": "削除",
+        "yes": "YES",
+        "no": "NO"
     },
     "parentSettings": {
+        "unlocked": "🎉 プレミアム機能が解除されました！\nSNS時間制限を自由に設定できます。",
         "title": "保護者様向け設定画面",
         "loginPrompt": "Googleアカウントでサインインしてください",
         "signIn": "Googleアカウントでログイン",
@@ -328,6 +489,374 @@
         "snsHint": "SNSの制限時間変更は、元の「管理パネル」画面のスライダーから行えます。",
         "managePlan": "プランを管理（キャンセル・支払い方法の変更）",
         "logout": "ログアウト",
-        "processing": "処理中..."
+        "processing": "処理中...",
+        "copiTitle": "CopiCopi Premium",
+        "checkoutFailed": "決済画面を開始できませんでした",
+        "portalFailed": "プラン管理画面を開始できませんでした",
+        "error": "エラーが発生しました",
+        "cancelledSuffix": " (解約手続済)",
+        "copiPremiumTitle": "Premiumで選べる先生が増えます",
+        "copiFeature": "BALANCED・HARDをアンロック",
+        "copiDescription": "利用する先生レベルと、採点時のデフォルト先生を自由に設定できます。",
+        "copiActiveDescription": "ありがとうございます！すべての先生レベルをご利用いただけます。",
+        "cancellationScheduled": "解約手続き済みです",
+        "cancelsAtPeriodEnd": "現在の期間終了後に解約されます。",
+        "resumeHint": "※有効期限内であれば管理画面から再開可能です",
+        "copiSettingsHint": "先生レベルの有効化とデフォルト設定は、Teacher Settingsから変更できます。",
+        "activeUntil": "Premiumは {{date}} まで有効です。"
+    },
+    "admin": {
+        "loading": "Loading...",
+        "confirmDelete": "Confirm Delete",
+        "deletePDFPrompt": "Delete this PDF and all drawings?",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "error": "Error",
+        "adminTab": "Admin",
+        "pdfFiles": "PDF Files",
+        "noPDFs": "No PDF files yet",
+        "newVersion": "New Version Available!",
+        "updateHint": "タップしてアプリを更新してください",
+        "update": "更新する",
+        "openProgress": "上達の記録を表示",
+        "openHistory": "採点履歴を表示",
+        "openStorage": "ストレージ詳細を表示",
+        "storage": "Storage",
+        "usage": "Usage:",
+        "teacherSettings": "先生レベルの設定",
+        "linkSettings": "リンクと通知の設定",
+        "help": "Help",
+        "studyTab": "Study",
+        "storageAlt": "{{app}} Storage",
+        "history": "History",
+        "linksAndNotifications": "Links & Notification"
+    },
+    "notifications": {
+        "unsupported": "このブラウザは通知をサポートしていません",
+        "install": "通知を使用するには、このアプリをホーム画面に追加してください。\n\n手順:\n1. Safariの共有ボタン（↑）をタップ\n2. 「ホーム画面に追加」を選択\n3. ホーム画面のアイコンから起動",
+        "enabled": "通知が有効になりました！時間切れの際にお知らせします。",
+        "permissionFailed": "通知の許可に失敗しました。このアプリをホーム画面に追加してから再度お試しください。",
+        "blocked": "⚠️ ブラウザの通知がブロックされています。設定を確認してください。"
+    },
+    "languages": {
+        "ja": "日本語",
+        "en": "English"
+    },
+    "footer": {
+        "contact": "お問い合わせ",
+        "privacy": "プライバシーポリシー",
+        "terms": "利用規約",
+        "commerce": "特定商取引法に基づく表記",
+        "about": "{{app}}について"
+    },
+    "teacherLevels": {
+        "kind": "KIND",
+        "balanced": "BALANCED",
+        "strict": "HARD"
+    },
+    "teacherSettings": {
+        "kindDescription": "よかったところを中心に、やさしくアドバイス",
+        "balancedDescription": "よい点と改善点をバランスよくアドバイス",
+        "strictDescription": "形や比率まで細かく、具体的にアドバイス",
+        "title": "Teacher Settings",
+        "style": "FEEDBACK STYLE",
+        "description": "採点で選べる先生と、最初に表示する先生を設定します。",
+        "always": "ALWAYS",
+        "locked": "LOCKED",
+        "on": "ON",
+        "off": "OFF",
+        "default": "DEFAULT",
+        "premiumNote": "KINDはいつでも利用できます。無効にした先生は採点ボタンのリストに表示されません。",
+        "managePlan": "プラン管理・解約",
+        "unlock": "BALANCEDとHARDをアンロック",
+        "premiumHint": "Premiumで先生レベルを自由に設定できます",
+        "saving": "保存中...",
+        "save": "保存"
+    },
+    "progressHistory": {
+        "deleteConfirm": "この練習記録を削除しますか？",
+        "title": "Progress",
+        "portfolio": "YOUR PORTFOLIO",
+        "practiceCount": "練習",
+        "workCount": "作品",
+        "description": "描いた一枚と先生のアドバイスを、次の練習につなげましょう。",
+        "searchPlaceholder": "作品名やアドバイスを検索",
+        "search": "Progressを検索",
+        "loading": "読み込み中...",
+        "notFound": "見つかりませんでした",
+        "emptyTitle": "最初の作品を残してみましょう",
+        "searchHint": "検索する言葉を変えてください。",
+        "emptyHint": "採点すると、作品とアドバイスがここに保存されます。",
+        "workImage": "採点時の作品",
+        "reviewRecord": "評価記録",
+        "viewAdvice": "アドバイスを確認する",
+        "delete": "この記録を削除",
+        "closeDetail": "詳細を閉じる",
+        "panesImage": "採点時のA面とB面",
+        "overall": "全体の印象",
+        "goodPoints": "◎ よかったところ",
+        "nextPoint": "→ 次に直すポイント",
+        "practiceAdvice": "次の一枚でやってみよう",
+        "attempt": "{{count}}回目"
+    },
+    "legal": {
+        "about": {
+            "title": "🦉 TutoTutoについて",
+            "introTitle": "TutoTutoとは",
+            "intro": "TutoTutoでは、お子様のSNSの利用の前に「本アプリでの学習」という制限を設けることが可能になります。 お勉強に用いる教材はPDFファイルで登録します。 PDFファイルに直接書き込みを行い、採点はAIが行います。",
+            "featuresTitle": "主な機能",
+            "pdfTitle": "PDF教材の管理",
+            "pdfDescription": " - 学習用のPDFファイルをアプリに登録して管理できます",
+            "drawingTitle": "手書き編集",
+            "drawingDescription": " - タッチペンや指で直接PDFを編集することができます",
+            "gradingTitle": "AI自動採点",
+            "gradingDescription": " - Google Gemini AIを使用して自動採点します",
+            "snsTitle": "SNSアクセス",
+            "snsDescription": " - 採点後に時間制限を設けたSNSへのアクセス許可を与えることが可能です",
+            "historyTitle": "学習履歴",
+            "historyDescription": " - 採点結果の履歴を確認できます",
+            "devicesTitle": "対応デバイス",
+            "devicesDescription": "以下のデバイス・ブラウザでご利用いただけます：",
+            "ios": "iPad / iPhone（Safari）- Apple Pencil対応",
+            "windows": "Windows PC（Chrome, Edge）",
+            "mac": "Mac PC（Safari）- 未確認",
+            "android": "Android タブレット / スマートフォン（Chrome）- 未確認",
+            "operatorTitle": "開発・運営",
+            "operator": "運営者:",
+            "github": "GitHub:",
+            "versionTitle": "バージョン情報",
+            "version": "現在のバージョン:",
+            "debug": "Debug Info:",
+            "url": "URL:",
+            "premium": "Premium:",
+            "creditsTitle": "謝辞",
+            "creditsDescription": "TutoTutoは以下の技術・サービスを使用しています：",
+            "react": "React - UIフレームワーク",
+            "vite": "Vite - ビルドツール",
+            "pdfjs": "PDF.js - PDF表示ライブラリ",
+            "gemini": "Google Gemini AI - 自動採点エンジン",
+            "disclaimerTitle": "⚠️ 免責事項",
+            "aiTitle": "AI自動採点について",
+            "aiBefore": "本アプリのAI自動採点機能は、Google Gemini AIを使用していますが、",
+            "aiWarning": "採点結果が必ずしも正確であるとは限りません",
+            "aiAfter": "。 AIによる判定には誤りが含まれる可能性があるため、 保護者の方は必ずお子様の解答を確認し、最終的な正誤判定を行ってください。 本機能はあくまで学習のサポートツールとしてご利用ください。"
+        },
+        "email": "メール:",
+        "contact": {
+            "title": "📧 お問い合わせ",
+            "addressTitle": "お問い合わせ先",
+            "intro": "TutoTutoに関するご質問、ご意見、ご要望、不具合のご報告などは、 下記のメールアドレスまでお気軽にお問い合わせください。",
+            "email": "メールアドレス",
+            "notesTitle": "お問い合わせの際のお願い",
+            "responseTime": "お問い合わせの内容によっては、回答にお時間をいただく場合があります",
+            "deviceInfo": "不具合のご報告の際は、使用しているデバイス・ブラウザの情報もお知らせください",
+            "reply": "お問い合わせへの回答は、原則としてメールにて行います",
+            "faqTitle": "よくあるご質問",
+            "storageQuestion": "Q: データはどこに保存されますか？",
+            "storageAnswer": "A: すべてのデータはお使いのデバイス内（ブラウザのIndexedDB）に保存されます。 外部サーバーには送信されません。",
+            "syncQuestion": "Q: 複数のデバイスでデータを共有できますか？",
+            "syncAnswer": "A: 現在、デバイス間でのデータ同期機能はありません。 各デバイスで個別にデータが保存されます。",
+            "deleteQuestion": "Q: データを削除するにはどうすればいいですか？",
+            "deleteAnswer": "A: アプリ内のAdmin画面にある「Storage」から「すべて削除」を選択すると、 保存されているすべてのデータを削除できます。"
+        },
+        "privacy": {
+            "title": "🔒 プライバシーポリシー",
+            "intro": "TutoTuto（以下「本アプリ」）は、お客様のプライバシーを尊重し、個人情報の保護に努めています。 本プライバシーポリシーでは、本アプリにおける情報の取り扱いについて説明します。",
+            "collectionTitle": "1. 収集する情報",
+            "collectionDescription": "本アプリは、以下の情報をお客様のデバイス内にのみ保存します：",
+            "pdf": "PDFファイル（学習用教材として登録されたもの）",
+            "handwriting": "手書きの書き込みデータ",
+            "history": "採点履歴",
+            "settings": "アプリ設定（SNS利用時間制限、通知設定など）",
+            "localData": "これらの情報はすべてお客様のデバイス内（IndexedDB）に保存され、 外部サーバーには送信されません。",
+            "aiTitle": "2. AI採点機能について",
+            "aiDescription": "本アプリのAI採点機能を利用する際、採点対象の画像データがGoogle Gemini APIに送信されます。 送信されたデータは採点処理にのみ使用され、Googleのプライバシーポリシーに従って取り扱われます。",
+            "adsTitle": "3. 広告について",
+            "adsDescription": "本アプリでは、Google AdSenseを使用して広告を表示する場合があります。 Google AdSenseは、Cookieを使用してお客様の興味に基づいた広告を表示することがあります。",
+            "adsBefore": "Googleによる広告配信については、",
+            "adsLink": "Googleの広告ポリシー",
+            "adsAfter": "をご確認ください。",
+            "cookiesTitle": "4. Cookieの使用",
+            "cookiesDescription": "本アプリでは、広告配信およびサービス改善のためにCookieを使用する場合があります。 Cookieは、ブラウザの設定により無効にすることができます。",
+            "deleteTitle": "5. データの削除",
+            "deleteDescription": "本アプリに保存されたデータは、ブラウザの設定からサイトデータを削除するか、 アプリ内の「すべて削除」機能を使用することで削除できます。",
+            "contactTitle": "6. お問い合わせ",
+            "contactDescription": "本プライバシーポリシーに関するお問い合わせは、以下までご連絡ください：",
+            "changesTitle": "7. プライバシーポリシーの変更",
+            "changesDescription": "本プライバシーポリシーは、必要に応じて変更されることがあります。 変更があった場合は、本アプリ内で通知します。"
+        },
+        "lastUpdated": "最終更新日: 2026年1月6日",
+        "terms": {
+            "title": "📋 利用規約",
+            "intro": "この利用規約（以下「本規約」）は、TutoTuto（以下「本アプリ」）の利用条件を定めるものです。 本アプリをご利用いただく前に、本規約をよくお読みください。",
+            "serviceTitle": "1. サービスの説明",
+            "serviceDescription": "本アプリは、お子様のSNS利用を制限し、学習習慣を促進するためのペアレンタルコントロールアプリです。 SNSへのアクセスを許可する前に、本アプリでの学習を条件として設定することができます。 学習機能として以下を提供します：",
+            "pdf": "PDFファイルの閲覧と管理",
+            "handwriting": "手書きによる書き込み機能",
+            "grading": "AIを使用した自動採点機能",
+            "progress": "学習進捗の管理",
+            "sns": "採点後の時間制限付きSNSアクセス許可機能",
+            "conditionsTitle": "2. 利用条件",
+            "conditionsDescription": "本アプリを利用するにあたり、以下の条件に同意するものとします：",
+            "parentalUse": "保護者によるお子様の学習管理およびSNS利用制限の目的で使用すること",
+            "agreement": "本規約およびプライバシーポリシーに同意すること",
+            "compliance": "著作権法その他の法令を遵守すること",
+            "prohibitedTitle": "3. 禁止事項",
+            "prohibitedDescription": "以下の行為を禁止します：",
+            "unlawfulUse": "本アプリを不正な目的で使用すること",
+            "overload": "本アプリのシステムに過度な負荷をかけること",
+            "excessiveGrading": "AI採点機能を短時間に過度に利用すること（自動化ツール等による連続採点を含む）",
+            "sourceCode": "本アプリのソースコードを無断で複製・改変・再配布すること",
+            "copyright": "著作権で保護されたコンテンツを許可なくアップロードすること",
+            "rights": "他のユーザーまたは第三者の権利を侵害すること",
+            "disclaimerTitle": "4. 免責事項",
+            "disclaimerDescription": "本アプリは「現状有姿」で提供されます。 以下について、運営者は一切の責任を負いません：",
+            "damage": "本アプリの利用により生じた損害",
+            "accuracy": "AI採点機能の結果の正確性（AIによる採点には誤りが含まれる可能性があり、最終的な判断は保護者が行うものとします）",
+            "dataLoss": "データの損失または破損",
+            "interruption": "本アプリの中断または終了",
+            "thirdPartyAccess": "第三者によるアクセスまたは使用",
+            "adsTitle": "5. 広告の表示",
+            "adsDescription": "本アプリでは、Google AdSenseによる広告が表示される場合があります。 広告の内容は第三者によって提供されるものであり、 運営者はその内容について責任を負いません。",
+            "serviceChangesTitle": "6. サービスの変更・終了",
+            "serviceChangesDescription": "運営者は、事前の通知なく本アプリの内容を変更し、 または本アプリの提供を終了することができます。",
+            "restrictionsTitle": "7. 利用制限",
+            "restrictionsDescription": "運営者は、以下の場合において、事前の通知なく本アプリの利用を制限または停止することができます：",
+            "excessiveUse": "AI採点機能の過度な利用が検出された場合",
+            "violation": "本規約に違反する行為が確認された場合",
+            "stability": "システムの安定性や他のユーザーへの影響が懸念される場合",
+            "costs": "サーバーやAPI利用コストが想定を大幅に超過した場合",
+            "termsChangesTitle": "8. 規約の変更",
+            "termsChangesDescription": "運営者は、必要に応じて本規約を変更することがあります。 変更後の規約は、本アプリ内に掲示した時点から効力を生じます。",
+            "lawTitle": "9. 準拠法",
+            "lawDescription": "本規約は、日本法に準拠し、解釈されるものとします。",
+            "contactTitle": "10. お問い合わせ",
+            "contactDescription": "本規約に関するお問い合わせは、以下までご連絡ください："
+        }
+    },
+    "models": {
+        "gemini-3_8-flash": "最新世代・高速・高精度モデル（推奨・GA）",
+        "gemini-3_5-pro": "最高精度の推論モデル（プレビュー版）",
+        "gemini-3_1-pro-preview": "高精度モデル（プレビュー版）",
+        "gemini-3_1-flash-lite": "超高速・低コストモデル（GA）",
+        "gemini-2_5-pro": "複雑な論理推論に強いモデル（GA）",
+        "gemini-2_5-flash": "速度と精度のバランスが良いモデル（GA）",
+        "gemini-2_5-flash-lite": "超高速・低コストモデル（GA）"
+    },
+    "subjects": {
+        "math": {
+            "label": "算数・数学",
+            "description": "Mathematics and Arithmetic"
+        },
+        "japanese": {
+            "label": "国語",
+            "description": "Japanese Language"
+        },
+        "english": {
+            "label": "英語",
+            "description": "English Language"
+        },
+        "science": {
+            "label": "理科",
+            "description": "Science"
+        },
+        "social": {
+            "label": "社会",
+            "description": "Social Studies"
+        },
+        "other": {
+            "label": "その他",
+            "description": "Other subjects"
+        }
+    },
+    "errors": {
+        "databaseDelete": "データベースの削除に失敗しました",
+        "databaseBusy": "データベースが使用中のため削除できませんでした",
+        "databaseOpen": "IndexedDBを開けませんでした",
+        "databaseOtherTab": "別のタブで教材データが使用中です。DoriDoriの他のタブを閉じて再読み込みしてください",
+        "pagePosition": "ページ位置の取得に失敗しました",
+        "recordRead": "レコードの取得に失敗しました",
+        "recordSave": "レコードの保存に失敗しました",
+        "recordAborted": "レコードの保存が中断されました",
+        "pdfSettingsSave": "PDF表示設定の保存に失敗しました",
+        "pdfRecordMissing": "PDFレコードが見つかりません",
+        "recordDelete": "レコードの削除に失敗しました",
+        "regionSave": "学習範囲の保存に失敗しました",
+        "pdfMissing": "PDFが見つかりません",
+        "regionRead": "学習範囲の取得に失敗しました",
+        "regionDelete": "学習範囲を削除できませんでした",
+        "deletionInvalid": "削除履歴が不正です",
+        "regionRestore": "学習範囲を元に戻せませんでした",
+        "originalMissing": "元のPDFまたは質問が見つかりません",
+        "followUpSave": "追加の質問を保存できませんでした",
+        "parentResultMissing": "元の採点結果が見つかりません",
+        "questionInvalid": "質問の記録が不正です",
+        "questionSave": "質問の保存に失敗しました",
+        "questionImageMissing": "質問画像がありません",
+        "questionMissing": "質問の記録が見つかりません",
+        "answerSave": "回答の保存に失敗しました",
+        "answerQuestionMissing": "回答先の質問が見つかりません",
+        "questionTooLong": "質問のテキストが長すぎます",
+        "questionTextSave": "質問のテキストを保存できませんでした",
+        "questionImageRead": "質問画像の取得に失敗しました",
+        "questionRead": "質問の記録を取得できませんでした",
+        "questionDelete": "質問の記録を削除できませんでした",
+        "questionRestore": "質問の記録を元に戻せませんでした",
+        "drawingSave": "ペン跡の保存に失敗しました",
+        "drawingRead": "ペン跡の取得に失敗しました",
+        "textSave": "テキストの保存に失敗しました",
+        "textRead": "テキストの取得に失敗しました",
+        "snsRead": "SNSリンクの取得に失敗しました",
+        "snsSave": "SNSリンクの保存に失敗しました",
+        "snsDelete": "SNSリンクの削除に失敗しました",
+        "gradingImageConvert": "採点画像の変換に失敗しました",
+        "gradingImageLoad": "採点画像の読み込みに失敗しました",
+        "gradingImageSave": "採点画像の保存に失敗しました",
+        "gradingImageRead": "採点画像の取得に失敗しました",
+        "historySave": "採点履歴の保存に失敗しました",
+        "historyRead": "採点履歴の取得に失敗しました",
+        "historyDelete": "採点履歴の削除に失敗しました",
+        "gradingImageReferences": "採点画像の参照確認に失敗しました",
+        "gradingImageDelete": "採点画像の削除に失敗しました",
+        "settingsRead": "設定の取得に失敗しました",
+        "settingsSave": "設定の保存に失敗しました",
+        "snsHistoryRead": "SNS利用履歴の取得に失敗しました",
+        "pdfDataMissing": "PDFデータが見つかりません",
+        "emptyPDF": "PDFファイルのサイズが0バイトです",
+        "pdfDataLoadPrefix": "PDFデータの読み込みに失敗しました: ",
+        "pdfDataRead": "PDFデータの取得に失敗しました",
+        "pdfRangeInvalid": "PDFの読み込み範囲が不正です",
+        "noImages": "画像が選択されていません",
+        "pdfConvert": "PDFへの変換に失敗しました",
+        "noPDFs": "PDFが選択されていません",
+        "pdfMerge": "PDFの結合に失敗しました",
+        "imageCompress": "画像の圧縮に失敗しました",
+        "heicLoad": "HEIC変換を読み込めませんでした。インターネット接続を確認し、ページを再読み込みしてから画像を選び直してください。",
+        "heicConvert": "HEIC形式の変換に失敗しました",
+        "imageLoad": "画像の読み込みに失敗しました",
+        "imageResize": "画像のリサイズに失敗しました",
+        "clearStorage": "ストレージのクリアに失敗しました: {{detail}}",
+        "converterLoad": "画像の取り込みを読み込めませんでした。インターネット接続を確認し、ページを再読み込みしてから画像を選び直してください。",
+        "canvasUnavailable": "描画の準備ができませんでした"
+    },
+    "ads": {
+        "adminTop": "管理画面 - トップバナー",
+        "adminSidebar": "管理画面 - サイドバー",
+        "resultBottom": "採点結果 - 下部",
+        "resultTop": "採点結果 - 上部バナー"
+    },
+    "storageAdvice": {
+        "protectedTitle": "データ保護",
+        "installed": "このアプリはホーム画面に追加されているため、データは保護されています。",
+        "iosTitle": "重要：データ保護について",
+        "ios": "Safariでは7日間使用しないとデータが削除される可能性があります。ホーム画面に追加すると、データが永続的に保護されます。",
+        "persisted": "ストレージが永続化されました。データは自動削除されません。",
+        "browserTitle": "ストレージ保護",
+        "browser": "このアプリをよく使用すると、ブラウザがデータを保護します。または、ホーム画面/デスクトップにインストールしてください。",
+        "otherTitle": "データ保護について",
+        "other": "重要なデータは定期的にバックアップしてください。ブラウザによっては、ストレージ不足時にデータが削除される可能性があります。"
+    },
+    "snsNames": {
+        "niconico": "ニコニコ動画"
     }
 }

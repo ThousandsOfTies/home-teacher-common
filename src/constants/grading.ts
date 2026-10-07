@@ -1,3 +1,6 @@
+import ja from '../i18n/locales/ja.json'
+import en from '../i18n/locales/en.json'
+
 // ============================================================
 // 採点関連の共通定数・プロンプト生成関数
 // home-teacher-common / src / constants / grading.ts
@@ -9,13 +12,13 @@
 export const DEFAULT_MODEL_ID = 'gemini-3.8-flash'
 
 export const AVAILABLE_MODELS = [
-  { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', description: '最新世代・高速・高精度モデル（推奨・GA）' },
-  { id: 'gemini-3.5-pro', name: 'Gemini 3.5 Pro (Preview)', description: '最高精度の推論モデル（プレビュー版）' },
-  { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro (Preview)', description: '高精度モデル（プレビュー版）' },
-  { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite', description: '超高速・低コストモデル（GA）' },
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: '複雑な論理推論に強いモデル（GA）' },
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: '速度と精度のバランスが良いモデル（GA）' },
-  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', description: '超高速・低コストモデル（GA）' },
+  { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', description: ja.models['gemini-3_8-flash'] },
+  { id: 'gemini-3.5-pro', name: 'Gemini 3.5 Pro (Preview)', description: ja.models['gemini-3_5-pro'] },
+  { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro (Preview)', description: ja.models['gemini-3_1-pro-preview'] },
+  { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite', description: ja.models['gemini-3_1-flash-lite'] },
+  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: ja.models['gemini-2_5-pro'] },
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: ja.models['gemini-2_5-flash'] },
+  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', description: ja.models['gemini-2_5-flash-lite'] },
 ]
 
 
@@ -23,12 +26,12 @@ export const AVAILABLE_MODELS = [
 // 教科定義
 // ----------------------------------------
 export const SUBJECTS = [
-  { id: 'math',     labels: { ja: '算数・数学', en: 'Math' },           icon: '📐', description: 'Mathematics and Arithmetic' },
-  { id: 'japanese', labels: { ja: '国語',       en: 'Japanese' },        icon: '🇯🇵', description: 'Japanese Language' },
-  { id: 'english',  labels: { ja: '英語',       en: 'English' },         icon: '🇬🇧', description: 'English Language' },
-  { id: 'science',  labels: { ja: '理科',       en: 'Science' },         icon: '🔬', description: 'Science' },
-  { id: 'social',   labels: { ja: '社会',       en: 'Social Studies' },  icon: '🌍', description: 'Social Studies' },
-  { id: 'other',    labels: { ja: 'その他',     en: 'Other' },           icon: '📝', description: 'Other subjects' },
+  { id: 'math',     labels: { ja: ja.subjects.math.label, en: en.subjects.math.label },           icon: '📐', description: en.subjects.math.description },
+  { id: 'japanese', labels: { ja: ja.subjects.japanese.label, en: en.subjects.japanese.label },        icon: '🇯🇵', description: en.subjects.japanese.description },
+  { id: 'english',  labels: { ja: ja.subjects.english.label, en: en.subjects.english.label },         icon: '🇬🇧', description: en.subjects.english.description },
+  { id: 'science',  labels: { ja: ja.subjects.science.label, en: en.subjects.science.label },         icon: '🔬', description: en.subjects.science.description },
+  { id: 'social',   labels: { ja: ja.subjects.social.label, en: en.subjects.social.label },  icon: '🌍', description: en.subjects.social.description },
+  { id: 'other',    labels: { ja: ja.subjects.other.label, en: en.subjects.other.label },           icon: '📝', description: en.subjects.other.description },
 ]
 
 // ----------------------------------------

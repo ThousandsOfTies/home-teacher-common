@@ -1,3 +1,4 @@
+import messages from '../i18n/locales/ja.json'
 // ストレージ管理ユーティリティ
 
 /**
@@ -91,8 +92,8 @@ export function getStorageAdviceMessage(isPersisted: boolean, platformInfo: Retu
   // iOS PWA（ホーム画面追加済み）
   if (platformInfo.isIOS && platformInfo.isPWA) {
     return {
-      title: 'データ保護',
-      message: 'このアプリはホーム画面に追加されているため、データは保護されています。',
+      title: messages.storageAdvice.protectedTitle,
+      message: messages.storageAdvice.installed,
       severity: 'success',
     };
   }
@@ -100,8 +101,8 @@ export function getStorageAdviceMessage(isPersisted: boolean, platformInfo: Retu
   // iOS Safari（ブラウザ）
   if (platformInfo.isIOS && !platformInfo.isPWA) {
     return {
-      title: '重要：データ保護について',
-      message: 'Safariでは7日間使用しないとデータが削除される可能性があります。ホーム画面に追加すると、データが永続的に保護されます。',
+      title: messages.storageAdvice.iosTitle,
+      message: messages.storageAdvice.ios,
       severity: 'warning',
     };
   }
@@ -109,8 +110,8 @@ export function getStorageAdviceMessage(isPersisted: boolean, platformInfo: Retu
   // デスクトップ Chrome/Edge（永続化成功）
   if (isPersisted && (platformInfo.isChrome || platformInfo.isEdge)) {
     return {
-      title: 'データ保護',
-      message: 'ストレージが永続化されました。データは自動削除されません。',
+      title: messages.storageAdvice.protectedTitle,
+      message: messages.storageAdvice.persisted,
       severity: 'success',
     };
   }
@@ -118,16 +119,16 @@ export function getStorageAdviceMessage(isPersisted: boolean, platformInfo: Retu
   // デスクトップ Chrome/Edge（永続化失敗）
   if (!isPersisted && (platformInfo.isChrome || platformInfo.isEdge)) {
     return {
-      title: 'ストレージ保護',
-      message: 'このアプリをよく使用すると、ブラウザがデータを保護します。または、ホーム画面/デスクトップにインストールしてください。',
+      title: messages.storageAdvice.browserTitle,
+      message: messages.storageAdvice.browser,
       severity: 'info',
     };
   }
 
   // その他のブラウザ
   return {
-    title: 'データ保護について',
-    message: '重要なデータは定期的にバックアップしてください。ブラウザによっては、ストレージ不足時にデータが削除される可能性があります。',
+    title: messages.storageAdvice.otherTitle,
+    message: messages.storageAdvice.other,
     severity: 'warning',
   };
 }

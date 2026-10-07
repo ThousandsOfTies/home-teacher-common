@@ -1,3 +1,4 @@
+import messages from '../i18n/locales/ja.json'
 // IndexedDB管理ユーティリティ
 import type { PDFTextInspection } from './pdfTextInspection';
 
@@ -236,8 +237,8 @@ export function deleteAppDatabase(): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DB_NAME);
     request.onsuccess = () => resolve();
-    request.onerror = () => reject(new Error('データベースの削除に失敗しました'));
-    request.onblocked = () => reject(new Error('データベースが使用中のため削除できませんでした'));
+    request.onerror = () => reject(new Error(messages.errors.databaseDelete));
+    request.onblocked = () => reject(new Error(messages.errors.databaseBusy));
   });
 }
 
@@ -264,9 +265,9 @@ function openDB(): Promise<IDBDatabase> {
         dbName: DB_NAME,
         version: DB_VERSION
       });
-      reject(new Error('IndexedDBを開けませんでした'));
+      reject(new Error(messages.errors.databaseOpen));
     };
-    request.onblocked = () => reject(new Error('別のタブで教材データが使用中です。DoriDoriの他のタブを閉じて再読み込みしてください'));
+    request.onblocked = () => reject(new Error(messages.errors.databaseOtherTab));
 
     request.onsuccess = () => {
       console.log('✅ IndexedDB開く成功:', {
@@ -449,7 +450,7 @@ export async function getAllPDFRecords(): Promise<PDFFileRecord[]> {
       viewStates = new Map((viewRequest.result as PDFViewStateRecord[]).map(state => [state.id, state]));
       finish();
     };
-    viewRequest.onerror = () => reject(new Error('ページ位置の取得に失敗しました'));
+    viewRequest.onerror = () => reject(new Error(messages.errors.pagePosition));
 
     request.onsuccess = (event) => {
       const cursor = (event.target as IDBRequest).result;
@@ -474,7 +475,7 @@ export async function getAllPDFRecords(): Promise<PDFFileRecord[]> {
 
     request.onerror = () => {
       console.error('❌ PDFレコード取得エラー:', request.error);
-      reject(new Error('レコードの取得に失敗しました'));
+      reject(new Error(messages.errors.recordRead));
     };
   });
 }
@@ -489,8 +490,8 @@ export async function savePDFRecord(record: PDFFileRecord): Promise<void> {
     objectStore.put(record);
     // Large Blob writes may fail when the transaction commits, after put() succeeds.
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error ?? new Error('レコードの保存に失敗しました'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('レコードの保存が中断されました'));
+    transaction.onerror = () => reject(transaction.error ?? new Error(messages.errors.recordSave));
+    transaction.onabort = () => reject(transaction.error ?? new Error(messages.errors.recordAborted));
   });
 }
 
@@ -515,8 +516,8 @@ export async function updatePDFRecord(id: string, updates: Partial<PDFFileRecord
         };
       };
       transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error ?? new Error('PDF表示設定の保存に失敗しました'));
-      transaction.onabort = () => reject(transaction.error ?? new Error('PDFレコードが見つかりません'));
+      transaction.onerror = () => reject(transaction.error ?? new Error(messages.errors.pdfSettingsSave));
+      transaction.onabort = () => reject(transaction.error ?? new Error(messages.errors.pdfRecordMissing));
     });
   }
   const record = await getPDFRecord(id);
@@ -555,9 +556,9 @@ export async function getPDFRecord(id: string): Promise<PDFFileRecord | null> {
     };
 
     request.onerror = () => {
-      reject(new Error('レコードの取得に失敗しました'));
+      reject(new Error(messages.errors.recordRead));
     };
-    viewRequest.onerror = () => reject(new Error('ページ位置の取得に失敗しました'));
+    viewRequest.onerror = () => reject(new Error(messages.errors.pagePosition));
   });
 }
 
@@ -614,8 +615,8 @@ export async function deletePDFRecord(id: string): Promise<void> {
       cursor.continue();
     };
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(new Error('レコードの削除に失敗しました'));
-    transaction.onabort = () => reject(new Error('レコードの削除に失敗しました'));
+    transaction.onerror = () => reject(new Error(messages.errors.recordDelete));
+    transaction.onabort = () => reject(new Error(messages.errors.recordDelete));
   });
 }
 
@@ -632,8 +633,8 @@ export async function savePDFStudyMarker(record: PDFStudyMarkerRecord): Promise<
       transaction.objectStore(PDF_STUDY_MARKER_STORE_NAME).put(record);
     };
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error ?? new Error('学習範囲の保存に失敗しました'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('PDFが見つかりません'));
+    transaction.onerror = () => reject(transaction.error ?? new Error(messages.errors.regionSave));
+    transaction.onabort = () => reject(transaction.error ?? new Error(messages.errors.pdfMissing));
   });
 }
 
@@ -643,7 +644,7 @@ export async function getPDFStudyMarker(id: string): Promise<PDFStudyMarkerRecor
     const request = db.transaction([PDF_STUDY_MARKER_STORE_NAME], 'readonly')
       .objectStore(PDF_STUDY_MARKER_STORE_NAME).get(id);
     request.onsuccess = () => resolve(request.result ?? null);
-    request.onerror = () => reject(new Error('学習範囲の取得に失敗しました'));
+    request.onerror = () => reject(new Error(messages.errors.regionRead));
   });
 }
 
@@ -653,7 +654,7 @@ export async function getPDFStudyMarkersByPdfId(pdfId: string): Promise<PDFStudy
     const request = db.transaction([PDF_STUDY_MARKER_STORE_NAME], 'readonly')
       .objectStore(PDF_STUDY_MARKER_STORE_NAME).index('pdfId').getAll(IDBKeyRange.only(pdfId));
     request.onsuccess = () => resolve(request.result as PDFStudyMarkerRecord[]);
-    request.onerror = () => reject(new Error('学習範囲の取得に失敗しました'));
+    request.onerror = () => reject(new Error(messages.errors.regionRead));
   });
 }
 
@@ -701,8 +702,8 @@ export async function deletePDFStudyMarkerBranch(pdfId: string, markerId: string
       };
     };
     transaction.oncomplete = () => resolve(snapshot);
-    transaction.onerror = () => reject(transaction.error ?? new Error('学習範囲を削除できませんでした'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('学習範囲を削除できませんでした'));
+    transaction.onerror = () => reject(transaction.error ?? new Error(messages.errors.regionDelete));
+    transaction.onabort = () => reject(transaction.error ?? new Error(messages.errors.regionDelete));
   });
 }
 
@@ -713,7 +714,7 @@ export async function restorePDFStudyMarkerDeletion(snapshot: PDFStudyMarkerDele
   const assetIds = new Set(Array.from(ids).flatMap(id => [studyAssetId(marker.id, id, 'question'), studyAssetId(marker.id, id, 'drawing')]));
   if (marker.pdfId !== snapshot.pdfId || (nodeId && !marker.followUps?.some(node => node.id === nodeId)) ||
       snapshot.assets.some(asset => asset.traceId !== marker.id || (nodeId && !assetIds.has(asset.id)))) {
-    throw new Error('削除履歴が不正です');
+    throw new Error(messages.errors.deletionInvalid);
   }
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -747,8 +748,8 @@ export async function restorePDFStudyMarkerDeletion(snapshot: PDFStudyMarkerDele
       };
     };
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error ?? new Error('学習範囲を元に戻せませんでした'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('元のPDFまたは質問が見つかりません'));
+    transaction.onerror = () => reject(transaction.error ?? new Error(messages.errors.regionRestore));
+    transaction.onabort = () => reject(transaction.error ?? new Error(messages.errors.originalMissing));
   });
 }
 
@@ -775,14 +776,14 @@ export async function appendPDFStudyFollowUp(markerId: string, followUp: PDFStud
       } satisfies PDFStudyAssetRecord);
     };
     transaction.oncomplete = () => resolve(updated!);
-    transaction.onerror = () => reject(transaction.error ?? new Error('追加の質問を保存できませんでした'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('元の採点結果が見つかりません'));
+    transaction.onerror = () => reject(transaction.error ?? new Error(messages.errors.followUpSave));
+    transaction.onabort = () => reject(transaction.error ?? new Error(messages.errors.parentResultMissing));
   });
 }
 
 export async function createPDFStudyTrace(record: PDFStudyTraceRecord, questionImage: Blob): Promise<void> {
   const firstStep = record.steps[0];
-  if (!firstStep || firstStep.type !== 'answer') throw new Error('質問の記録が不正です');
+  if (!firstStep || firstStep.type !== 'answer') throw new Error(messages.errors.questionInvalid);
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME, PDF_STUDY_TRACE_STORE_NAME, PDF_STUDY_ASSET_STORE_NAME], 'readwrite');
@@ -798,13 +799,13 @@ export async function createPDFStudyTrace(record: PDFStudyTraceRecord, questionI
       } satisfies PDFStudyAssetRecord);
     };
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error ?? new Error('質問の保存に失敗しました'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('PDFが見つかりません'));
+    transaction.onerror = () => reject(transaction.error ?? new Error(messages.errors.questionSave));
+    transaction.onabort = () => reject(transaction.error ?? new Error(messages.errors.pdfMissing));
   });
 }
 
 export async function appendPDFStudyStep(traceId: string, step: PDFStudyStep, questionImage?: Blob, afterStepId?: string): Promise<void> {
-  if (step.type === 'answer' && !questionImage) throw new Error('質問画像がありません');
+  if (step.type === 'answer' && !questionImage) throw new Error(messages.errors.questionImageMissing);
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([PDF_STUDY_TRACE_STORE_NAME, PDF_STUDY_ASSET_STORE_NAME], 'readwrite');
@@ -835,8 +836,8 @@ export async function appendPDFStudyStep(traceId: string, step: PDFStudyStep, qu
       }
     };
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error ?? new Error('質問の保存に失敗しました'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('質問の記録が見つかりません'));
+    transaction.onerror = () => reject(transaction.error ?? new Error(messages.errors.questionSave));
+    transaction.onabort = () => reject(transaction.error ?? new Error(messages.errors.questionMissing));
   });
 }
 
@@ -856,8 +857,8 @@ export async function savePDFStudyDrawing(traceId: string, stepId: string, drawi
       } satisfies PDFStudyAssetRecord);
     };
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error ?? new Error('回答の保存に失敗しました'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('回答先の質問が見つかりません'));
+    transaction.onerror = () => reject(transaction.error ?? new Error(messages.errors.answerSave));
+    transaction.onabort = () => reject(transaction.error ?? new Error(messages.errors.answerQuestionMissing));
   });
 }
 
@@ -865,7 +866,7 @@ export async function savePDFStudyAnswerTexts(
   traceId: string, stepId: string, answerTexts: PDFStudyAnswerState['texts']
 ): Promise<void> {
   if (answerTexts.length > 100 || answerTexts.some(item => item.text.length > 4000)) {
-    throw new Error('質問のテキストが長すぎます');
+    throw new Error(messages.errors.questionTooLong);
   }
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -883,8 +884,8 @@ export async function savePDFStudyAnswerTexts(
         ? { ...item, answerTexts } : item) });
     };
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error ?? new Error('質問のテキストを保存できませんでした'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('質問の記録が見つかりません'));
+    transaction.onerror = () => reject(transaction.error ?? new Error(messages.errors.questionTextSave));
+    transaction.onabort = () => reject(transaction.error ?? new Error(messages.errors.questionMissing));
   });
 }
 
@@ -894,7 +895,7 @@ export async function getPDFStudyAsset(traceId: string, stepId: string, kind: 'q
     const request = db.transaction([PDF_STUDY_ASSET_STORE_NAME], 'readonly')
       .objectStore(PDF_STUDY_ASSET_STORE_NAME).get(studyAssetId(traceId, stepId, kind));
     request.onsuccess = () => resolve((request.result as PDFStudyAssetRecord | undefined)?.blob ?? null);
-    request.onerror = () => reject(new Error('質問画像の取得に失敗しました'));
+    request.onerror = () => reject(new Error(messages.errors.questionImageRead));
   });
 }
 
@@ -904,7 +905,7 @@ export async function getPDFStudyTrace(id: string): Promise<PDFStudyTraceRecord 
     const request = db.transaction([PDF_STUDY_TRACE_STORE_NAME], 'readonly')
       .objectStore(PDF_STUDY_TRACE_STORE_NAME).get(id);
     request.onsuccess = () => resolve(request.result ?? null);
-    request.onerror = () => reject(new Error('質問の記録を取得できませんでした'));
+    request.onerror = () => reject(new Error(messages.errors.questionRead));
   });
 }
 
@@ -914,7 +915,7 @@ export async function getPDFStudyTracesByPdfId(pdfId: string): Promise<PDFStudyT
     const request = db.transaction([PDF_STUDY_TRACE_STORE_NAME], 'readonly')
       .objectStore(PDF_STUDY_TRACE_STORE_NAME).index('pdfId').getAll(IDBKeyRange.only(pdfId));
     request.onsuccess = () => resolve(request.result as PDFStudyTraceRecord[]);
-    request.onerror = () => reject(new Error('質問の記録を取得できませんでした'));
+    request.onerror = () => reject(new Error(messages.errors.questionRead));
   });
 }
 
@@ -954,8 +955,8 @@ export async function deletePDFStudyTraceTree(pdfId: string, traceId: string): P
       }
     };
     transaction.oncomplete = () => resolve(snapshot);
-    transaction.onerror = () => reject(transaction.error ?? new Error('質問の記録を削除できませんでした'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('質問の記録を削除できませんでした'));
+    transaction.onerror = () => reject(transaction.error ?? new Error(messages.errors.questionDelete));
+    transaction.onabort = () => reject(transaction.error ?? new Error(messages.errors.questionDelete));
   });
 }
 
@@ -965,7 +966,7 @@ export async function restorePDFStudyTraceDeletion(snapshot: PDFStudyTraceDeleti
   if (!ids.size || ids.size !== snapshot.traces.length ||
       snapshot.traces.some(trace => trace.pdfId !== snapshot.pdfId) ||
       snapshot.assets.some(asset => !ids.has(asset.traceId))) {
-    throw new Error('削除履歴が不正です');
+    throw new Error(messages.errors.deletionInvalid);
   }
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -991,8 +992,8 @@ export async function restorePDFStudyTraceDeletion(snapshot: PDFStudyTraceDeleti
       for (const asset of snapshot.assets) assetStore.add(asset);
     };
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error ?? new Error('質問の記録を元に戻せませんでした'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('元のPDFまたは質問が見つかりません'));
+    transaction.onerror = () => reject(transaction.error ?? new Error(messages.errors.questionRestore));
+    transaction.onabort = () => reject(transaction.error ?? new Error(messages.errors.originalMissing));
   });
 }
 
@@ -1022,8 +1023,8 @@ export function saveDrawing(id: string, pageNumber: number, drawingData: string)
       };
       transaction.objectStore(DRAWING_STORE_NAME).put(record);
       transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(new Error('ペン跡の保存に失敗しました'));
-      transaction.onabort = () => reject(new Error('ペン跡の保存に失敗しました'));
+      transaction.onerror = () => reject(new Error(messages.errors.drawingSave));
+      transaction.onabort = () => reject(new Error(messages.errors.drawingSave));
     });
   });
   drawingSaveQueues.set(key, next);
@@ -1089,7 +1090,7 @@ export async function getAllDrawings(id: string): Promise<Record<number, string>
       .index('pdfId')
       .getAll(IDBKeyRange.only(id));
     request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => reject(new Error('ペン跡の取得に失敗しました'));
+    request.onerror = () => reject(new Error(messages.errors.drawingRead));
   });
   const result: Record<number, string> = {};
   for (const drawing of stored) result[drawing.pageNumber] = drawing.data;
@@ -1121,8 +1122,8 @@ export async function saveTextAnnotation(id: string, pageNumber: number, textDat
       };
     };
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error ?? new Error('テキストの保存に失敗しました'));
-    transaction.onabort = () => reject(transaction.error ?? new Error('PDFレコードが見つかりません'));
+    transaction.onerror = () => reject(transaction.error ?? new Error(messages.errors.textSave));
+    transaction.onabort = () => reject(transaction.error ?? new Error(messages.errors.pdfRecordMissing));
   });
 }
 
@@ -1153,7 +1154,7 @@ export async function getAllTextAnnotations(id: string): Promise<Record<number, 
       annotations = annotationRequest.result as PDFTextAnnotationRecord[];
       finish();
     };
-    transaction.onerror = () => reject(transaction.error ?? new Error('テキストの取得に失敗しました'));
+    transaction.onerror = () => reject(transaction.error ?? new Error(messages.errors.textRead));
   });
 }
 
@@ -1186,7 +1187,7 @@ export async function getAllSNSLinks(): Promise<SNSLinkRecord[]> {
     };
 
     request.onerror = () => {
-      reject(new Error('SNSリンクの取得に失敗しました'));
+      reject(new Error(messages.errors.snsRead));
     };
   });
 }
@@ -1205,7 +1206,7 @@ export async function saveSNSLink(record: SNSLinkRecord): Promise<void> {
     };
 
     request.onerror = () => {
-      reject(new Error('SNSリンクの保存に失敗しました'));
+      reject(new Error(messages.errors.snsSave));
     };
   });
 }
@@ -1224,21 +1225,21 @@ export async function deleteSNSLink(id: string): Promise<void> {
     };
 
     request.onerror = () => {
-      reject(new Error('SNSリンクの削除に失敗しました'));
+      reject(new Error(messages.errors.snsDelete));
     };
   });
 }
 
 export const dataUrlToBlob = async (dataUrl: string): Promise<Blob> => {
   const response = await fetch(dataUrl);
-  if (!response.ok) throw new Error('採点画像の変換に失敗しました');
+  if (!response.ok) throw new Error(messages.errors.gradingImageConvert);
   return response.blob();
 }
 
 export const blobToDataUrl = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.onload = () => resolve(String(reader.result));
-  reader.onerror = () => reject(new Error('採点画像の読み込みに失敗しました'));
+  reader.onerror = () => reject(new Error(messages.errors.gradingImageLoad));
   reader.readAsDataURL(blob);
 });
 
@@ -1258,8 +1259,8 @@ export async function saveGradingImage(imageData: string): Promise<string> {
     const record: GradingImageRecord = { id, blob, createdAt: Date.now() };
     transaction.objectStore(GRADING_IMAGE_STORE_NAME).put(record);
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(new Error('採点画像の保存に失敗しました'));
-    transaction.onabort = () => reject(new Error('採点画像の保存に失敗しました'));
+    transaction.onerror = () => reject(new Error(messages.errors.gradingImageSave));
+    transaction.onabort = () => reject(new Error(messages.errors.gradingImageSave));
   });
   return id;
 }
@@ -1271,7 +1272,7 @@ export async function getGradingImageData(id: string): Promise<string | null> {
       .objectStore(GRADING_IMAGE_STORE_NAME)
       .get(id);
     request.onsuccess = () => resolve(request.result || null);
-    request.onerror = () => reject(new Error('採点画像の取得に失敗しました'));
+    request.onerror = () => reject(new Error(messages.errors.gradingImageRead));
   });
   return record ? blobToDataUrl(record.blob) : null;
 }
@@ -1303,7 +1304,7 @@ export async function saveGradingHistory(record: GradingHistoryRecord): Promise<
     };
 
     request.onerror = () => {
-      reject(new Error('採点履歴の保存に失敗しました'));
+      reject(new Error(messages.errors.historySave));
     };
   });
 }
@@ -1331,7 +1332,7 @@ export async function getAllGradingHistory(): Promise<GradingHistoryRecord[]> {
     };
 
     request.onerror = () => {
-      reject(new Error('採点履歴の取得に失敗しました'));
+      reject(new Error(messages.errors.historyRead));
     };
   });
   return hydrateGradingImages(records);
@@ -1345,7 +1346,7 @@ export async function deleteGradingHistory(id: string): Promise<void> {
       .objectStore(GRADING_HISTORY_STORE_NAME)
       .get(id);
     request.onsuccess = () => resolve(request.result || null);
-    request.onerror = () => reject(new Error('採点履歴の取得に失敗しました'));
+    request.onerror = () => reject(new Error(messages.errors.historyRead));
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -1353,8 +1354,8 @@ export async function deleteGradingHistory(id: string): Promise<void> {
     const objectStore = transaction.objectStore(GRADING_HISTORY_STORE_NAME);
     objectStore.delete(id);
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(new Error('採点履歴の削除に失敗しました'));
-    transaction.onabort = () => reject(new Error('採点履歴の削除に失敗しました'));
+    transaction.onerror = () => reject(new Error(messages.errors.historyDelete));
+    transaction.onabort = () => reject(new Error(messages.errors.historyDelete));
   });
 
   if (!existing?.imageId) return;
@@ -1364,15 +1365,15 @@ export async function deleteGradingHistory(id: string): Promise<void> {
       .index('imageId')
       .count(IDBKeyRange.only(existing.imageId));
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(new Error('採点画像の参照確認に失敗しました'));
+    request.onerror = () => reject(new Error(messages.errors.gradingImageReferences));
   });
   if (remainingReferences === 0) {
     await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction([GRADING_IMAGE_STORE_NAME], 'readwrite');
       transaction.objectStore(GRADING_IMAGE_STORE_NAME).delete(existing.imageId!);
       transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(new Error('採点画像の削除に失敗しました'));
-      transaction.onabort = () => reject(new Error('採点画像の削除に失敗しました'));
+      transaction.onerror = () => reject(new Error(messages.errors.gradingImageDelete));
+      transaction.onabort = () => reject(new Error(messages.errors.gradingImageDelete));
     });
   }
 }
@@ -1400,7 +1401,7 @@ export async function getAppSettings(): Promise<AppSettings> {
     };
 
     request.onerror = () => {
-      reject(new Error('設定の取得に失敗しました'));
+      reject(new Error(messages.errors.settingsRead));
     };
   });
 }
@@ -1419,7 +1420,7 @@ export async function saveAppSettings(settings: AppSettings): Promise<void> {
     };
 
     request.onerror = () => {
-      reject(new Error('設定の保存に失敗しました'));
+      reject(new Error(messages.errors.settingsSave));
     };
   });
 }
@@ -1453,7 +1454,7 @@ export async function getSNSUsageHistory(): Promise<SNSUsageHistoryRecord[]> {
 
       request.onerror = () => {
         console.error('❌ SNS利用履歴の取得に失敗:', request.error);
-        reject(new Error('SNS利用履歴の取得に失敗しました'));
+        reject(new Error(messages.errors.snsHistoryRead));
       };
     }).catch(reject);
   });
@@ -1471,7 +1472,7 @@ export async function fetchPDFData(id: string): Promise<ArrayBuffer> {
     request.onsuccess = async () => {
       const record = request.result as PDFFileRecord | undefined;
       if (!record || !record.fileData) {
-        reject(new Error('PDFデータが見つかりません'));
+        reject(new Error(messages.errors.pdfDataMissing));
         return;
       }
 
@@ -1479,7 +1480,7 @@ export async function fetchPDFData(id: string): Promise<ArrayBuffer> {
         let buffer: ArrayBuffer;
         if (record.fileData instanceof Blob) {
           if (record.fileData.size === 0) {
-            reject(new Error('PDFファイルのサイズが0バイトです'));
+            reject(new Error(messages.errors.emptyPDF));
             return;
           }
           // Blobを即座にbufferに読み込むことで、transaction終了後の無効化を防ぐ
@@ -1496,12 +1497,12 @@ export async function fetchPDFData(id: string): Promise<ArrayBuffer> {
         }
         resolve(buffer);
       } catch (e) {
-        reject(new Error('PDFデータの読み込みに失敗しました: ' + (e instanceof Error ? e.message : String(e))));
+        reject(new Error(messages.errors.pdfDataLoadPrefix + (e instanceof Error ? e.message : String(e))));
       }
     };
 
     request.onerror = () => {
-      reject(new Error('PDFデータの取得に失敗しました'));
+      reject(new Error(messages.errors.pdfDataRead));
     };
   });
 }
@@ -1518,17 +1519,17 @@ export async function fetchPDFRange(id: string, begin: number, end: number): Pro
     request.onsuccess = () => {
       const blob = (request.result as PDFFileRecord | undefined)?.fileData;
       if (!(blob instanceof Blob)) {
-        reject(new Error('PDFデータが見つかりません'));
+        reject(new Error(messages.errors.pdfDataMissing));
         return;
       }
       if (begin < 0 || end > blob.size || begin >= end) {
-        reject(new Error('PDFの読み込み範囲が不正です'));
+        reject(new Error(messages.errors.pdfRangeInvalid));
         return;
       }
 
       void blob.slice(begin, end).arrayBuffer().then(resolve, reject);
     };
 
-    request.onerror = () => reject(new Error('PDFデータの取得に失敗しました'));
+    request.onerror = () => reject(new Error(messages.errors.pdfDataRead));
   });
 }

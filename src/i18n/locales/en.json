@@ -17,7 +17,9 @@
         "subjectFailed": "❌ Could not update the subject",
         "saving": "⏳ Saving…",
         "saved": "✅ Saved",
-        "saveFailed": "❌ Could not save"
+        "saveFailed": "❌ Could not save",
+        "loadFailureDetail": "Could not load the PDF: {{detail}}",
+        "timeout": "PDF loading timed out ({{seconds}} seconds)"
     },
     "pdfNavigation": {
         "previousTen": "Back 10 pages",
@@ -32,7 +34,9 @@
         "releasePrevious": "↑ Release for the previous page",
         "pullPrevious": "↓ Pull for the previous page",
         "releaseNext": "↓ Release for the next page",
-        "pullNext": "↑ Pull for the next page"
+        "pullNext": "↑ Pull for the next page",
+        "deleteTrace": "Delete this selection and its following history",
+        "undoTrace": "Undo the last selection deletion"
     },
     "pdfImport": {
         "settings": "PDF settings",
@@ -42,7 +46,17 @@
         "switchToImages": "Switch to image import",
         "switchToPDF": "Switch to PDF import",
         "checkingText": "Checking PDF text: {{checked}}/{{total}} pages",
-        "localTextCheck": "Checking on this device. Text detection does not contact AI."
+        "localTextCheck": "Checking on this device. Text detection does not contact AI.",
+        "loading": "Loading PDF...",
+        "loadFailed": "Could not load the PDF list",
+        "addFailed": "Could not add the PDF: {{detail}}",
+        "selectFailed": "Could not select files: {{detail}}",
+        "deleteFailed": "Could not delete the file",
+        "storageFull": "Your device is out of storage. Check Storage usage and delete learning materials you no longer need.",
+        "tooManyFiles": "Too many files. You can select up to {{max}} files.\nSelected: {{count}}",
+        "fileTooLarge": "The file is too large (maximum {{max}} MB).\nFile: {{name}}\nSize: {{size}} MB",
+        "totalTooLarge": "The total file size is too large.\nMaximum: {{max}} MB\nSelected: {{size}} MB\n\nSelect fewer or smaller files.",
+        "wait": "Please wait"
     },
     "editorLoading": {
         "loading": "Loading the material editor…",
@@ -179,7 +193,19 @@
         "explanation": "Explanation",
         "gradingImage": "Grading Image",
         "closeButton": "Close",
-        "minutes_short": "min"
+        "minutes_short": "min",
+        "showAll": "Show all",
+        "onlyGrading": "Grading only",
+        "onlySNS": "SNS only",
+        "onlyCorrect": "Correct answers only",
+        "onlyIncorrect": "Incorrect answers only",
+        "answerPreview": "Answer:",
+        "noAnswer": "(none)",
+        "matchingMetadata": "Matching Metadata (Debug)",
+        "method": "Method:",
+        "confidence": "Confidence:",
+        "similarity": "Similarity:",
+        "reasoning": "Reasoning:"
     },
     "storage": {
         "title": "Storage Information",
@@ -278,7 +304,88 @@
         "openSite": "Open Site",
         "tipsTitle": "💡 Tips:",
         "tipsContent": "<strong>K5 Learning</strong> offers comprehensive worksheets organized by grade and topic.<br />Download the PDF and print it out for a great workbook experience!",
-        "disclaimer": "※ Please use materials from each site in accordance with their respective terms of use.<br />HomeTeacher only provides links and is not the distributor."
+        "disclaimer": "※ Please use materials from each site in accordance with their respective terms of use.<br />HomeTeacher only provides links and is not the distributor.",
+        "sites": [
+            {
+                "name": "ThousandsOfTies Drills",
+                "description": "Sample worksheets created by the developers. Useful for testing and demos.",
+                "url": "https://thousandsofties.github.io/drills/",
+                "highlight": "🎥 Official Samples",
+                "subjects": [
+                    "Math",
+                    "Others"
+                ],
+                "grades": [
+                    "All"
+                ]
+            },
+            {
+                "name": "K5 Learning",
+                "description": "Free worksheets for kindergarten to grade 5. Organized by grade and topic.",
+                "url": "https://www.k5learning.com/free-math-worksheets",
+                "highlight": "🏆 Comprehensive",
+                "subjects": [
+                    "Math",
+                    "Reading",
+                    "Science"
+                ],
+                "grades": [
+                    "K-5"
+                ]
+            },
+            {
+                "name": "Math-Drills.com",
+                "description": "One of the largest collections of free math worksheets. Over 50,000 pages.",
+                "url": "https://www.math-drills.com/",
+                "highlight": "🔢 Huge Collection",
+                "subjects": [
+                    "Math"
+                ],
+                "grades": [
+                    "K-12"
+                ]
+            },
+            {
+                "name": "Dad's Worksheets",
+                "description": "Focused on math practice. Great for specific topics like fractions or geometry.",
+                "url": "https://www.dadsworksheets.com/",
+                "highlight": "✏️ Math Focused",
+                "subjects": [
+                    "Math"
+                ],
+                "grades": [
+                    "K-6"
+                ]
+            },
+            {
+                "name": "Math Worksheets 4 Kids",
+                "description": "A wealth of worksheets for Math, English, Science, and Social Studies.",
+                "url": "https://www.mathworksheets4kids.com/",
+                "highlight": "🎨 Colorful & Fun",
+                "subjects": [
+                    "Math",
+                    "English",
+                    "Science"
+                ],
+                "grades": [
+                    "K-8"
+                ]
+            },
+            {
+                "name": "Education.com",
+                "description": "High quality worksheets. Some require a free account to download.",
+                "url": "https://www.education.com/worksheets/math/",
+                "highlight": "👨‍🏫 Teacher Created",
+                "subjects": [
+                    "Math",
+                    "Reading",
+                    "Writing"
+                ],
+                "grades": [
+                    "PreK-8"
+                ]
+            }
+        ]
     },
     "drawingCatalog": {
         "title": "🎨 Recommended Free Drawing Materials",
@@ -286,7 +393,52 @@
         "openSite": "Find Materials",
         "tipsTitle": "💡 Tip:",
         "tipsContent": "Start with a simple step-by-step worksheet.<br />Even when the reference and practice space share one PDF page, CopiCopi lets you view it on side A and copy it onto a blank side B.",
-        "disclaimer": "※ Follow each site's terms of use.<br />CopiCopi does not redistribute these materials and only links to their official pages."
+        "disclaimer": "※ Follow each site's terms of use.<br />CopiCopi does not redistribute these materials and only links to their official pages.",
+        "sites": [
+            {
+                "name": "SuperColoring Drawing Tutorials",
+                "description": "A large collection of printable step-by-step drawing guides for animals, people, vehicles, plants, and more.",
+                "url": "https://www.supercoloring.com/section/drawing-tutorials",
+                "highlight": "🌎 Huge Collection",
+                "subjects": [
+                    "Animals",
+                    "People",
+                    "Vehicles",
+                    "Plants"
+                ],
+                "grades": [
+                    "Kids to Adults"
+                ]
+            },
+            {
+                "name": "How to Draw for Kids",
+                "description": "Simple tutorials and downloadable worksheets with drawing, tracing, coloring, and grid-copying activities.",
+                "url": "https://howtodrawforkids.com/",
+                "highlight": "✏️ Step by Step",
+                "subjects": [
+                    "Drawing",
+                    "Tracing",
+                    "Grid Copying"
+                ],
+                "grades": [
+                    "Kids & Beginners"
+                ]
+            },
+            {
+                "name": "LittleActivity Art Printables",
+                "description": "Free printable PDF art activities and drawing tutorials for children, with no account required.",
+                "url": "https://www.littleactivity.com/free-printables",
+                "highlight": "🎨 Free PDFs",
+                "subjects": [
+                    "Art",
+                    "Drawing",
+                    "Crafts"
+                ],
+                "grades": [
+                    "Ages 3–12"
+                ]
+            }
+        ]
     },
     "textMode": {
         "placeholder": "Enter text..."
@@ -308,9 +460,15 @@
         "conversionError": "Failed to convert to PDF"
     },
     "common": {
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "ok": "OK",
+        "close": "Close",
+        "delete": "Delete",
+        "yes": "YES",
+        "no": "NO"
     },
     "parentSettings": {
+        "unlocked": "🎉 Premium features are unlocked!\nYou can now choose your social media time limit.",
         "title": "Parent Settings",
         "loginPrompt": "Sign in with your Google account",
         "signIn": "Sign in with Google",
@@ -328,6 +486,374 @@
         "snsHint": "Adjust the time limit from the slider in the Admin panel.",
         "managePlan": "Manage plan (cancel / change payment)",
         "logout": "Log out",
-        "processing": "Processing..."
+        "processing": "Processing...",
+        "copiTitle": "CopiCopi Premium",
+        "checkoutFailed": "Could not open the checkout page",
+        "portalFailed": "Could not open the plan management page",
+        "error": "An error occurred",
+        "cancelledSuffix": " (cancellation scheduled)",
+        "copiPremiumTitle": "Choose more teachers with Premium",
+        "copiFeature": "Unlock BALANCED and HARD",
+        "copiDescription": "Choose which teacher levels to use and the default teacher for reviews.",
+        "copiActiveDescription": "Thank you! All teacher levels are available.",
+        "cancellationScheduled": "Cancellation is scheduled",
+        "cancelsAtPeriodEnd": "Your subscription will end after the current period.",
+        "resumeHint": "You can resume your subscription from the management page before it expires.",
+        "copiSettingsHint": "Enable teacher levels and choose your default in Teacher Settings.",
+        "activeUntil": "Premium is active until {{date}}."
+    },
+    "admin": {
+        "loading": "Loading…",
+        "confirmDelete": "Confirm Delete",
+        "deletePDFPrompt": "Delete this PDF and all drawings?",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "error": "Error",
+        "adminTab": "Admin",
+        "pdfFiles": "PDF Files",
+        "noPDFs": "No PDF files yet",
+        "newVersion": "New Version Available!",
+        "updateHint": "Tap to update the app",
+        "update": "Update",
+        "openProgress": "View your progress",
+        "openHistory": "View grading history",
+        "openStorage": "View storage details",
+        "storage": "Storage",
+        "usage": "Usage:",
+        "teacherSettings": "Teacher level settings",
+        "linkSettings": "Link and notification settings",
+        "help": "Help",
+        "studyTab": "Study",
+        "storageAlt": "{{app}} Storage",
+        "history": "History",
+        "linksAndNotifications": "Links & Notification"
+    },
+    "notifications": {
+        "unsupported": "This browser does not support notifications",
+        "install": "To use notifications, add this app to your home screen.\n\nSteps:\n1. Tap the Safari share button (↑)\n2. Select “Add to Home Screen”\n3. Open the app from the home screen icon",
+        "enabled": "Notifications are enabled! We will notify you when time is up.",
+        "permissionFailed": "Could not enable notifications. Add this app to your home screen and try again.",
+        "blocked": "⚠️ Browser notifications are blocked. Please check your settings."
+    },
+    "languages": {
+        "ja": "日本語",
+        "en": "English"
+    },
+    "footer": {
+        "contact": "Contact",
+        "privacy": "Privacy Policy",
+        "terms": "Terms of Service",
+        "commerce": "Commercial disclosure",
+        "about": "About {{app}}"
+    },
+    "teacherLevels": {
+        "kind": "KIND",
+        "balanced": "BALANCED",
+        "strict": "HARD"
+    },
+    "teacherSettings": {
+        "kindDescription": "Gentle advice focused on what you did well",
+        "balancedDescription": "Balanced advice on strengths and improvements",
+        "strictDescription": "Detailed, specific advice on shapes and proportions",
+        "title": "Teacher Settings",
+        "style": "FEEDBACK STYLE",
+        "description": "Choose which teachers are available for reviews and which teacher appears first.",
+        "always": "ALWAYS",
+        "locked": "LOCKED",
+        "on": "ON",
+        "off": "OFF",
+        "default": "DEFAULT",
+        "premiumNote": "KIND is always available. Disabled teachers do not appear in the review button’s list.",
+        "managePlan": "Manage or cancel your plan",
+        "unlock": "Unlock BALANCED and HARD",
+        "premiumHint": "Choose your teacher levels with Premium",
+        "saving": "Saving…",
+        "save": "Save"
+    },
+    "progressHistory": {
+        "deleteConfirm": "Delete this practice record?",
+        "title": "Progress",
+        "portfolio": "YOUR PORTFOLIO",
+        "practiceCount": "Practices",
+        "workCount": "Works",
+        "description": "Use each drawing and your teacher’s advice to guide your next practice.",
+        "searchPlaceholder": "Search work titles or advice",
+        "search": "Search Progress",
+        "loading": "Loading…",
+        "notFound": "No results found",
+        "emptyTitle": "Save your first work",
+        "searchHint": "Try different search terms.",
+        "emptyHint": "After a review, your work and advice are saved here.",
+        "workImage": "Work at the time of review",
+        "reviewRecord": "Review record",
+        "viewAdvice": "View advice",
+        "delete": "Delete this record",
+        "closeDetail": "Close details",
+        "panesImage": "Panes A and B at the time of review",
+        "overall": "Overall impression",
+        "goodPoints": "◎ What went well",
+        "nextPoint": "→ What to improve next",
+        "practiceAdvice": "Try this in your next drawing",
+        "attempt": "Attempt {{count}}"
+    },
+    "legal": {
+        "about": {
+            "title": "🦉 About TutoTuto",
+            "introTitle": "What is TutoTuto?",
+            "intro": "TutoTuto lets you require your child to study in this app before using social media. Register learning materials as PDF files, write directly on them, and let AI grade the answers.",
+            "featuresTitle": "Main features",
+            "pdfTitle": "PDF learning materials",
+            "pdfDescription": " — Register and manage PDF learning materials in the app",
+            "drawingTitle": "Handwriting",
+            "drawingDescription": " — Edit PDFs directly with a stylus or your finger",
+            "gradingTitle": "Automatic AI grading",
+            "gradingDescription": " — Grade answers automatically using Google Gemini AI",
+            "snsTitle": "Social media access",
+            "snsDescription": " — Allow time-limited social media access after grading",
+            "historyTitle": "Learning history",
+            "historyDescription": " — View previous grading results",
+            "devicesTitle": "Supported devices",
+            "devicesDescription": "You can use the app on the following devices and browsers:",
+            "ios": "iPad / iPhone (Safari) — Apple Pencil supported",
+            "windows": "Windows PC (Chrome, Edge)",
+            "mac": "Mac (Safari) — not verified",
+            "android": "Android tablet / smartphone (Chrome) — not verified",
+            "operatorTitle": "Development and operation",
+            "operator": "Operator:",
+            "github": "GitHub:",
+            "versionTitle": "Version information",
+            "version": "Current version:",
+            "debug": "Debug Info:",
+            "url": "URL:",
+            "premium": "Premium:",
+            "creditsTitle": "Acknowledgments",
+            "creditsDescription": "TutoTuto uses the following technologies and services:",
+            "react": "React — UI framework",
+            "vite": "Vite — build tool",
+            "pdfjs": "PDF.js — PDF display library",
+            "gemini": "Google Gemini AI — automatic grading engine",
+            "disclaimerTitle": "⚠️ Disclaimer",
+            "aiTitle": "About automatic AI grading",
+            "aiBefore": "This app’s automatic grading uses Google Gemini AI, but ",
+            "aiWarning": "grading results may not always be accurate",
+            "aiAfter": ". AI decisions may contain mistakes. Parents should always check their child’s answers and make the final decision on correctness. Use this feature only as a learning support tool."
+        },
+        "email": "Email:",
+        "contact": {
+            "title": "📧 Contact",
+            "addressTitle": "Contact information",
+            "intro": "For questions, comments, requests, or bug reports about TutoTuto, please contact us at the email address below.",
+            "email": "Email address",
+            "notesTitle": "When contacting us",
+            "responseTime": "Depending on your inquiry, it may take some time to respond",
+            "deviceInfo": "When reporting a bug, please include your device and browser information",
+            "reply": "We generally respond to inquiries by email",
+            "faqTitle": "Frequently asked questions",
+            "storageQuestion": "Q: Where is my data stored?",
+            "storageAnswer": "A: All data is stored on your device in the browser’s IndexedDB. It is not sent to an external server.",
+            "syncQuestion": "Q: Can I share data between devices?",
+            "syncAnswer": "A: There is currently no data synchronization between devices. Data is saved separately on each device.",
+            "deleteQuestion": "Q: How do I delete my data?",
+            "deleteAnswer": "A: Open “Storage” on the app’s Admin screen and select “Delete All” to delete all saved data."
+        },
+        "privacy": {
+            "title": "🔒 Privacy Policy",
+            "intro": "TutoTuto (the “App”) respects your privacy and strives to protect your personal information. This Privacy Policy explains how the App handles information.",
+            "collectionTitle": "1. Information collected",
+            "collectionDescription": "The App stores the following information only on your device:",
+            "pdf": "PDF files registered as learning materials",
+            "handwriting": "Handwritten annotations",
+            "history": "Grading history",
+            "settings": "App settings, such as social media time limits and notification settings",
+            "localData": "All this information is stored on your device in IndexedDB and is not sent to an external server.",
+            "aiTitle": "2. AI grading",
+            "aiDescription": "When you use the App’s AI grading feature, images to be graded are sent to the Google Gemini API. The transmitted data is used only for grading and is handled according to Google’s privacy policy.",
+            "adsTitle": "3. Advertising",
+            "adsDescription": "The App may display advertisements using Google AdSense. Google AdSense may use cookies to display advertisements based on your interests.",
+            "adsBefore": "For information about advertising by Google, please see ",
+            "adsLink": "Google’s advertising policy",
+            "adsAfter": ".",
+            "cookiesTitle": "4. Use of cookies",
+            "cookiesDescription": "The App may use cookies to serve advertisements and improve the service. You can disable cookies in your browser settings.",
+            "deleteTitle": "5. Deleting data",
+            "deleteDescription": "You can delete data saved in the App by deleting site data in your browser settings or using the App’s “Delete All” feature.",
+            "contactTitle": "6. Contact",
+            "contactDescription": "For inquiries about this Privacy Policy, please contact:",
+            "changesTitle": "7. Changes to this Privacy Policy",
+            "changesDescription": "This Privacy Policy may be changed as needed. We will notify you of changes within the App."
+        },
+        "lastUpdated": "Last updated: January 6, 2026",
+        "terms": {
+            "title": "📋 Terms of Service",
+            "intro": "These Terms of Service (the “Terms”) define the conditions for using TutoTuto (the “App”). Please read these Terms carefully before using the App.",
+            "serviceTitle": "1. Description of the service",
+            "serviceDescription": "The App is a parental control app for limiting children’s social media use and encouraging study habits. You can require study in the App before allowing social media access. It provides the following learning features:",
+            "pdf": "Viewing and managing PDF files",
+            "handwriting": "Handwritten annotations",
+            "grading": "Automatic grading using AI",
+            "progress": "Managing learning progress",
+            "sns": "Allowing time-limited social media access after grading",
+            "conditionsTitle": "2. Conditions of use",
+            "conditionsDescription": "By using the App, you agree to the following conditions:",
+            "parentalUse": "Use the App for parental management of children’s learning and social media use",
+            "agreement": "Agree to these Terms and the Privacy Policy",
+            "compliance": "Comply with copyright and other applicable laws",
+            "prohibitedTitle": "3. Prohibited actions",
+            "prohibitedDescription": "The following actions are prohibited:",
+            "unlawfulUse": "Using the App for unlawful purposes",
+            "overload": "Placing an excessive load on the App’s systems",
+            "excessiveGrading": "Excessive use of AI grading in a short period, including continuous grading with automated tools",
+            "sourceCode": "Copying, modifying, or redistributing the App’s source code without permission",
+            "copyright": "Uploading copyrighted content without permission",
+            "rights": "Infringing the rights of other users or third parties",
+            "disclaimerTitle": "4. Disclaimer",
+            "disclaimerDescription": "The App is provided “as is.” The operator assumes no responsibility for the following:",
+            "damage": "Damage arising from use of the App",
+            "accuracy": "The accuracy of AI grading results (AI grading may contain errors, and parents are responsible for the final judgment)",
+            "dataLoss": "Data loss or corruption",
+            "interruption": "Interruption or termination of the App",
+            "thirdPartyAccess": "Access or use by third parties",
+            "adsTitle": "5. Advertising",
+            "adsDescription": "The App may display Google AdSense advertisements. Advertisement content is provided by third parties, and the operator is not responsible for it.",
+            "serviceChangesTitle": "6. Changes to or termination of the service",
+            "serviceChangesDescription": "The operator may change the App or terminate its provision without prior notice.",
+            "restrictionsTitle": "7. Usage restrictions",
+            "restrictionsDescription": "The operator may restrict or suspend use of the App without prior notice in the following cases:",
+            "excessiveUse": "Excessive use of AI grading is detected",
+            "violation": "A violation of these Terms is confirmed",
+            "stability": "There are concerns about system stability or effects on other users",
+            "costs": "Server or API costs significantly exceed expectations",
+            "termsChangesTitle": "8. Changes to these Terms",
+            "termsChangesDescription": "The operator may change these Terms as needed. Revised Terms take effect when posted in the App.",
+            "lawTitle": "9. Governing law",
+            "lawDescription": "These Terms are governed by and interpreted under Japanese law.",
+            "contactTitle": "10. Contact",
+            "contactDescription": "For inquiries about these Terms, please contact:"
+        }
+    },
+    "models": {
+        "gemini-3_8-flash": "Latest-generation, fast, accurate model (recommended, GA)",
+        "gemini-3_5-pro": "Highest-accuracy reasoning model (preview)",
+        "gemini-3_1-pro-preview": "High-accuracy model (preview)",
+        "gemini-3_1-flash-lite": "Very fast, low-cost model (GA)",
+        "gemini-2_5-pro": "Strong model for complex reasoning (GA)",
+        "gemini-2_5-flash": "Balanced speed and accuracy (GA)",
+        "gemini-2_5-flash-lite": "Very fast, low-cost model (GA)"
+    },
+    "subjects": {
+        "math": {
+            "label": "Math",
+            "description": "Mathematics and Arithmetic"
+        },
+        "japanese": {
+            "label": "Japanese",
+            "description": "Japanese Language"
+        },
+        "english": {
+            "label": "English",
+            "description": "English Language"
+        },
+        "science": {
+            "label": "Science",
+            "description": "Science"
+        },
+        "social": {
+            "label": "Social Studies",
+            "description": "Social Studies"
+        },
+        "other": {
+            "label": "Other",
+            "description": "Other subjects"
+        }
+    },
+    "errors": {
+        "databaseDelete": "Could not delete the database",
+        "databaseBusy": "Could not delete the database because it is in use",
+        "databaseOpen": "Could not open IndexedDB",
+        "databaseOtherTab": "Learning material data is in use in another tab. Close the other DoriDori tabs and reload",
+        "pagePosition": "Could not load the page position",
+        "recordRead": "Could not load the record",
+        "recordSave": "Could not save the record",
+        "recordAborted": "Saving the record was interrupted",
+        "pdfSettingsSave": "Could not save PDF display settings",
+        "pdfRecordMissing": "The PDF record could not be found",
+        "recordDelete": "Could not delete the record",
+        "regionSave": "Could not save the study area",
+        "pdfMissing": "The PDF could not be found",
+        "regionRead": "Could not load the study area",
+        "regionDelete": "Could not delete the study area",
+        "deletionInvalid": "The deletion history is invalid",
+        "regionRestore": "Could not restore the study area",
+        "originalMissing": "The original PDF or question could not be found",
+        "followUpSave": "Could not save the follow-up question",
+        "parentResultMissing": "The original grading result could not be found",
+        "questionInvalid": "The question record is invalid",
+        "questionSave": "Could not save the question",
+        "questionImageMissing": "The question image is missing",
+        "questionMissing": "The question record could not be found",
+        "answerSave": "Could not save the answer",
+        "answerQuestionMissing": "The question for this answer could not be found",
+        "questionTooLong": "The question text is too long",
+        "questionTextSave": "Could not save the question text",
+        "questionImageRead": "Could not load the question image",
+        "questionRead": "Could not load the question record",
+        "questionDelete": "Could not delete the question record",
+        "questionRestore": "Could not restore the question record",
+        "drawingSave": "Could not save pen strokes",
+        "drawingRead": "Could not load pen strokes",
+        "textSave": "Could not save the text",
+        "textRead": "Could not load the text",
+        "snsRead": "Could not load social media links",
+        "snsSave": "Could not save social media links",
+        "snsDelete": "Could not delete social media links",
+        "gradingImageConvert": "Could not convert the grading image",
+        "gradingImageLoad": "Could not load the grading image",
+        "gradingImageSave": "Could not save the grading image",
+        "gradingImageRead": "Could not retrieve the grading image",
+        "historySave": "Could not save grading history",
+        "historyRead": "Could not load grading history",
+        "historyDelete": "Could not delete grading history",
+        "gradingImageReferences": "Could not check grading image references",
+        "gradingImageDelete": "Could not delete the grading image",
+        "settingsRead": "Could not load settings",
+        "settingsSave": "Could not save settings",
+        "snsHistoryRead": "Could not load social media usage history",
+        "pdfDataMissing": "The PDF data could not be found",
+        "emptyPDF": "The PDF file is empty (0 bytes)",
+        "pdfDataLoadPrefix": "Could not read PDF data: ",
+        "pdfDataRead": "Could not retrieve PDF data",
+        "pdfRangeInvalid": "The PDF read range is invalid",
+        "noImages": "No images selected",
+        "pdfConvert": "Could not convert to PDF",
+        "noPDFs": "No PDFs selected",
+        "pdfMerge": "Could not merge PDFs",
+        "imageCompress": "Could not compress the image",
+        "heicLoad": "Could not load HEIC conversion. Check your internet connection, reload the page and select the images again.",
+        "heicConvert": "Could not convert the HEIC image",
+        "imageLoad": "Could not load the image",
+        "imageResize": "Could not resize the image",
+        "clearStorage": "Could not clear storage: {{detail}}",
+        "converterLoad": "Could not load image import. Check your internet connection, reload the page and select the images again.",
+        "canvasUnavailable": "Canvas context not available"
+    },
+    "ads": {
+        "adminTop": "Admin — top banner",
+        "adminSidebar": "Admin — sidebar",
+        "resultBottom": "Grading result — bottom",
+        "resultTop": "Grading result — top banner"
+    },
+    "storageAdvice": {
+        "protectedTitle": "Data protection",
+        "installed": "Your data is protected because this app has been added to your home screen.",
+        "iosTitle": "Important: data protection",
+        "ios": "Safari may delete data after seven days of inactivity. Add the app to your home screen to keep your data protected.",
+        "persisted": "Storage is persistent. Your data will not be automatically deleted.",
+        "browserTitle": "Storage protection",
+        "browser": "Use this app regularly to let your browser protect your data, or install it on your home screen or desktop.",
+        "otherTitle": "About data protection",
+        "other": "Back up important data regularly. Some browsers may delete data when storage is low."
+    },
+    "snsNames": {
+        "niconico": "Niconico"
     }
 }

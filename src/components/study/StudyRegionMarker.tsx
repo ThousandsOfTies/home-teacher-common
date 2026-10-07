@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useLayoutEffect, useRef, useState, type CSSProperties, type SyntheticEvent, type RefObject } from 'react'
 import { getStudyRegionControlPositions, STUDY_REGION_DELETE_ICON_SIZE,
   STUDY_REGION_DELETE_ICON_GAP, STUDY_REGION_UNDO_ICON_SIZE } from '../../utils/studyRegionControls'
@@ -20,7 +21,9 @@ interface StudyRegionMarkerProps {
 }
 
 export const StudyRegionMarker = ({ id, completed, style, className = '', onOpen, onDelete, onUndo,
-  deleteDisabled = false, openLabel = 'この範囲の質問を開く', controlScale = 1, viewportRef }: StudyRegionMarkerProps) => {
+  deleteDisabled = false, openLabel, controlScale = 1, viewportRef }: StudyRegionMarkerProps) => {
+  const { t } = useTranslation()
+
   const hasControls = !!(onDelete || onUndo)
   const markerRef = useRef<HTMLDivElement>(null)
   const [controls, setControls] = useState<{ openIconWidth: number; openIconHeight: number;
@@ -80,7 +83,7 @@ export const StudyRegionMarker = ({ id, completed, style, className = '', onOpen
   return (
     <div ref={markerRef} className={`study-region-marker ${className}`} style={{ ...style, borderColor: color }}>
       <button type="button" className={`study-region-open${onDelete ? ' study-region-open-inline' : ''}`} data-study-trace-id={id}
-        title={openLabel} aria-label={openLabel}
+        title={openLabel ?? t('pdfNavigation.openQuestion')} aria-label={openLabel ?? t('pdfNavigation.openQuestion')}
         style={controls.openLeft === undefined
           ? { ...controlStyle, right: onDelete ? 4 * scale - 2 : controlStyle.right,
             top: '50%', transform: 'translateY(-50%)' }
@@ -99,7 +102,7 @@ export const StudyRegionMarker = ({ id, completed, style, className = '', onOpen
       </button>
       {onDelete && (
         <button type="button" className="study-region-delete" data-study-trace-delete-id={id}
-          disabled={deleteDisabled} title="この選択跡と続く履歴を削除" aria-label="この選択跡と続く履歴を削除"
+          disabled={deleteDisabled} title={t('pdfNavigation.deleteTrace')} aria-label={t('pdfNavigation.deleteTrace')}
           style={deleteStyle}
           onPointerDown={stopPointer} onMouseDown={stopPointer} onTouchStart={stopPointer} onTouchEnd={stopPointer}
           onClick={event => { event.stopPropagation(); onDelete(id) }}>

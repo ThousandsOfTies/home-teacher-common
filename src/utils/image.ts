@@ -1,3 +1,4 @@
+import messages from '../i18n/locales/ja.json'
 
 import { isIOSLikeDevice } from './platform'
 
@@ -21,7 +22,7 @@ export const compressImageDataUrl = (imageData: string, maxSize: number = 2048):
             context.drawImage(image, 0, 0, canvas.width, canvas.height)
             resolve(canvas.toDataURL('image/jpeg', isIOSLikeDevice() ? 0.78 : 0.84))
         }
-        image.onerror = () => reject(new Error('画像の圧縮に失敗しました'))
+        image.onerror = () => reject(new Error(messages.errors.imageCompress))
         image.src = imageData
     })
 )

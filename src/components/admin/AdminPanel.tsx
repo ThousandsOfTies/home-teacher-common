@@ -1,3 +1,4 @@
+import { localizeErrorMessage } from '../../i18n/errorMessages'
 import { useState, useEffect, type ReactNode } from 'react';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || 'TutoTuto';
@@ -52,7 +53,7 @@ export default function AdminPanel({
   onEditPDF,
   hasUpdate = false,
   onUpdate,
-  studyTabLabel = 'Study',
+  studyTabLabel,
   storageIconSrc,
   historyVariant = 'timeline',
   settingsVariant = 'links',
@@ -194,7 +195,7 @@ export default function AdminPanel({
       setShowStorageInfo(false);
     } catch (error) {
       console.error('ストレージのクリアに失敗:', error);
-      setErrorMessage('ストレージのクリアに失敗しました: ' + (error instanceof Error ? error.message : String(error)));
+      setErrorMessage(t('errors.clearStorage', { detail: localizeErrorMessage(error, t) }));
     }
   };
 
@@ -248,9 +249,9 @@ export default function AdminPanel({
 
     if (!('Notification' in window)) {
       if (!isStandalone) {
-        alert('通知を使用するには、このアプリをホーム画面に追加してください。\n\n手順:\n1. Safariの共有ボタン（↑）をタップ\n2. 「ホーム画面に追加」を選択\n3. ホーム画面のアイコンから起動');
+        alert(t('notifications.install'));
       } else {
-        alert('このブラウザは通知をサポートしていません');
+        alert(t('notifications.unsupported'));
       }
       return;
     }
@@ -262,13 +263,13 @@ export default function AdminPanel({
       if (permission === 'granted') {
         // テスト通知を送信
         new Notification(APP_NAME, {
-          body: '通知が有効になりました！時間切れの際にお知らせします。',
+          body: t('notifications.enabled'),
           icon: '/pwa-192x192.png'
         });
       }
     } catch (error) {
       console.error('通知許可のリクエストに失敗しました:', error);
-      alert('通知の許可に失敗しました。このアプリをホーム画面に追加してから再度お試しください。');
+      alert(t('notifications.permissionFailed'));
     }
   };
 
@@ -279,7 +280,7 @@ export default function AdminPanel({
     return (
       <div className="admin-container">
         <div className="loading-container">
-          <p>Loading...</p>
+          <p>{t('admin.loading')}</p>
         </div>
       </div>
     );
@@ -307,8 +308,8 @@ export default function AdminPanel({
           <div style={{ fontSize: '48px' }}>⏳</div>
           <div role="status">{textInspectionProgress ? t('pdfImport.checkingText', {
             checked: textInspectionProgress.checkedPages, total: textInspectionProgress.totalPages
-          }) : 'Loading PDF...'}</div>
-          <div style={{ fontSize: '14px', color: '#ccc' }}>{textInspectionProgress ? t('pdfImport.localTextCheck') : 'Please wait'}</div>
+          }) : t('pdfImport.loading')}</div>
+          <div style={{ fontSize: '14px', color: '#ccc' }}>{textInspectionProgress ? t('pdfImport.localTextCheck') : t('pdfImport.wait')}</div>
         </div>
       )}
 
@@ -333,12 +334,10 @@ export default function AdminPanel({
             width: '90%'
           }}>
             <h3 style={{ margin: '0 0 16px 0', color: '#2c3e50', fontSize: '20px' }}>
-              Confirm Delete
-            </h3>
+              {t('admin.confirmDelete')}</h3>
             <p style={{ margin: '0 0 24px 0', color: '#7f8c8d', fontSize: '14px' }}>
               <strong>{deleteConfirm.fileName}</strong><br />
-              Delete this PDF and all drawings?
-            </p>
+              {t('admin.deletePDFPrompt')}</p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setDeleteConfirm(null)}
@@ -353,8 +352,7 @@ export default function AdminPanel({
                   cursor: 'pointer'
                 }}
               >
-                Cancel
-              </button>
+                {t('admin.cancel')}</button>
               <button
                 onClick={confirmDelete}
                 style={{
@@ -368,8 +366,7 @@ export default function AdminPanel({
                   cursor: 'pointer'
                 }}
               >
-                Delete
-              </button>
+                {t('admin.delete')}</button>
             </div>
           </div>
         </div>
@@ -580,8 +577,7 @@ export default function AdminPanel({
                 {/* 通知許可状態の警告表示 (必要な場合のみ) */}
                 {notificationEnabled && notificationPermission === 'denied' && (
                   <div style={{ marginTop: '8px', fontSize: '11px', color: '#e74c3c' }}>
-                    ⚠️ ブラウザの通知がブロックされています。設定を確認してください。
-                  </div>
+                    {t('notifications.blocked')}</div>
                 )}
               </div>
 
@@ -997,8 +993,7 @@ export default function AdminPanel({
             width: '90%'
           }}>
             <h3 style={{ margin: '0 0 16px 0', color: '#e74c3c', fontSize: '20px' }}>
-              Error
-            </h3>
+              {t('admin.error')}</h3>
             <p style={{ margin: '0 0 24px 0', color: '#7f8c8d', fontSize: '14px' }}>
               {currentError}
             </p>
@@ -1019,8 +1014,7 @@ export default function AdminPanel({
                   cursor: 'pointer'
                 }}
               >
-                OK
-              </button>
+                {t('common.ok')}</button>
             </div>
           </div>
         </div>
@@ -1052,7 +1046,7 @@ export default function AdminPanel({
               height: '40px'
             }}
           >
-            {i18n.language === 'ja' ? '日本語' : 'English'}
+            {i18n.language === 'ja' ? t('languages.ja') : t('languages.en')}
             <span style={{ fontSize: '10px' }}>▼</span>
           </button>
 
@@ -1085,8 +1079,7 @@ export default function AdminPanel({
                   fontSize: '14px'
                 }}
               >
-                日本語
-              </button>
+                {t('languages.ja')}</button>
               <button
                 onClick={() => {
                   i18n.changeLanguage('en');
@@ -1105,13 +1098,12 @@ export default function AdminPanel({
                   fontSize: '14px'
                 }}
               >
-                English
-              </button>
+                {t('languages.en')}</button>
             </div>
           )}
         </div>
 
-        <button className="help-button" onClick={() => setShowHelp(true)} title="Help">
+        <button className="help-button" onClick={() => setShowHelp(true)} title={t('admin.help')}>
           ?
         </button>
         <div className="admin-header">
@@ -1145,7 +1137,7 @@ export default function AdminPanel({
               }}
             >
               <FaRegEdit size={20} />
-              {studyTabLabel}
+              {studyTabLabel ?? t('admin.studyTab')}
             </button>
             <button
               onClick={() => setActiveTab('admin')}
@@ -1166,8 +1158,7 @@ export default function AdminPanel({
               }}
             >
               <IoMdSettings size={20} />
-              Admin
-              {hasUpdate && (
+              {t('admin.adminTab')}{hasUpdate && (
                 <span style={{
                   position: 'absolute',
                   top: '-4px',
@@ -1186,11 +1177,11 @@ export default function AdminPanel({
         {/* ドリルモード: PDFリストのみ */}
         {activeTab === 'drill' && (
           <div style={{ padding: '20px' }}>
-            <h2 className="section-title">PDF Files</h2>
+            <h2 className="section-title">{t('admin.pdfFiles')}</h2>
 
             {pdfRecords.length === 0 ? (
               <div className="empty-state">
-                <p>No PDF files yet</p>
+                <p>{t('admin.noPDFs')}</p>
               </div>
             ) : (
               <div className="pdf-list">
@@ -1376,7 +1367,7 @@ export default function AdminPanel({
                   <div style={{ fontSize: '16px', color: '#95a5a6' }}>→</div>
                   <img
                     src={storageIconSrc ?? `${import.meta.env.BASE_URL}logo.png`}
-                    alt={`${APP_NAME} Storage`}
+                    alt={t('admin.storageAlt', { app: APP_NAME })}
                     style={{ width: '32px', height: '32px', objectFit: 'contain' }}
                   />
                 </button>
@@ -1444,7 +1435,7 @@ export default function AdminPanel({
                     cursor: 'pointer',
                     color: '#7f8c8d'
                   }}
-                  title="閉じる"
+                  title={t('common.close')}
                 >
                   ✕
                 </button>
@@ -1479,11 +1470,9 @@ export default function AdminPanel({
                     <MdNewReleases size={24} color="#e67e22" />
                     <div>
                       <h3 style={{ margin: '0 0 4px 0', color: '#d35400', fontSize: '16px', fontWeight: 'bold' }}>
-                        New Version Available!
-                      </h3>
+                        {t('admin.newVersion')}</h3>
                       <p style={{ margin: 0, color: '#e67e22', fontSize: '14px' }}>
-                        タップしてアプリを更新してください
-                      </p>
+                        {t('admin.updateHint')}</p>
                     </div>
                   </div>
                   <button
@@ -1501,8 +1490,7 @@ export default function AdminPanel({
                       boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                     }}
                   >
-                    更新する
-                  </button>
+                    {t('admin.update')}</button>
                 </div>
               )}
 
@@ -1539,11 +1527,11 @@ export default function AdminPanel({
                     e.currentTarget.style.borderColor = '#ecf0f1';
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
-                  title={historyVariant === 'progress' ? '上達の記録を表示' : '採点履歴を表示'}
+                  title={historyVariant === 'progress' ? t('admin.openProgress') : t('admin.openHistory')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     {historyVariant === 'progress' ? <MdOutlineCollections size={24} /> : <MdHistory size={24} />}
-                    <span>{historyVariant === 'progress' ? 'Progress' : 'History'}</span>
+                    <span>{historyVariant === 'progress' ? t('progressHistory.title') : t('admin.history')}</span>
                   </div>
                   <span style={{ fontSize: '20px', opacity: 0.5 }}>↗</span>
                 </button>
@@ -1581,11 +1569,11 @@ export default function AdminPanel({
                       onMouseLeave={(e) => {
                         e.currentTarget.style.color = '#2c3e50';
                       }}
-                      title="ストレージ詳細を表示"
+                      title={t('admin.openStorage')}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <FiHardDrive size={24} />
-                        <span>Storage</span>
+                        <span>{t('admin.storage')}</span>
                       </div>
                       <span style={{ fontSize: '20px', opacity: 0.5 }}>↗</span>
                     </button>
@@ -1596,7 +1584,7 @@ export default function AdminPanel({
                       fontSize: '14px',
                       color: '#7f8c8d'
                     }}>
-                      <span>Usage:</span>
+                      <span>{t('admin.usage')}</span>
                       <span style={{ fontWeight: '600', color: '#2c3e50' }}>
                         {storageInfo.usageMB.toFixed(2)} MB / {storageInfo.quotaMB.toFixed(0)} MB
                       </span>
@@ -1631,13 +1619,13 @@ export default function AdminPanel({
                     e.currentTarget.style.borderColor = '#ecf0f1';
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
-                  title={settingsVariant === 'teachers' ? '先生レベルの設定' : 'リンクと通知の設定'}
+                  title={settingsVariant === 'teachers' ? t('admin.teacherSettings') : t('admin.linkSettings')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span style={{ display: 'inline-flex', width: '24px', height: '24px', flexShrink: 0 }}>
                       {settingsVariant === 'teachers' ? <IoMdSettings size={24} /> : <MdNotificationsNone size={24} />}
                     </span>
-                    <span>{settingsVariant === 'teachers' ? 'Teacher Settings' : 'Links & Notification'}</span>
+                    <span>{settingsVariant === 'teachers' ? t('teacherSettings.title') : t('admin.linksAndNotifications')}</span>
                   </div>
                   <span style={{ fontSize: '20px', opacity: 0.5 }}>↗</span>
                 </button>
@@ -1692,7 +1680,7 @@ export default function AdminPanel({
                 color: '#7f8c8d',
                 zIndex: 10
               }}
-              title="閉じる"
+              title={t('common.close')}
             >
               ✕
             </button>
@@ -1727,8 +1715,7 @@ export default function AdminPanel({
               textDecoration: 'underline'
             }}
           >
-            {APP_NAME}について
-          </button>
+            {t('footer.about', { app: APP_NAME })}</button>
           <button
             onClick={() => setShowContact(true)}
             style={{
@@ -1741,8 +1728,7 @@ export default function AdminPanel({
               textDecoration: 'underline'
             }}
           >
-            お問い合わせ
-          </button>
+            {t('footer.contact')}</button>
           <button
             onClick={() => setShowPrivacyPolicy(true)}
             style={{
@@ -1755,8 +1741,7 @@ export default function AdminPanel({
               textDecoration: 'underline'
             }}
           >
-            プライバシーポリシー
-          </button>
+            {t('footer.privacy')}</button>
           <button
             onClick={() => setShowTermsOfService(true)}
             style={{
@@ -1769,8 +1754,7 @@ export default function AdminPanel({
               textDecoration: 'underline'
             }}
           >
-            利用規約
-          </button>
+            {t('footer.terms')}</button>
           <a
             href="https://thousandsofties.github.io/tokushoho.html"
             target="_blank"
@@ -1781,8 +1765,7 @@ export default function AdminPanel({
               textDecoration: 'underline'
             }}
           >
-            特定商取引法に基づく表記
-          </a>
+            {t('footer.commerce')}</a>
         </div>
         <div style={{
           marginTop: '8px',

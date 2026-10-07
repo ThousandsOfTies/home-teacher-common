@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next'
+import { localizeErrorMessage } from '../../i18n/errorMessages'
+
 import { useState } from 'react'
 import { getAllPDFRecords, deletePDFRecord, savePDFRecord, generatePDFId, PDFFileRecord } from '../../utils/indexedDB'
 import * as pdfjsLib from 'pdfjs-dist'
@@ -12,12 +15,15 @@ const baseUrl = import.meta.env.BASE_URL
 const safeBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
 pdfjsLib.GlobalWorkerOptions.workerSrc = `${safeBaseUrl}pdf.worker.min.js`
 
+type ImportError = string | { key: string; values?: Record<string, string | number> }
+
 export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = false) => {
+  const { t } = useTranslation()
   const [pdfRecords, setPdfRecords] = useState<PDFFileRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [textInspectionProgress, setTextInspectionProgress] = useState<{ checkedPages: number; totalPages: number } | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<ImportError | null>(null)
 
   const loadPDFRecords = async () => {
     try {
@@ -26,7 +32,7 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = fal
       setPdfRecords(records)
     } catch (error) {
       console.error('Failed to load PDFs:', error)
-      setErrorMessage('Failed to load PDF list')
+      setErrorMessage({ key: 'pdfImport.loadFailed' })
     } finally {
       setLoading(false)
     }
@@ -54,7 +60,7 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = fal
 
       const canvas = document.createElement('canvas')
       const context = canvas.getContext('2d')
-      if (!context) throw new Error('Canvas context not available')
+      if (!context) throw new Error(t('errors.canvasUnavailable'))
 
       canvas.height = viewport.height
       canvas.width = viewport.width
@@ -111,8 +117,8 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = fal
     } catch (error) {
       console.error('Failed to add PDF:', error)
       setErrorMessage(error instanceof DOMException && error.name === 'QuotaExceededError'
-        ? '端末の保存領域が足りません。Storageの使用量を確認し、不要な教材を削除してください。'
-        : `Failed to add PDF: ${error}`)
+        ? { key: 'pdfImport.storageFull' }
+        : { key: 'pdfImport.addFailed', values: { detail: error instanceof Error ? error.message : String(error) } })
       return false
     } finally {
       setUploading(false)
@@ -130,7 +136,7 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = fal
         try {
           const pickerOptions: any = { multiple: true }
           if (mode === 'pdf') {
-            pickerOptions.types = [{ description: 'PDF Files', accept: { 'application/pdf': ['.pdf'] } }]
+            pickerOptions.types = [{ description: t('admin.pdfFiles'), accept: { 'application/pdf': ['.pdf'] } }]
           }
           const fileHandles = await (window as any).showOpenFilePicker(pickerOptions)
           console.log(`📂 File handles received: ${fileHandles.length}`)
@@ -214,7 +220,7 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = fal
       const MAX_TOTAL_SIZE_MB = Math.max(300, maxPDFFileSizeMB)
 
       if (files.length > MAX_FILES) {
-        const message = `ファイル数が多すぎます。最大${MAX_FILES}枚まで選択できます。\n現在: ${files.length}枚`
+        const message = t('pdfImport.tooManyFiles', { max: MAX_FILES, count: files.length })
         setErrorMessage(message)
         alert(message)
         setUploading(false)
@@ -232,7 +238,7 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = fal
         const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
         const maxFileSizeMB = isPDF ? maxPDFFileSizeMB : MAX_IMAGE_FILE_SIZE_MB
         if (file.size > maxFileSizeMB * 1024 * 1024) {
-          const message = `ファイルサイズが大きすぎます（最大${maxFileSizeMB}MB）\nファイル: ${file.name}\nサイズ: ${(file.size / 1024 / 1024).toFixed(2)}MB`
+          const message = t('pdfImport.fileTooLarge', { max: maxFileSizeMB, name: file.name, size: (file.size / 1024 / 1024).toFixed(2) })
           setErrorMessage(message)
           alert(message)
           setUploading(false)
@@ -245,7 +251,7 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = fal
       console.log(`📊 Total size: ${totalSizeMB.toFixed(2)}MB`)
 
       if (totalSizeMB > MAX_TOTAL_SIZE_MB) {
-        const message = `合計ファイルサイズが大きすぎます。\n最大: ${MAX_TOTAL_SIZE_MB}MB\n現在: ${totalSizeMB.toFixed(2)}MB\n\nファイル数を減らすか、小さいファイルを選択してください。`
+        const message = t('pdfImport.totalTooLarge', { max: MAX_TOTAL_SIZE_MB, size: totalSizeMB.toFixed(2) })
         setErrorMessage(message)
         alert(message)
         setUploading(false)
@@ -277,7 +283,7 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = fal
         try {
           const { convertImagesToPDF } = await import('../../services/pdfConverter').catch(error => {
             console.error('Failed to load PDF converter:', error)
-            throw new Error('画像の取り込みを読み込めませんでした。インターネット接続を確認し、ページを再読み込みしてから画像を選び直してください。')
+            throw new Error(t('errors.converterLoad'))
           })
           console.log('  🔄 Step 1: Processing images...')
           const processedImages = await processImageFiles(imageFiles)
@@ -315,7 +321,7 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = fal
 
     } catch (error) {
       console.error('Failed to select files:', error)
-      setErrorMessage(`Failed to select files: ${error}`)
+      setErrorMessage({ key: 'pdfImport.selectFailed', values: { detail: error instanceof Error ? error.message : String(error) } })
       setUploading(false)
     }
   }
@@ -326,7 +332,7 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = fal
       await loadPDFRecords()
     } catch (error) {
       console.error('Failed to delete:', error)
-      setErrorMessage('Failed to delete')
+      setErrorMessage({ key: 'pdfImport.deleteFailed' })
     }
   }
 
@@ -336,7 +342,10 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = fal
     loading,
     uploading,
     textInspectionProgress,
-    errorMessage,
+    errorMessage: errorMessage === null ? null : typeof errorMessage === 'string'
+      ? localizeErrorMessage(errorMessage, t)
+      : t(errorMessage.key, { ...errorMessage.values, ...(errorMessage.values?.detail
+          ? { detail: localizeErrorMessage(errorMessage.values.detail, t) } : {}) }),
     setErrorMessage,
     loadPDFRecords,
     handleFileSelect,

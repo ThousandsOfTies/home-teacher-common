@@ -84,7 +84,8 @@ function storage(traces, { failDelete, markers = [] } = {}) {
         return transaction
     } }
     const exports = {}
-    vm.runInNewContext(code, { exports, openDB: async () => db, IDBKeyRange: { only: value => value },
+    vm.runInNewContext(code, { exports, messages: require('../src/i18n/locales/ja.json'),
+        openDB: async () => db, IDBKeyRange: { only: value => value },
         STORE_NAME: 'pdfFiles', PDF_STUDY_TRACE_STORE_NAME: 'pdfStudyTraces', PDF_STUDY_ASSET_STORE_NAME: 'pdfStudyAssets',
         PDF_STUDY_MARKER_STORE_NAME: 'pdfStudyMarkers', studyAssetId: (traceId, nodeId, kind) => `${traceId}:${nodeId}:${kind}` })
     return { ...exports, stores, transactions }

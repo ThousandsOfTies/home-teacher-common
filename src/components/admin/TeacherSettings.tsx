@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
 import { FiHeart, FiLock, FiTarget } from 'react-icons/fi'
 import { MdBalance, MdClose, MdOutlineSchool } from 'react-icons/md'
@@ -13,19 +14,20 @@ interface TeacherSettingsProps {
   onManagePlan?: () => void
 }
 
-const teachers: Array<{
-  mode: TeacherMode
-  label: string
-  description: string
-  icon: React.ReactNode
-  alwaysEnabled?: boolean
-}> = [
-  { mode: 'kind', label: 'KIND', description: 'よかったところを中心に、やさしくアドバイス', icon: <FiHeart />, alwaysEnabled: true },
-  { mode: 'balanced', label: 'BALANCED', description: 'よい点と改善点をバランスよくアドバイス', icon: <MdBalance /> },
-  { mode: 'strict', label: 'HARD', description: '形や比率まで細かく、具体的にアドバイス', icon: <FiTarget /> }
-]
-
 export default function TeacherSettings({ onClose, isPremium, onUpgrade, onManagePlan }: TeacherSettingsProps) {
+  const { t } = useTranslation()
+
+  const teachers: Array<{
+    mode: TeacherMode
+    label: string
+    description: string
+    icon: React.ReactNode
+    alwaysEnabled?: boolean
+  }> = [
+    { mode: 'kind', label: t('teacherLevels.kind'), description: t('teacherSettings.kindDescription'), icon: <FiHeart />, alwaysEnabled: true },
+    { mode: 'balanced', label: t('teacherLevels.balanced'), description: t('teacherSettings.balancedDescription'), icon: <MdBalance /> },
+    { mode: 'strict', label: t('teacherLevels.strict'), description: t('teacherSettings.strictDescription'), icon: <FiTarget /> }
+  ]
   const [enabledModes, setEnabledModes] = useState<TeacherMode[]>(['kind'])
   const [defaultMode, setDefaultMode] = useState<TeacherMode>('kind')
   const [loading, setLoading] = useState(true)
@@ -72,17 +74,17 @@ export default function TeacherSettings({ onClose, isPremium, onUpgrade, onManag
   }
 
   return (
-    <div className="teacher-settings-overlay" role="dialog" aria-modal="true" aria-label="Teacher Settings">
+    <div className="teacher-settings-overlay" role="dialog" aria-modal="true" aria-label={t('teacherSettings.title')}>
       <section className="teacher-settings-panel">
         <header>
           <div className="teacher-settings-title">
             <span><MdOutlineSchool /></span>
-            <div><small>FEEDBACK STYLE</small><h2>Teacher Settings</h2></div>
+            <div><small>{t('teacherSettings.style')}</small><h2>{t('teacherSettings.title')}</h2></div>
           </div>
-          <button onClick={onClose} aria-label="閉じる"><MdClose /></button>
+          <button onClick={onClose} aria-label={t('common.close')}><MdClose /></button>
         </header>
 
-        <p className="teacher-settings-lead">採点で選べる先生と、最初に表示する先生を設定します。</p>
+        <p className="teacher-settings-lead">{t('teacherSettings.description')}</p>
 
         <div className="teacher-settings-list" aria-busy={loading}>
           {teachers.map(teacher => {
@@ -97,7 +99,7 @@ export default function TeacherSettings({ onClose, isPremium, onUpgrade, onManag
                 <label className="teacher-enable-control" onClick={() => {
                   if (!teacher.alwaysEnabled && !isPremium) onUpgrade()
                 }}>
-                  <span>{teacher.alwaysEnabled ? 'ALWAYS' : !isPremium ? <><FiLock /> LOCKED</> : enabled ? 'ON' : 'OFF'}</span>
+                  <span>{teacher.alwaysEnabled ? t('teacherSettings.always') : !isPremium ? <><FiLock /> {t('teacherSettings.locked')}</> : enabled ? t('teacherSettings.on') : t('teacherSettings.off')}</span>
                   <input
                     type="checkbox"
                     checked={enabled}
@@ -114,7 +116,7 @@ export default function TeacherSettings({ onClose, isPremium, onUpgrade, onManag
                     disabled={!enabled || loading || !isPremium}
                     onChange={() => setDefaultMode(teacher.mode)}
                   />
-                  <span>DEFAULT</span>
+                  <span>{t('teacherSettings.default')}</span>
                 </label>
               </article>
             )
@@ -123,25 +125,24 @@ export default function TeacherSettings({ onClose, isPremium, onUpgrade, onManag
 
         {isPremium ? (
           <div className="teacher-settings-premium-note">
-            <div className="teacher-settings-note">KINDはいつでも利用できます。無効にした先生は採点ボタンのリストに表示されません。</div>
+            <div className="teacher-settings-note">{t('teacherSettings.premiumNote')}</div>
             {onManagePlan && (
               <button className="teacher-settings-manage-plan" onClick={onManagePlan}>
-                プラン管理・解約
-              </button>
+                {t('teacherSettings.managePlan')}</button>
             )}
           </div>
         ) : (
           <button className="teacher-settings-upgrade" onClick={onUpgrade}>
             <span><FiLock /></span>
-            <div><strong>BALANCEDとHARDをアンロック</strong><small>Premiumで先生レベルを自由に設定できます</small></div>
+            <div><strong>{t('teacherSettings.unlock')}</strong><small>{t('teacherSettings.premiumHint')}</small></div>
             <b>→</b>
           </button>
         )}
 
         <footer>
-          <button className="teacher-settings-cancel" onClick={onClose}>キャンセル</button>
+          <button className="teacher-settings-cancel" onClick={onClose}>{t('common.cancel')}</button>
           <button className="teacher-settings-save" onClick={() => void save()} disabled={loading || saving}>
-            {saving ? '保存中...' : '保存'}
+            {saving ? t('teacherSettings.saving') : t('teacherSettings.save')}
           </button>
         </footer>
       </section>

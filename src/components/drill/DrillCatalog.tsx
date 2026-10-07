@@ -1,164 +1,13 @@
 import { useTranslation } from 'react-i18next';
 
-// 推奨教材サイト一覧
-// 推奨教材サイト一覧 (JA)
-const RECOMMENDED_SITES_JA = [
-    {
-        name: 'ThousandsOfTies ドリル',
-        description: 'HomeTeacherの開発者によるサンプル問題集です。動作確認やデモに使用できます。',
-        url: 'https://thousandsofties.github.io/drills/',
-        highlight: '🎥 公式サンプル',
-        subjects: ['算数', 'その他'],
-        grades: ['全学年'],
-    },
-    {
-        name: 'ふたば問題集',
-        description: '文部科学省の新学習指導要領に対応。小学校で習う算数の全分野をカバーした無料プリント集です。',
-        url: 'https://futaba-workbook.com/',
-        highlight: '🏆 全単元カバー',
-        subjects: ['算数'],
-        grades: ['小1〜小6'],
-    },
-
-    {
-        name: 'すきるまドリル',
-        description: '市販ドリルに近い構成。単元の導入→練習→まとめの流れが作りやすく、家庭学習に最適です。',
-        url: 'https://sukiruma.net/',
-        highlight: '📚 市販ドリル風の構成',
-        subjects: ['算数', '国語', '英語'],
-        grades: ['小1〜小6', '中1〜中3'],
-    },
-    {
-        name: 'ちびむすドリル',
-        description: '非常に細かく単元が分かれており、苦手なところだけを重点的に練習したい時に最適です。',
-        url: 'https://happylilac.net/syogaku.html',
-        highlight: '🎯 苦手克服に最適',
-        subjects: ['算数', '国語', '理科', '社会', '英語'],
-        grades: ['幼児', '小1〜小6', '中1〜中3'],
-    },
-    {
-        name: '算願（さんがん）',
-        description: '計算ドリル、筆算、文章題、図形など、算数に特化した豊富なプリント集。',
-        url: 'https://www.sangan.jp/',
-        highlight: '🔢 算数特化',
-        subjects: ['算数・数学'],
-        grades: ['小1〜中3'],
-    },
-    {
-        name: '計算プリント.com',
-        description: '計算問題に特化したシンプルなドリル。繰り返し練習に最適です。',
-        url: 'https://keipri.com/',
-        highlight: '✏️ 計算練習特化',
-        subjects: ['算数（計算）'],
-        grades: ['小1〜小6'],
-    },
-];
-
-// Recommended Sites (EN)
-const RECOMMENDED_SITES_EN = [
-    {
-        name: 'ThousandsOfTies Drills',
-        description: 'Sample worksheets created by the developers. Useful for testing and demos.',
-        url: 'https://thousandsofties.github.io/drills/',
-        highlight: '🎥 Official Samples',
-        subjects: ['Math', 'Others'],
-        grades: ['All'],
-    },
-    {
-        name: 'K5 Learning',
-        description: 'Free worksheets for kindergarten to grade 5. Organized by grade and topic.',
-        url: 'https://www.k5learning.com/free-math-worksheets',
-        highlight: '🏆 Comprehensive',
-        subjects: ['Math', 'Reading', 'Science'],
-        grades: ['K-5'],
-    },
-    {
-        name: 'Math-Drills.com',
-        description: 'One of the largest collections of free math worksheets. Over 50,000 pages.',
-        url: 'https://www.math-drills.com/',
-        highlight: '🔢 Huge Collection',
-        subjects: ['Math'],
-        grades: ['K-12'],
-    },
-    {
-        name: 'Dad\'s Worksheets',
-        description: 'Focused on math practice. Great for specific topics like fractions or geometry.',
-        url: 'https://www.dadsworksheets.com/',
-        highlight: '✏️ Math Focused',
-        subjects: ['Math'],
-        grades: ['K-6'],
-    },
-    {
-        name: 'Math Worksheets 4 Kids',
-        description: 'A wealth of worksheets for Math, English, Science, and Social Studies.',
-        url: 'https://www.mathworksheets4kids.com/',
-        highlight: '🎨 Colorful & Fun',
-        subjects: ['Math', 'English', 'Science'],
-        grades: ['K-8'],
-    },
-    {
-        name: 'Education.com',
-        description: 'High quality worksheets. Some require a free account to download.',
-        url: 'https://www.education.com/worksheets/math/',
-        highlight: '👨‍🏫 Teacher Created',
-        subjects: ['Math', 'Reading', 'Writing'],
-        grades: ['PreK-8'],
-    }
-];
-
-const DRAWING_SITES_JA = [
-    {
-        name: 'ひよこドリル',
-        description: '動物や食べ物などを、1つずつまたはドリル形式で練習できる子ども・初心者向けの無料イラスト教材です。',
-        url: 'https://hiyokodrill.com/illustration/',
-        highlight: '🐣 はじめての模写に',
-        subjects: ['動物', '食べ物', 'かんたんイラスト'],
-        grades: ['幼児〜初心者'],
-    },
-    {
-        name: '学習プリント.com お絵描き',
-        description: '簡単な図形からかわいいイラストへ段階的に進める、無料のお絵描きPDFプリントです。',
-        url: 'https://xn--fdk3a7ctb5192box5b.com/yo/oekaki/',
-        highlight: '✏️ 段階練習',
-        subjects: ['図形', '運筆', 'イラスト'],
-        grades: ['幼児〜小学生'],
-    },
-    {
-        name: 'SuperColoring Drawing Tutorials',
-        description: '動物、人物、乗り物などの描き方を段階ごとに見られる、豊富な印刷用チュートリアル集です。',
-        url: 'https://www.supercoloring.com/section/drawing-tutorials',
-        highlight: '🌎 テーマが豊富',
-        subjects: ['動物', '人物', '乗り物', '植物'],
-        grades: ['子ども〜大人'],
-    },
-];
-
-const DRAWING_SITES_EN = [
-    {
-        name: 'SuperColoring Drawing Tutorials',
-        description: 'A large collection of printable step-by-step drawing guides for animals, people, vehicles, plants, and more.',
-        url: 'https://www.supercoloring.com/section/drawing-tutorials',
-        highlight: '🌎 Huge Collection',
-        subjects: ['Animals', 'People', 'Vehicles', 'Plants'],
-        grades: ['Kids to Adults'],
-    },
-    {
-        name: 'How to Draw for Kids',
-        description: 'Simple tutorials and downloadable worksheets with drawing, tracing, coloring, and grid-copying activities.',
-        url: 'https://howtodrawforkids.com/',
-        highlight: '✏️ Step by Step',
-        subjects: ['Drawing', 'Tracing', 'Grid Copying'],
-        grades: ['Kids & Beginners'],
-    },
-    {
-        name: 'LittleActivity Art Printables',
-        description: 'Free printable PDF art activities and drawing tutorials for children, with no account required.',
-        url: 'https://www.littleactivity.com/free-printables',
-        highlight: '🎨 Free PDFs',
-        subjects: ['Art', 'Drawing', 'Crafts'],
-        grades: ['Ages 3–12'],
-    },
-];
+interface RecommendedSite {
+    name: string;
+    description: string;
+    url: string;
+    highlight: string;
+    subjects: string[];
+    grades: string[];
+}
 
 interface DrillCatalogProps {
     onImportConfig?: (addPDF: (file: Blob, fileName: string) => Promise<boolean>) => void;
@@ -167,12 +16,9 @@ interface DrillCatalogProps {
 }
 
 export default function DrillCatalog({ variant = 'study' }: DrillCatalogProps) {
-    const { t, i18n } = useTranslation();
-    const isEnglish = i18n.language === 'en' || i18n.language?.startsWith('en');
-    const sites = variant === 'drawing'
-        ? (isEnglish ? DRAWING_SITES_EN : DRAWING_SITES_JA)
-        : (isEnglish ? RECOMMENDED_SITES_EN : RECOMMENDED_SITES_JA);
+    const { t } = useTranslation();
     const catalogKey = variant === 'drawing' ? 'drawingCatalog' : 'drillCatalog';
+    const sites = t(`${catalogKey}.sites`, { returnObjects: true }) as RecommendedSite[];
 
     const handleOpenSite = (url: string) => {
         window.open(url, '_blank', 'noopener,noreferrer');

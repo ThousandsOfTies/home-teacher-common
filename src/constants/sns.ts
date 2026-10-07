@@ -1,3 +1,4 @@
+import messages from '../i18n/locales/ja.json'
 import {
   siYoutube, siX, siInstagram, siTiktok, siFacebook, siLine, siDiscord,
   siTwitch, siReddit, siGithub, siNote, siZenn, siQiita, siNiconico, siPixiv,
@@ -26,7 +27,7 @@ export const PREDEFINED_SNS: PredefinedSNS[] = [
   { id: 'note', name: 'note', defaultUrl: 'https://note.com/', icon: '📝' },
   { id: 'zenn', name: 'Zenn', defaultUrl: 'https://zenn.dev/', icon: '⚡' },
   { id: 'qiita', name: 'Qiita', defaultUrl: 'https://qiita.com/', icon: '📚' },
-  { id: 'niconico', name: 'ニコニコ動画', defaultUrl: 'https://www.nicovideo.jp/', icon: '📹' },
+  { id: 'niconico', name: messages.snsNames.niconico, defaultUrl: 'https://www.nicovideo.jp/', icon: '📹' },
   { id: 'pixiv', name: 'pixiv', defaultUrl: 'https://www.pixiv.net/', icon: '🎨' },
   { id: 'amazon', name: 'Amazon', defaultUrl: 'https://www.amazon.co.jp/', icon: '📦' },
 ]

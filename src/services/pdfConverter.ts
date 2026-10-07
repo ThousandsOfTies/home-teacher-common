@@ -1,3 +1,4 @@
+import messages from '../i18n/locales/ja.json'
 import { jsPDF } from 'jspdf';
 import { PDFDocument } from 'pdf-lib';
 
@@ -46,7 +47,7 @@ export async function convertImagesToPDF(
     fileName: string = 'document.pdf'
 ): Promise<Blob> {
     if (images.length === 0) {
-        throw new Error('画像が選択されていません');
+        throw new Error(messages.errors.noImages);
     }
 
     try {
@@ -83,7 +84,7 @@ export async function convertImagesToPDF(
         return pdfBlob;
     } catch (error) {
         console.error('PDF conversion failed:', error);
-        throw new Error('PDFへの変換に失敗しました');
+        throw new Error(messages.errors.pdfConvert);
     }
 }
 
@@ -122,7 +123,7 @@ async function addImageToPDF(
  */
 export async function mergePDFs(pdfBlobs: Blob[]): Promise<Blob> {
     if (pdfBlobs.length === 0) {
-        throw new Error('PDFが選択されていません');
+        throw new Error(messages.errors.noPDFs);
     }
 
     if (pdfBlobs.length === 1) {
@@ -147,7 +148,7 @@ export async function mergePDFs(pdfBlobs: Blob[]): Promise<Blob> {
         return new Blob([mergedPdfBytes as any], { type: 'application/pdf' });
     } catch (error) {
         console.error('PDF merge failed:', error);
-        throw new Error('PDFの結合に失敗しました');
+        throw new Error(messages.errors.pdfMerge);
     }
 }
 

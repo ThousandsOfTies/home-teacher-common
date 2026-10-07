@@ -1,3 +1,4 @@
+import messages from '../../i18n/locales/ja.json'
 import React, { useEffect } from 'react'
 import './AdSlot.css'
 
@@ -33,25 +34,25 @@ const AdSlot: React.FC<AdSlotProps> = ({ slot, className = '' }) => {
     switch (slot) {
       case 'admin-top':
         return {
-          title: '管理画面 - トップバナー',
+          title: messages.ads.adminTop,
           style: { minHeight: '90px' },
           format: 'horizontal' as const
         }
       case 'admin-sidebar':
         return {
-          title: '管理画面 - サイドバー',
+          title: messages.ads.adminSidebar,
           style: { minHeight: '250px' },
           format: 'rectangle' as const
         }
       case 'result-bottom':
         return {
-          title: '採点結果 - 下部',
+          title: messages.ads.resultBottom,
           style: { minHeight: '250px' },
           format: 'rectangle' as const
         }
       case 'result-top':
         return {
-          title: '採点結果 - 上部バナー',
+          title: messages.ads.resultTop,
           style: { minHeight: '90px' },
           format: 'horizontal' as const
         }

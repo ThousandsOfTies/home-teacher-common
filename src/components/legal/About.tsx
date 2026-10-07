@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import React from 'react';
 import './Legal.css';
 
@@ -6,43 +7,42 @@ interface AboutProps {
 }
 
 const About: React.FC<AboutProps> = ({ onClose }) => {
+  const { t } = useTranslation()
+
     return (
         <div className="legal-modal-overlay" onClick={onClose}>
             <div className="legal-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="legal-modal-header">
-                    <h2>🦉 TutoTutoについて</h2>
-                    <button className="legal-modal-close" onClick={onClose} title="閉じる">
+                    <h2>{t('legal.about.title')}</h2>
+                    <button className="legal-modal-close" onClick={onClose} title={t('common.close')}>
                         ✕
                     </button>
                 </div>
 
                 <div className="legal-modal-content">
-                    <h3>TutoTutoとは</h3>
+                    <h3>{t('legal.about.introTitle')}</h3>
                     <p>
-                        TutoTutoでは、お子様のSNSの利用の前に「本アプリでの学習」という制限を設けることが可能になります。
-                        お勉強に用いる教材はPDFファイルで登録します。
-                        PDFファイルに直接書き込みを行い、採点はAIが行います。
-                    </p>
+                        {t('legal.about.intro')}</p>
 
-                    <h3>主な機能</h3>
+                    <h3>{t('legal.about.featuresTitle')}</h3>
                     <ul>
-                        <li><strong>PDF教材の管理</strong> - 学習用のPDFファイルをアプリに登録して管理できます</li>
-                        <li><strong>手書き編集</strong> - タッチペンや指で直接PDFを編集することができます</li>
-                        <li><strong>AI自動採点</strong> - Google Gemini AIを使用して自動採点します</li>
-                        <li><strong>SNSアクセス</strong> - 採点後に時間制限を設けたSNSへのアクセス許可を与えることが可能です</li>
-                        <li><strong>学習履歴</strong> - 採点結果の履歴を確認できます</li>
+                        <li><strong>{t('legal.about.pdfTitle')}</strong> {t('legal.about.pdfDescription')}</li>
+                        <li><strong>{t('legal.about.drawingTitle')}</strong> {t('legal.about.drawingDescription')}</li>
+                        <li><strong>{t('legal.about.gradingTitle')}</strong> {t('legal.about.gradingDescription')}</li>
+                        <li><strong>{t('legal.about.snsTitle')}</strong> {t('legal.about.snsDescription')}</li>
+                        <li><strong>{t('legal.about.historyTitle')}</strong> {t('legal.about.historyDescription')}</li>
                     </ul>
 
-                    <h3>対応デバイス</h3>
-                    <p>以下のデバイス・ブラウザでご利用いただけます：</p>
+                    <h3>{t('legal.about.devicesTitle')}</h3>
+                    <p>{t('legal.about.devicesDescription')}</p>
                     <ul>
-                        <li>iPad / iPhone（Safari）- Apple Pencil対応</li>
-                        <li>Windows PC（Chrome, Edge）</li>
-                        <li>Mac PC（Safari）- 未確認</li>
-                        <li>Android タブレット / スマートフォン（Chrome）- 未確認</li>
+                        <li>{t('legal.about.ios')}</li>
+                        <li>{t('legal.about.windows')}</li>
+                        <li>{t('legal.about.mac')}</li>
+                        <li>{t('legal.about.android')}</li>
                     </ul>
 
-                    <h3>開発・運営</h3>
+                    <h3>{t('legal.about.operatorTitle')}</h3>
                     <div style={{
                         backgroundColor: '#f8f9fa',
                         padding: '16px',
@@ -50,16 +50,16 @@ const About: React.FC<AboutProps> = ({ onClose }) => {
                         margin: '16px 0'
                     }}>
                         <p style={{ margin: '0 0 8px 0' }}>
-                            <strong>運営者:</strong> ThousandsOfTies
+                            <strong>{t('legal.about.operator')}</strong> ThousandsOfTies
                         </p>
                         <p style={{ margin: '0 0 8px 0' }}>
-                            <strong>メール:</strong>{' '}
+                            <strong>{t('legal.email')}</strong>{' '}
                             <a href="mailto:thousands.of.ties@gmail.com" style={{ color: '#3498db' }}>
                                 thousands.of.ties@gmail.com
                             </a>
                         </p>
                         <p style={{ margin: 0 }}>
-                            <strong>GitHub:</strong>{' '}
+                            <strong>{t('legal.about.github')}</strong>{' '}
                             <a
                                 href="https://github.com/ThousandsOfTies"
                                 target="_blank"
@@ -71,28 +71,27 @@ const About: React.FC<AboutProps> = ({ onClose }) => {
                         </p>
                     </div>
 
-                    <h3>バージョン情報</h3>
+                    <h3>{t('legal.about.versionTitle')}</h3>
                     <p>
-                        <strong>現在のバージョン:</strong> 0.2.1
+                        <strong>{t('legal.about.version')}</strong> 0.2.1
                     </p>
                     <div style={{ marginTop: '20px', padding: '10px', background: '#f5f5f5', borderRadius: '4px', fontSize: '0.8rem' }}>
-                        <p><strong>Debug Info:</strong></p>
-                        <p style={{ wordBreak: 'break-all' }}>URL: {window.location.href}</p>
-                        <p>Premium: {localStorage.getItem('userSettings') && JSON.parse(localStorage.getItem('userSettings') || '{}').isPremium ? 'YES' : 'NO'}</p>
+                        <p><strong>{t('legal.about.debug')}</strong></p>
+                        <p style={{ wordBreak: 'break-all' }}>{t('legal.about.url')}{window.location.href}</p>
+                        <p>{t('legal.about.premium')}{localStorage.getItem('userSettings') && JSON.parse(localStorage.getItem('userSettings') || '{}').isPremium ? t('common.yes') : t('common.no')}</p>
                     </div>
 
-                    <h3>謝辞</h3>
+                    <h3>{t('legal.about.creditsTitle')}</h3>
                     <p>
-                        TutoTutoは以下の技術・サービスを使用しています：
-                    </p>
+                        {t('legal.about.creditsDescription')}</p>
                     <ul>
-                        <li>React - UIフレームワーク</li>
-                        <li>Vite - ビルドツール</li>
-                        <li>PDF.js - PDF表示ライブラリ</li>
-                        <li>Google Gemini AI - 自動採点エンジン</li>
+                        <li>{t('legal.about.react')}</li>
+                        <li>{t('legal.about.vite')}</li>
+                        <li>{t('legal.about.pdfjs')}</li>
+                        <li>{t('legal.about.gemini')}</li>
                     </ul>
 
-                    <h3>⚠️ 免責事項</h3>
+                    <h3>{t('legal.about.disclaimerTitle')}</h3>
                     <div style={{
                         backgroundColor: '#fff3cd',
                         border: '1px solid #ffc107',
@@ -101,20 +100,14 @@ const About: React.FC<AboutProps> = ({ onClose }) => {
                         margin: '16px 0'
                     }}>
                         <p style={{ margin: '0 0 8px 0', fontWeight: 'bold', color: '#856404' }}>
-                            AI自動採点について
-                        </p>
+                            {t('legal.about.aiTitle')}</p>
                         <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.6', color: '#856404' }}>
-                            本アプリのAI自動採点機能は、Google Gemini AIを使用していますが、
-                            <strong>採点結果が必ずしも正確であるとは限りません</strong>。
-                            AIによる判定には誤りが含まれる可能性があるため、
-                            保護者の方は必ずお子様の解答を確認し、最終的な正誤判定を行ってください。
-                            本機能はあくまで学習のサポートツールとしてご利用ください。
-                        </p>
+                            {t('legal.about.aiBefore')}<strong>{t('legal.about.aiWarning')}</strong>{t('legal.about.aiAfter')}</p>
                     </div>
                 </div>
 
                 <div className="legal-modal-footer">
-                    <button onClick={onClose}>閉じる</button>
+                    <button onClick={onClose}>{t('common.close')}</button>
                 </div>
             </div>
         </div>

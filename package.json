@@ -5,7 +5,8 @@
   "description": "Shared components, hooks, and utilities for TutoTuto/DoriDori apps",
   "type": "module",
   "scripts": {
-    "test": "node --test tests/auth-context.test.cjs tests/on-demand-loading.test.cjs tests/deferred-assets.test.mjs tests/wheel-page-navigation.test.cjs tests/wheel-panel-navigation.test.cjs tests/study-trace-deletion.test.cjs tests/study-trace-undo.test.cjs",
+    "test": "npm run test:i18n && node --test tests/auth-context.test.cjs tests/on-demand-loading.test.cjs tests/deferred-assets.test.mjs tests/wheel-page-navigation.test.cjs tests/wheel-panel-navigation.test.cjs tests/study-trace-deletion.test.cjs tests/study-trace-undo.test.cjs",
+    "test:i18n": "node build/checkTranslations.mjs src && node --test tests/localization.test.cjs",
     "test:auth": "node --test tests/auth-context.test.cjs"
   },
   "exports": {

@@ -11,7 +11,9 @@ function load(file, requireModule) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText
   const exports = {}
-  vm.runInNewContext(code, { exports, require: requireModule, console: { log() {}, error() {} } })
+  vm.runInNewContext(code, { exports, require: id => id.endsWith('/locales/ja.json')
+    ? { default: require('../src/i18n/locales/ja.json') } : requireModule(id),
+    console: { log() {}, error() {} } })
   return exports
 }
 
@@ -67,7 +69,9 @@ test('retry navigation resumes the same PDF in the editor; ordinary PDF links op
         useState(value) { const index = states.length; states.push(value); return [value, next => { states[index] = next }] },
         useEffect(callback) { effects.push(callback) },
         useCallback: callback => callback,
-      } : { getPDFRecord: async id => { assert.equal(id, 'fixture'); return record } },
+        useRef: value => ({ current: value }),
+      } : id === 'react-i18next' ? { useTranslation: () => ({ t: key => key }) }
+        : { getPDFRecord: async id => { assert.equal(id, 'fixture'); return record } },
     })
     exports.useAppInitializer()
     effects.forEach(effect => effect())

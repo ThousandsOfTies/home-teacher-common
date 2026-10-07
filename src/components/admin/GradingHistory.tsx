@@ -10,7 +10,7 @@ interface GradingHistoryProps {
 }
 
 const GradingHistory = ({ onClose, onSelectHistory }: GradingHistoryProps) => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [historyList, setHistoryList] = useState<GradingHistoryRecord[]>([])
   const [snsHistoryList, setSnsHistoryList] = useState<SNSUsageHistoryRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -108,7 +108,7 @@ const GradingHistory = ({ onClose, onSelectHistory }: GradingHistoryProps) => {
   // 日付をフォーマット
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp)
-    return date.toLocaleString('ja-JP', {
+    return date.toLocaleString(i18n.language, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -151,21 +151,21 @@ const GradingHistory = ({ onClose, onSelectHistory }: GradingHistoryProps) => {
             <button
               className={filterType === 'all' ? 'active' : ''}
               onClick={() => setFilterType('all')}
-              title="すべて表示"
+              title={t('gradingHistory.showAll')}
             >
               {t('gradingHistory.filterAll')}
             </button>
             <button
               className={filterType === 'grading' ? 'active' : ''}
               onClick={() => setFilterType('grading')}
-              title="採点のみ"
+              title={t('gradingHistory.onlyGrading')}
             >
               <MdEditNote size={14} /> {t('gradingHistory.filterGrading')}
             </button>
             <button
               className={filterType === 'sns' ? 'active' : ''}
               onClick={() => setFilterType('sns')}
-              title="SNSのみ"
+              title={t('gradingHistory.onlySNS')}
             >
               <MdSmartphone size={14} /> {t('gradingHistory.filterSNS')}
             </button>
@@ -176,7 +176,7 @@ const GradingHistory = ({ onClose, onSelectHistory }: GradingHistoryProps) => {
                 <button
                   className={filterCorrect === 'correct' ? 'active' : ''}
                   onClick={() => setFilterCorrect('correct')}
-                  title="正解のみ"
+                  title={t('gradingHistory.onlyCorrect')}
                   style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '8px 12px' }}
                 >
                   <span className="result-badge correct" style={{ width: '20px', height: '20px', fontSize: '12px' }}>✓</span>
@@ -184,7 +184,7 @@ const GradingHistory = ({ onClose, onSelectHistory }: GradingHistoryProps) => {
                 <button
                   className={filterCorrect === 'incorrect' ? 'active' : ''}
                   onClick={() => setFilterCorrect('incorrect')}
-                  title="不正解のみ"
+                  title={t('gradingHistory.onlyIncorrect')}
                   style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '8px 12px' }}
                 >
                   <span className="result-badge incorrect" style={{ width: '20px', height: '20px', fontSize: '12px' }}>✗</span>
@@ -232,7 +232,7 @@ const GradingHistory = ({ onClose, onSelectHistory }: GradingHistoryProps) => {
                         <button
                           className="delete-btn"
                           onClick={(e) => handleDelete(item.data.id, e)}
-                          title="削除"
+                          title={t('common.delete')}
                         >
                           🗑️
                         </button>
@@ -240,7 +240,7 @@ const GradingHistory = ({ onClose, onSelectHistory }: GradingHistoryProps) => {
                       <div className="history-item-content">
                         <div className="timestamp">{formatDate(item.data.timestamp)}</div>
                         <div className="answer-preview">
-                          解答: {item.data.studentAnswer?.substring(0, 50) || '(なし)'}
+                          {t('gradingHistory.answerPreview')}{item.data.studentAnswer?.substring(0, 50) || t('gradingHistory.noAnswer')}
                           {(item.data.studentAnswer?.length || 0) > 50 ? '...' : ''}
                         </div>
                       </div>
@@ -317,7 +317,7 @@ const GradingHistory = ({ onClose, onSelectHistory }: GradingHistoryProps) => {
                   <h4>{t('gradingHistory.gradingImage')}</h4>
                   <img
                     src={selectedHistory.imageData}
-                    alt="採点時の画像"
+                    alt={t('gradingHistory.gradingImage')}
                     className="grading-image"
                   />
                 </div>
@@ -325,7 +325,7 @@ const GradingHistory = ({ onClose, onSelectHistory }: GradingHistoryProps) => {
 
               {selectedHistory.matchingMetadata && (
                 <div className="detail-section">
-                  <h4>Matching Metadata (Debug)</h4>
+                  <h4>{t('gradingHistory.matchingMetadata')}</h4>
                   <div className="metadata-box" style={{
                     backgroundColor: '#f8f9fa',
                     padding: '12px',
@@ -334,16 +334,16 @@ const GradingHistory = ({ onClose, onSelectHistory }: GradingHistoryProps) => {
                     fontFamily: 'monospace',
                     border: '1px solid #e9ecef'
                   }}>
-                    <p style={{ margin: '4px 0' }}><strong>Method:</strong> {selectedHistory.matchingMetadata.method}</p>
+                    <p style={{ margin: '4px 0' }}><strong>{t('gradingHistory.method')}</strong> {selectedHistory.matchingMetadata.method}</p>
                     {selectedHistory.matchingMetadata.confidence && (
-                      <p style={{ margin: '4px 0' }}><strong>Confidence:</strong> {selectedHistory.matchingMetadata.confidence}</p>
+                      <p style={{ margin: '4px 0' }}><strong>{t('gradingHistory.confidence')}</strong> {selectedHistory.matchingMetadata.confidence}</p>
                     )}
                     {selectedHistory.matchingMetadata.similarity !== undefined && (
-                      <p style={{ margin: '4px 0' }}><strong>Similarity:</strong> {selectedHistory.matchingMetadata.similarity.toFixed(4)}</p>
+                      <p style={{ margin: '4px 0' }}><strong>{t('gradingHistory.similarity')}</strong> {selectedHistory.matchingMetadata.similarity.toFixed(4)}</p>
                     )}
                     {selectedHistory.matchingMetadata.reasoning && (
                       <div style={{ margin: '4px 0' }}>
-                        <strong>Reasoning:</strong>
+                        <strong>{t('gradingHistory.reasoning')}</strong>
                         <div style={{ marginTop: '4px', whiteSpace: 'pre-wrap' }}>{selectedHistory.matchingMetadata.reasoning}</div>
                       </div>
                     )}

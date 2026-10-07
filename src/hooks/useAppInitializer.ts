@@ -1,7 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getAppSettings, saveAppSettings, getPDFRecord, PDFFileRecord } from '../utils/indexedDB'
 
 export const useAppInitializer = () => {
+    const { t } = useTranslation()
+    const tRef = useRef(t)
+    tRef.current = t
     const [isInitialized, setIsInitialized] = useState(false)
     const [initialView, setInitialView] = useState<'admin' | 'viewer' | 'editor'>('admin')
     const [initialPDF, setInitialPDF] = useState<PDFFileRecord | null>(null)
@@ -23,7 +27,7 @@ export const useAppInitializer = () => {
                         isPremium: true
                     })
                     setSettingsVersion(v => v + 1)
-                    alert('🎉 プレミアム機能が解除されました！\nSNS時間制限を自由に設定できます。')
+                    alert(tRef.current('parentSettings.unlocked'))
                 }
             } catch (error) {
                 console.error('プレミアム解除に失敗:', error)
