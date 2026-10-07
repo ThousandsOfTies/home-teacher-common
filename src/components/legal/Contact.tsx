@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next'
 import React from 'react';
 import './Legal.css';
 
+const APP_NAME = import.meta.env.VITE_APP_NAME || 'TutoTuto';
+
 interface ContactProps {
     onClose: () => void;
 }
@@ -22,7 +24,7 @@ const Contact: React.FC<ContactProps> = ({ onClose }) => {
                 <div className="legal-modal-content">
                     <h3>{t('legal.contact.addressTitle')}</h3>
                     <p>
-                        {t('legal.contact.intro')}</p>
+                        {t('legal.contact.intro', { app: APP_NAME })}</p>
 
                     <div style={{
                         backgroundColor: '#f8f9fa',

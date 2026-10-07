@@ -96,7 +96,7 @@ function scan(directory) {
           }
         }
         if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) &&
-          ['t', 'td', 'doriT'].includes(node.expression.text) && node.arguments[0] && ts.isStringLiteral(node.arguments[0])) {
+          ['t', 'td', 'doriT', 'appT'].includes(node.expression.text) && node.arguments[0] && ts.isStringLiteral(node.arguments[0])) {
           const key = node.arguments[0].text.split(':').at(-1)
           if (!keys.has(key)) wordingIssues.push(at(node) + ': missing translation: ' + key)
         }

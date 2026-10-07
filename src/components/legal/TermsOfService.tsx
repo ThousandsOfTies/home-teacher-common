@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next'
 import React from 'react';
 import './Legal.css';
 
+const APP_NAME = import.meta.env.VITE_APP_NAME || 'TutoTuto';
+
 interface TermsOfServiceProps {
     onClose: () => void;
 }
@@ -23,7 +25,7 @@ const TermsOfService: React.FC<TermsOfServiceProps> = ({ onClose }) => {
                     <p className="legal-last-updated">{t('legal.lastUpdated')}</p>
 
                     <p>
-                        {t('legal.terms.intro')}</p>
+                        {t('legal.terms.intro', { app: APP_NAME })}</p>
 
                     <h3>{t('legal.terms.serviceTitle')}</h3>
                     <p>

@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next'
 import React from 'react';
 import './Legal.css';
 
+const APP_NAME = import.meta.env.VITE_APP_NAME || 'TutoTuto';
+
 interface AboutProps {
     onClose: () => void;
 }
@@ -13,16 +15,16 @@ const About: React.FC<AboutProps> = ({ onClose }) => {
         <div className="legal-modal-overlay" onClick={onClose}>
             <div className="legal-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="legal-modal-header">
-                    <h2>{t('legal.about.title')}</h2>
+                    <h2>{t('legal.about.title', { app: APP_NAME })}</h2>
                     <button className="legal-modal-close" onClick={onClose} title={t('common.close')}>
                         ✕
                     </button>
                 </div>
 
                 <div className="legal-modal-content">
-                    <h3>{t('legal.about.introTitle')}</h3>
+                    <h3>{t('legal.about.introTitle', { app: APP_NAME })}</h3>
                     <p>
-                        {t('legal.about.intro')}</p>
+                        {t('legal.about.intro', { app: APP_NAME })}</p>
 
                     <h3>{t('legal.about.featuresTitle')}</h3>
                     <ul>
@@ -83,7 +85,7 @@ const About: React.FC<AboutProps> = ({ onClose }) => {
 
                     <h3>{t('legal.about.creditsTitle')}</h3>
                     <p>
-                        {t('legal.about.creditsDescription')}</p>
+                        {t('legal.about.creditsDescription', { app: APP_NAME })}</p>
                     <ul>
                         <li>{t('legal.about.react')}</li>
                         <li>{t('legal.about.vite')}</li>

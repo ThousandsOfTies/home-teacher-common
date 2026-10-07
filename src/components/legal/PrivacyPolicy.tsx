@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next'
 import React from 'react';
 import './Legal.css';
 
+const APP_NAME = import.meta.env.VITE_APP_NAME || 'TutoTuto';
+
 interface PrivacyPolicyProps {
   onClose: () => void;
 }
@@ -23,7 +25,7 @@ const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ onClose }) => {
           <p className="legal-last-updated">{t('legal.lastUpdated')}</p>
 
           <p>
-            {t('legal.privacy.intro')}</p>
+            {t('legal.privacy.intro', { app: APP_NAME })}</p>
 
           <h3>{t('legal.privacy.collectionTitle')}</h3>
           <p>{t('legal.privacy.collectionDescription')}</p>

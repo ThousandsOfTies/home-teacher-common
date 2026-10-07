@@ -598,9 +598,9 @@
     },
     "legal": {
         "about": {
-            "title": "🦉 About TutoTuto",
-            "introTitle": "What is TutoTuto?",
-            "intro": "TutoTuto lets you require your child to study in this app before using social media. Register learning materials as PDF files, write directly on them, and let AI grade the answers.",
+            "title": "🦉 About {{app}}",
+            "introTitle": "What is {{app}}?",
+            "intro": "{{app}} lets you require your child to study in this app before using social media. Register learning materials as PDF files, write directly on them, and let AI grade the answers.",
             "featuresTitle": "Main features",
             "pdfTitle": "PDF learning materials",
             "pdfDescription": " — Register and manage PDF learning materials in the app",
@@ -627,7 +627,7 @@
             "url": "URL:",
             "premium": "Premium:",
             "creditsTitle": "Acknowledgments",
-            "creditsDescription": "TutoTuto uses the following technologies and services:",
+            "creditsDescription": "{{app}} uses the following technologies and services:",
             "react": "React — UI framework",
             "vite": "Vite — build tool",
             "pdfjs": "PDF.js — PDF display library",
@@ -642,7 +642,7 @@
         "contact": {
             "title": "📧 Contact",
             "addressTitle": "Contact information",
-            "intro": "For questions, comments, requests, or bug reports about TutoTuto, please contact us at the email address below.",
+            "intro": "For questions, comments, requests, or bug reports about {{app}}, please contact us at the email address below.",
             "email": "Email address",
             "notesTitle": "When contacting us",
             "responseTime": "Depending on your inquiry, it may take some time to respond",
@@ -658,7 +658,7 @@
         },
         "privacy": {
             "title": "🔒 Privacy Policy",
-            "intro": "TutoTuto (the “App”) respects your privacy and strives to protect your personal information. This Privacy Policy explains how the App handles information.",
+            "intro": "{{app}} (the “App”) respects your privacy and strives to protect your personal information. This Privacy Policy explains how the App handles information.",
             "collectionTitle": "1. Information collected",
             "collectionDescription": "The App stores the following information only on your device:",
             "pdf": "PDF files registered as learning materials",
@@ -685,7 +685,7 @@
         "lastUpdated": "Last updated: January 6, 2026",
         "terms": {
             "title": "📋 Terms of Service",
-            "intro": "These Terms of Service (the “Terms”) define the conditions for using TutoTuto (the “App”). Please read these Terms carefully before using the App.",
+            "intro": "These Terms of Service (the “Terms”) define the conditions for using {{app}} (the “App”). Please read these Terms carefully before using the App.",
             "serviceTitle": "1. Description of the service",
             "serviceDescription": "The App is a parental control app for limiting children’s social media use and encouraging study habits. You can require study in the App before allowing social media access. It provides the following learning features:",
             "pdf": "Viewing and managing PDF files",
