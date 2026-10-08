@@ -1,0 +1,44 @@
+.study-pdf-thumbnail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 34px;
+  vertical-align: middle;
+}
+
+.study-pdf-thumbnail-image {
+  position: relative;
+  display: inline-flex;
+}
+
+.study-pdf-thumbnail-image > img {
+  display: block;
+  max-width: 48px;
+  max-height: 34px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.study-pdf-thumbnail-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 24px;
+  height: 32px;
+  background: #f6f8fa;
+  color: #81909b;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.study-pdf-thumbnail-placeholder svg {
+  width: 18px;
+  height: 18px;
+}

@@ -43,8 +43,8 @@ test('PDF and answer panels retain navigation order and breadcrumb dimensions wh
         const pdfButtons = nodes(pdf, node => node.type === 'button')
         const answerButtons = nodes(answer, node => node.type === 'button')
         assert.equal(pdfButtons.length, 3)
-        assert.deepEqual(answerButtons.map(node => node.props.className), [undefined, 'tab-switcher-btn ', 'split-view-btn '])
-        for (let index = 1; index <= 2; index++) {
+        assert.deepEqual(answerButtons.map(node => node.props.className), ['tab-switcher-btn ', 'split-view-btn ', undefined])
+        for (let index = 0; index <= 1; index++) {
             assert.equal(pdfButtons[index].props.disabled, false)
             assert.equal(answerButtons[index].props.disabled, true)
             assert.deepEqual(answerButtons[index].props.style, pdfButtons[index].props.style)
@@ -56,22 +56,20 @@ test('PDF and answer panels retain navigation order and breadcrumb dimensions wh
     }
 })
 
-test('navigation delegates actions and renders cover/settings content only when provided by the app', () => {
+test('navigation delegates actions and renders cover content only when provided by the app', () => {
     const actions = []
     const props = { ...navigationProps, onBack: () => actions.push('home'),
         toggleActiveTab: () => actions.push('tab'), toggleSplitView: () => actions.push('split'),
         breadcrumbs: [{ label: 'PDF', content: React.createElement('img', { alt: 'Cover' }),
             onClick: () => actions.push('pdf') }, { label: 'Answer', isCurrent: true, onClick: noop }],
-        beforeBreadcrumbs: React.createElement('button', { className: 'settings', onClick: () => actions.push('settings') }),
-        breadcrumbStyle: { padding: '6px 0' }, contentBreadcrumbClassName: 'cover',
     }
     const tree = StudyToolbarNavigation(props)
     for (const button of nodes(tree, node => node.type === 'button')) button.props.onClick()
     const crumbs = nodes(tree, node => node.type === 'span' && node.props.style?.borderRadius)
     crumbs[0].props.onClick()
     assert.equal(crumbs[1].props.onClick, undefined)
-    assert.deepEqual(actions, ['home', 'tab', 'split', 'settings', 'pdf'])
-    assert.equal(crumbs[0].props.className, 'cover')
+    assert.deepEqual(actions, ['tab', 'split', 'home', 'pdf'])
+    assert.equal(crumbs[0].props.style.display, 'inline-flex')
     assert.equal(crumbs[0].props.children.props.alt, 'Cover')
     assert.equal(crumbs[0].props.style.padding, '0 6px')
     const plainHTML = renderToStaticMarkup(StudyToolbarNavigation(navigationProps))
