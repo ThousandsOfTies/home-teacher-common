@@ -1,22 +1,32 @@
 # home-teacher-common
 
-TutoTuto・DoriDori・CopiCopiで使う共通UI、PDF表示、保存、認証のライブラリです。各アプリは兄弟サブモジュールの `src` を参照します。
+TutoTuto・DoriDori・CopiCopiの共通UI、PDF表示、保存、認証を提供するReact・TypeScriptライブラリです。
 
-## 学習画面のツールバー
+## 主な役割
 
-- `components/study/StudyToolbarNavigation`：ホーム、A/B切替、分割表示、パンくずを描画します。PDF以外でも表示切替を残して無効化し、配置を維持します。
-- `components/study/StudyToolSettings`：消しゴムと文字入力の設定を描画します。消しゴムの段階的なサイズと文字方向の型もここで管理します。
-- `hooks/useStudyToolPopups`：最初のクリックでツールを有効化し、以降のクリックで設定を開閉します。ツール変更時は設定を閉じます。
+- PDF・画像の取り込み、教材一覧、設定・履歴画面。
+- 学習画面のツールバー、A/B切替・分割表示、範囲選択・拡大縮小。
+- PDFページや注釈の読み込み・保存、パネル履歴を管理する共通フック。
+- IndexedDB、Firebase認証、API通信、日本語・英語の共通文言。
 
-表示文言は呼び出し元の翻訳辞書から渡します。表紙や設定ボタンなどの追加表示も呼び出し元が渡すため、共通部品がアプリ固有機能を有効化することはありません。採点・質問・本文索引・画材・先生・レイヤーの処理は各アプリに置きます。
+学習・読書・模写の画面や、本文索引・画材・先生・レイヤーなどの固有機能は各アプリが管理します。共通部品を取り込むだけで他アプリの機能が有効になる構成にはしません。
 
-## 学習画面の操作と保存
+## 利用方法
 
-- `hooks/useStudyPDFPages`：PDFの読み込み、ページ番号の補正、移動元ページの描画保存、500msでの閲覧位置保存を管理します。
-- `hooks/useStudySplitResize`：分割幅のドラッグと保存を管理します。操作対象のコンテナを呼び出し元から渡すため、CopiCopiの先生画面にも対応します。
-- `hooks/useStudyPageAnnotations`：描画・文字注釈の読み込みと描画の予約保存を扱います。描画はReactの状態確定後に予約し、PDF変更・画面終了時は元のPDFへ保存します。CopiCopiのレイヤー形式はアプリ側で読み書きします。
-- `hooks/useStudyPanelStack`：画面履歴の追加と前方の分岐の置換を管理します。保存済み履歴の復元やツール変更は各アプリが行います。
-- `hooks/useStudyOverlayTouch`：1本指の選択と2本指の拡大縮小を扱います。対象ペインの判定を呼び出し元が渡し、CopiCopiの左右入れ替えを維持します。
-- `hooks/useAnswerWheel`：回答キャンバスのスクロールとマウス位置を中心にした拡大縮小を扱います。文字入力中や描画中の操作を除外し、連続イベントも次の描画更新を待たずに積算します。
+各メタリポジトリがGitサブモジュールとしてコミットを固定し、アプリのVite・TypeScript設定から兄弟ディレクトリの `src` を参照します。
 
-`npm test` で、共通UIの翻訳と、ナビゲーション・設定・保存などの動作を検証します。変更を取り込む際は3アプリで型チェックとビルドも実施します。
+- インポートは `@home-teacher/common/components/...`、`hooks/...`、`utils/...` などを使用します。
+- `VITE_INDEXED_DB_NAME` はアプリ側で必ず指定します。共通の既定DB名はありません。
+- 3アプリのDB名はそれぞれ `TutoTutoDB`、`DoriDoriDB`、`CopiCopiDB` です。
+- 共通文言は [src/i18n/locales](src/i18n/locales) の `ja.json` / `en.json`、アプリ固有の文言は各アプリの翻訳ファイルへ置きます。
+
+主な実装は [src/components](src/components)、[src/hooks](src/hooks)、[src/utils](src/utils) にあります。
+
+## 開発・検証
+
+```bash
+npm install
+npm test
+```
+
+変更時は3アプリの型チェック・ビルドで互換性も確認し、このリポジトリをcommit・pushしてから各メタのgitlinkを更新します。
