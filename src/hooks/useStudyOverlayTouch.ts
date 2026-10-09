@@ -1,4 +1,4 @@
-import { useRef, type RefObject, type TouchEvent } from 'react'
+import { useEffect, useRef, type RefObject, type TouchEvent } from 'react'
 import { pinchViewport, touchPair, type PinchGesture } from '@thousands-of-ties/drawing-common'
 import type { PDFPaneHandle } from '../components/study/PDFPane'
 
@@ -12,6 +12,16 @@ type Options = {
 
 export function useStudyOverlayTouch({ containerRef, getTargetPane, getPane, cancelSelection }: Options) {
   const gestureRef = useRef<(PinchGesture & { targetPane: Pane }) | null>(null)
+  const pinchingPaneRef = useRef<PDFPaneHandle | null>(null)
+  const stopPinch = () => {
+    pinchingPaneRef.current?.setPinchActive(false)
+    pinchingPaneRef.current = null
+  }
+
+  useEffect(() => () => {
+    pinchingPaneRef.current?.setPinchActive(false)
+    pinchingPaneRef.current = null
+  }, [])
 
   const handleOverlayTouchStart = (event: TouchEvent, onSingleTouch?: (x: number, y: number) => void) => {
     const bounds = containerRef.current?.getBoundingClientRect()
@@ -21,15 +31,19 @@ export function useStudyOverlayTouch({ containerRef, getTargetPane, getPane, can
       const pair = touchPair(event.touches)
       const targetPane = getTargetPane(pair.center.x)
       const pane = getPane(targetPane)
-      gestureRef.current = pair.distance > 0 ? {
+      stopPinch()
+      gestureRef.current = pair.distance > 0 && pane ? {
         targetPane, startDist: pair.distance, startCenter: pair.center,
-        startZoom: pane?.getZoom() ?? 1,
-        startPan: { ...(pane?.getPanOffset() ?? { x: 0, y: 0 }) },
+        startZoom: pane.getZoom(),
+        startPan: { ...pane.getPanOffset() },
       } : null
+      pinchingPaneRef.current = gestureRef.current ? pane : null
+      pinchingPaneRef.current?.setPinchActive(true)
       cancelSelection()
       return
     }
     if (event.touches.length !== 1) return
+    stopPinch()
     gestureRef.current = null
     onSingleTouch?.(event.touches[0].clientX - bounds.left, event.touches[0].clientY - bounds.top)
   }
@@ -48,6 +62,8 @@ export function useStudyOverlayTouch({ containerRef, getTargetPane, getPane, can
       }
       return
     }
+    // Do not turn the remaining finger into a new selection after a pinch.
+    if (gesture) return
     if (event.touches.length === 1 && onSingleTouchMove) {
       const bounds = containerRef.current?.getBoundingClientRect()
       if (bounds) onSingleTouchMove(event.touches[0].clientX - bounds.left, event.touches[0].clientY - bounds.top)
@@ -55,11 +71,18 @@ export function useStudyOverlayTouch({ containerRef, getTargetPane, getPane, can
   }
 
   const handleOverlayTouchEnd = (event: TouchEvent, onTouchEnd?: () => void) => {
+    if (event.touches.length < 2) stopPinch()
     if (event.touches.length === 0) {
       gestureRef.current = null
       onTouchEnd?.()
     }
   }
 
-  return { handleOverlayTouchStart, handleOverlayTouchMove, handleOverlayTouchEnd }
+  const handleOverlayTouchCancel = () => {
+    stopPinch()
+    gestureRef.current = null
+    cancelSelection()
+  }
+
+  return { handleOverlayTouchStart, handleOverlayTouchMove, handleOverlayTouchEnd, handleOverlayTouchCancel }
 }

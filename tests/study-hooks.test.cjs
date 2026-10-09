@@ -72,9 +72,10 @@ const tick = async () => { await Promise.resolve(); await Promise.resolve(); awa
 const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} != ${expected}`)
 
 test('overlay touch selects in container coordinates, pinches the chosen pane and cancels selection', () => {
-  const state = harness('useStudyOverlayTouch.ts'), container = new Surface(), touched = [], updates = [], cancelled = []
+  const state = harness('useStudyOverlayTouch.ts'), container = new Surface(), touched = [], updates = [], cancelled = [], pinchStates = []
   const panes = ['A', 'B'].map(name => ({ getZoom: () => 1, getPanOffset: () => ({ x: 0, y: 0 }),
     getContainerRect: () => ({ left: name === 'A' ? 10 : 510, top: 20 }),
+    setPinchActive: active => pinchStates.push([name, active]),
     setZoomValue: value => updates.push([name, 'zoom', value]), setPanOffsetValue: value => updates.push([name, 'pan', value]) }))
   let reversed = false
   const options = { containerRef: { current: container }, getTargetPane: x => ((x < 510) !== reversed) ? 'A' : 'B',
@@ -87,11 +88,13 @@ test('overlay touch selects in container coordinates, pinches the chosen pane an
   handlers.handleOverlayTouchEnd(event([]), () => touched.push('end'))
   assert.deepEqual(touched, [[100, 100], [120, 130], 'end'])
   handlers.handleOverlayTouchStart(event([point(610, 120), point(710, 120)]))
+  assert.deepEqual(pinchStates, [['B', true]])
   handlers.handleOverlayTouchMove(event([point(570, 140), point(770, 140)]))
   assert.equal(cancelled.length, 1)
   assert.deepEqual(updates[0], ['B', 'zoom', 2])
   near(updates[1][2].x, -140); near(updates[1][2].y, -80)
   handlers.handleOverlayTouchEnd(event([]))
+  assert.deepEqual(pinchStates, [['B', true], ['B', false]])
   reversed = true
   handlers.handleOverlayTouchStart(event([point(50, 80), point(150, 80)]))
   handlers.handleOverlayTouchMove(event([point(20, 80), point(180, 80)]))
@@ -102,12 +105,39 @@ test('coincident fingers do not produce NaN zoom, and pinch zoom keeps the ancho
   const state = harness('useStudyOverlayTouch.ts'), updates = []
   const handlers = state.render('useStudyOverlayTouch', { containerRef: { current: new Surface() }, getTargetPane: () => 'A',
     getPane: () => ({ getZoom: () => 1, getPanOffset: () => ({ x: 0, y: 0 }), getContainerRect: () => ({ left: 0, top: 0 }),
-      setZoomValue: value => updates.push(value), setPanOffsetValue: () => {} }), cancelSelection() {} })
+      setPinchActive() {}, setZoomValue: value => updates.push(value), setPanOffsetValue: () => {} }), cancelSelection() {} })
   const event = distance => ({ touches: [{ clientX: 0, clientY: 0 }, { clientX: distance, clientY: 0 }], preventDefault() {} })
   handlers.handleOverlayTouchStart(event(0)); handlers.handleOverlayTouchMove(event(100))
   assert.equal(updates.length, 0)
   handlers.handleOverlayTouchStart(event(100)); handlers.handleOverlayTouchMove(event(10000))
   assert.deepEqual(updates, [5])
+})
+
+test('pinch state ends when one finger lifts, and cancellation or unmount cannot leave the pane pinching', () => {
+  const state = harness('useStudyOverlayTouch.ts'), changes = [], singleMoves = [], cancelled = []
+  const pane = { getZoom: () => 1, getPanOffset: () => ({ x: 0, y: 0 }),
+    getContainerRect: () => ({ left: 0, top: 0 }), setZoomValue() {}, setPanOffsetValue() {},
+    setPinchActive: active => changes.push(active) }
+  const handlers = state.render('useStudyOverlayTouch', { containerRef: { current: new Surface() },
+    getTargetPane: () => 'A', getPane: () => pane, cancelSelection: () => cancelled.push(true) })
+  const first = { clientX: 100, clientY: 100 }, second = { clientX: 200, clientY: 100 }
+  const event = touches => ({ touches, preventDefault() {} })
+  handlers.handleOverlayTouchStart(event([first, second]))
+  handlers.handleOverlayTouchEnd(event([first]))
+  handlers.handleOverlayTouchMove(event([first]), () => singleMoves.push(true))
+  assert.deepEqual(changes, [true, false])
+  assert.deepEqual(singleMoves, [])
+  handlers.handleOverlayTouchEnd(event([]))
+
+  handlers.handleOverlayTouchStart(event([first, second]))
+  handlers.handleOverlayTouchCancel()
+  handlers.handleOverlayTouchMove(event([first, second]))
+  assert.deepEqual(changes, [true, false, true, false])
+  assert.equal(cancelled.length, 3)
+
+  handlers.handleOverlayTouchStart(event([first, second]))
+  state.unmount()
+  assert.deepEqual(changes, [true, false, true, false, true, false])
 })
 
 test('answer wheel accumulates bursts, normalizes line/page deltas, and ignores active editors', () => {

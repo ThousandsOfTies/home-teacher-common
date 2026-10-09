@@ -38,4 +38,44 @@ function answerWheelHarness() {
   }
 }
 
-module.exports = { answerWheelHarness, CanvasUndoHistory }
+function answerPinchHarness(file) {
+  const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const expressions = {}
+  function visit(node) {
+    if (ts.isJsxAttribute(node)) {
+      const name = node.name.getText(source)
+      if (['onTouchStart', 'onTouchMove', 'onTouchEnd', 'onTouchCancel'].includes(name)) {
+        expressions[name] = node.initializer.expression
+      }
+      if (name === 'className' && node.initializer?.text === 'answer-canvas-stack') {
+        const style = node.parent.properties.find(property => property.name?.getText(source) === 'style')
+        expressions.transition = style.initializer.expression.properties.find(property =>
+          property.name?.getText(source) === 'transition').initializer
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  const state = { zoom: 1, panOffset: { x: 0, y: 0 }, isPinching: false, isPanning: false,
+    isTextMode: false, isEraserMode: false, gestureRef: { current: null }, textTouchStartRef: { current: null },
+    containerRef: { current: { getBoundingClientRect: () => ({ left: 0, top: 0 }) } }, ...geometry,
+    stopDraw() {}, stopPanning() {}, setEraserCursorPos() {},
+    setIsPinching: value => { state.isPinching = value },
+    setZoom: value => { state.zoom = value }, setPanOffset: value => { state.panOffset = value },
+  }
+  const context = vm.createContext(state)
+  const evaluate = expression => {
+    if (!expression) throw new Error('Missing pinch handler or viewport transition')
+    const code = ts.transpileModule('var run = ' + expression.getText(source), {
+      compilerOptions: { target: ts.ScriptTarget.ES2022 },
+    }).outputText
+    return vm.runInContext(code + '\nrun', context)
+  }
+  return { state,
+    start: evaluate(expressions.onTouchStart), move: evaluate(expressions.onTouchMove),
+    end: evaluate(expressions.onTouchEnd), cancel: evaluate(expressions.onTouchCancel),
+    transition: () => evaluate(expressions.transition),
+  }
+}
+
+module.exports = { answerWheelHarness, answerPinchHarness, CanvasUndoHistory }

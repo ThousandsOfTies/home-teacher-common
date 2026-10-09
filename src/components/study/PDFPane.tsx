@@ -77,6 +77,7 @@ export interface PDFPaneHandle {
     // Pinch zoom control methods
     getZoom: () => number
     setZoomValue: (zoom: number) => void
+    setPinchActive: (active: boolean) => void
     getPanOffset: () => { x: number, y: number }
     setPanOffsetValue: (offset: { x: number, y: number }) => void
     getContainerRect: () => DOMRect | null
@@ -894,12 +895,16 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         // Pinch zoom control methods
         getZoom: () => zoom,
         setZoomValue: (newZoom: number) => { setZoom(Math.min(Math.max(newZoom, 0.1), 5.0)) },
+        setPinchActive: (active: boolean) => {
+            setIsPinching(active)
+            if (active) resetOverscroll()
+        },
         getPanOffset: () => panOffset,
         setPanOffsetValue: (offset: { x: number, y: number }) => { setPanOffset(offset) },
         getContainerRect: () => containerRef.current?.getBoundingClientRect() || null,
         getPdfCanvas: () => canvasRef.current
 
-    }), [splitMode, fitToScreen, resetZoom, setZoom, setPanOffset, zoom, panOffset, handleUndo, pdfDoc, canvasSize])
+    }), [splitMode, fitToScreen, resetZoom, resetOverscroll, setZoom, setPanOffset, zoom, panOffset, handleUndo, pdfDoc, canvasSize])
 
     // Eraser cursor state
     const [eraserCursorPos, setEraserCursorPos] = React.useState<{ x: number, y: number } | null>(null)
@@ -1270,6 +1275,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     }
                 } else if (e.touches.length === 1) {
                     // --- Handle Single Touch ---
+                    if (gestureRef.current?.type === 'pinch') return
                     const t = e.touches[0]
 
                     // 選択ドラッグ中の処理（Apple Pencil対応）
@@ -1406,6 +1412,9 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
             }}
             onTouchCancel={() => {
                 setIsPinching(false)
+                gestureRef.current = null
+                twoFingerTapRef.current = null
+                resetOverscroll()
                 if (tool === 'eraser') finishErasing()
             }}
         >
@@ -1417,7 +1426,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         transform: `translate(${panOffset.x + overscroll.x}px, ${panOffset.y + overscroll.y + wheelNavigation.offset}px) scale(${zoom})`,
                         transformOrigin: '0 0',
                         // ピンチ/パン操作中、または初期表示時（トランジション有効化前）は無効化
-                        transition: (isPanning || gestureRef.current || wheelNavigation.tracking || wheelNavigation.covered || !isTransitionEnabled) ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                        transition: (isPinching || isPanning || gestureRef.current || wheelNavigation.tracking || wheelNavigation.covered || !isTransitionEnabled) ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
                         opacity: isLayoutReady && !wheelNavigation.covered ? 1 : 0,
                         visibility: isLayoutReady && !wheelNavigation.covered ? 'visible' : 'hidden'
                     }}
