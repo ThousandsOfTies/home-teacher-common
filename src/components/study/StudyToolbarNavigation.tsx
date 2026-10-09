@@ -80,7 +80,7 @@ export function StudyToolbarNavigation({
                 padding: '6px 0',
             }}>
                 {breadcrumbs.map((crumb, index) => <React.Fragment key={index}>
-                    {index > 0 && <span style={{ color: '#bbb', fontSize: '13px', flexShrink: 0 }}>›</span>}
+                    <span aria-hidden="true" style={{ color: '#bbb', fontSize: '13px', flexShrink: 0 }}>›</span>
                     <span
                         onClick={crumb.isCurrent ? undefined : crumb.onClick}
                         title={crumb.content ? crumb.label : undefined}
