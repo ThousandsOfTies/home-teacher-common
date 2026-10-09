@@ -1620,7 +1620,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
             {/* Page Navigation (Right Side) */}
             {
                 numPages > 1 && (
-                    <div className="page-scrollbar-container">
+                    <div className="page-scrollbar-container" data-stroke-input-ignore>
                         {/* Fit Screen */}
                         <button
                             className="page-nav-button"
