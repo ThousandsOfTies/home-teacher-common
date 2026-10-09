@@ -12,6 +12,7 @@ function load(file, adapters = {}) {
 }
 const drawingRoot = path.join(__dirname, '../../../drawing-common/src')
 const geometry = load(path.join(drawingRoot, 'geometry/viewport.ts'))
+const { drawStationaryStroke } = load(path.join(drawingRoot, 'rendering/drawStationaryStroke.ts'))
 const { CanvasUndoHistory } = load(path.join(drawingRoot, 'history/CanvasUndoHistory.ts'), { Uint32Array, Uint8ClampedArray })
 
 function answerWheelHarness() {
@@ -60,6 +61,8 @@ function answerPinchHarness(file) {
     isTextMode: false, isEraserMode: false, gestureRef: { current: null }, textTouchStartRef: { current: null },
     containerRef: { current: { getBoundingClientRect: () => ({ left: 0, top: 0 }) } }, ...geometry,
     stopDraw() {}, stopPanning() {}, setEraserCursorPos() {},
+    strokeInput: { onTouchStart: () => false, onTouchMove: () => false, onTouchEnd: () => false,
+      onTouchCancel: () => false, cancel() {} },
     setIsPinching: value => { state.isPinching = value },
     setZoom: value => { state.zoom = value }, setPanOffset: value => { state.panOffset = value },
   }
@@ -78,4 +81,4 @@ function answerPinchHarness(file) {
   }
 }
 
-module.exports = { answerWheelHarness, answerPinchHarness, CanvasUndoHistory }
+module.exports = { answerWheelHarness, answerPinchHarness, CanvasUndoHistory, drawStationaryStroke }

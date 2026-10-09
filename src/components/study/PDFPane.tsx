@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { PDFFileRecord } from '../../utils/indexedDB'
 import PDFCanvas, { PDFRenderMetrics } from './components/PDFCanvas'
 import { PDFPagePreview, type PreviewStrokeRenderer } from './components/PDFPagePreview'
-import { DrawingPath, DrawingCanvas, useDrawing, useZoomPan, doPathsIntersect, useLassoSelection, DrawingCanvasHandle } from '@thousands-of-ties/drawing-common'
+import { DrawingPath, DrawingCanvas, useDrawing, useStrokeInput, useZoomPan, doPathsIntersect, useLassoSelection, DrawingCanvasHandle } from '@thousands-of-ties/drawing-common'
 import { INITIAL_PDF_RENDER_SCALE, MAX_PDF_RENDER_SCALE } from '../../constants/pdf'
 import { isIOSLikeDevice } from '../../utils/platform'
 import { useWheelPageNavigation } from '../../hooks/pdf/useWheelPageNavigation'
@@ -127,8 +127,6 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const drawingCanvasRef = useRef<DrawingCanvasHandle>(null)
     const [previewPath, setPreviewPath] = useState<DrawingPath | null>(null)
-    // バッチ間の接続のため、前のバッチの最後の点を保持
-    const lastDrawnPointRef = useRef<{ x: number, y: number } | null>(null)
 
     // ズーム/パン
     const {
@@ -791,6 +789,60 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         onSelectionActivate: () => { } // cancelDrawing disabled
     })
 
+    const strokeInput = useStrokeInput({
+        enabled: (tool === 'pen' || tool === 'eraser') && !isCtrlPressed,
+        touchDrawing: false,
+        onStart: point => {
+            const rect = containerRef.current?.getBoundingClientRect()
+            if (!rect) return false
+            const x = (point.clientX - rect.left - panOffset.x) / zoom
+            const y = (point.clientY - rect.top - panOffset.y) / zoom
+            const cw = canvasSize?.width || canvasRef.current?.width || 1
+            const ch = canvasSize?.height || canvasRef.current?.height || 1
+            const normalized = { x: x / cw, y: y / ch }
+            if (tool === 'pen') {
+                if (hasSelection) {
+                    if (isPointInSelection(normalized)) {
+                        startDrag(normalized)
+                        return false
+                    }
+                    clearSelection()
+                }
+                startLongPress(normalized)
+                startDrawing(x, y, point.pressure, point.time)
+            } else {
+                if (hasSelection) clearSelection()
+                queueErasePoint(x, y)
+            }
+        },
+        onMove: points => {
+            const rect = containerRef.current?.getBoundingClientRect()
+            if (!rect) return
+            const batch = points.map(point => ({
+                x: (point.clientX - rect.left - panOffset.x) / zoom,
+                y: (point.clientY - rect.top - panOffset.y) / zoom,
+                pressure: point.pressure, time: point.time,
+            }))
+            const last = batch[batch.length - 1]
+            if (!last) return
+            if (tool === 'pen') {
+                const cw = canvasSize?.width || canvasRef.current?.width || 1
+                const ch = canvasSize?.height || canvasRef.current?.height || 1
+                checkLongPressMove({ x: last.x / cw, y: last.y / ch })
+                drawBatch(batch)
+            } else {
+                for (const point of batch) queueErasePoint(point.x, point.y)
+                const tip = points[points.length - 1]
+                setEraserCursorPos({ x: tip.clientX - rect.left, y: tip.clientY - rect.top })
+            }
+        },
+        onEnd: () => {
+            if (tool === 'eraser') finishErasing()
+            cancelLongPress()
+            stopDrawing()
+        },
+    })
+
     const wheelNavigation = useWheelPageNavigation({
         enabled: wheelPageNavigation && !hidePdfBackground,
         containerRef, layerRef: pageLayerRef, eventTargetRef: wheelEventTargetRef,
@@ -944,7 +996,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
 
                 // Don't capture if event is on DrawingCanvas - let it handle its own events
                 const isDrawingCanvasEvent = (e.target as HTMLElement).closest('.drawing-canvas')
-                if (!isDrawingCanvasEvent) {
+                if (!isDrawingCanvasEvent && ((tool !== 'pen' && tool !== 'eraser') || hasSelection)) {
                     // マウス/ペンの場合はポインタキャプチャ（ウィンドウ外操作のため）
                     (e.currentTarget as Element).setPointerCapture(e.pointerId)
                 }
@@ -960,35 +1012,11 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     const x = (e.clientX - rect.left - panOffset.x) / zoom
                     const y = (e.clientY - rect.top - panOffset.y) / zoom
 
-                    // 正規化座標に変換
-                    const cw = canvasSize?.width || canvasRef.current?.width || 1
-                    const ch = canvasSize?.height || canvasRef.current?.height || 1
-                    const normalizedPoint = { x: x / cw, y: y / ch }
-
                     if (tool === 'fill') {
                         if (hasSelection) clearSelection()
                         handleFill(x, y)
-                    } else if (tool === 'pen') {
-                        // 選択中の場合
-                        if (hasSelection) {
-                            if (isPointInSelection(normalizedPoint)) {
-                                // バウンディングボックス内 → ドラッグ開始
-                                startDrag(normalizedPoint)
-                                return
-                            } else {
-                                // バウンディングボックス外 → 選択解除
-                                clearSelection()
-                            }
-                        }
-                        // 長押し検出開始
-                        startLongPress(normalizedPoint)
-                        // Mouse は押下中でも pressure=0.5 を返すため、筆圧はペン入力だけ利用する。
-                        startDrawing(x, y, e.pointerType === 'pen' ? e.pressure : undefined, e.timeStamp)
-                    } else if (tool === 'eraser') {
-                        // 消しゴム時も選択を解除
-                        if (hasSelection) clearSelection()
-                        // console.log('🧹 Eraser MouseDown:', { x, y, pathsCount: drawingPathsRef.current.length })
-                        queueErasePoint(x, y)
+                    } else if (tool === 'pen' || tool === 'eraser') {
+                        strokeInput.onPointerDown(e)
                     } else if (tool === 'none') {
                         // 選択/採点モード時もパン可能
                         startPanning(e)
@@ -1018,6 +1046,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     return
                 }
 
+                if (strokeInput.onPointerMove(e)) return
+
                 // Coalesced Events の取得（Apple Pencil の追従性向上）
                 let events: any[] = []
                 // @ts-ignore
@@ -1033,20 +1063,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 } else {
                     events = [e]
                 }
-
-                // すべての Coalesced Events から座標を抽出
-                    const batchPoints: Array<{ x: number, y: number, pressure?: number, time?: number }> = []
-
-                for (const ev of events) {
-                    const ex = (ev.clientX - rect.left - panOffset.x) / zoom
-                    const ey = (ev.clientY - rect.top - panOffset.y) / zoom
-                    batchPoints.push({
-                        x: ex,
-                        y: ey,
-                        pressure: ev.pointerType === 'pen' ? ev.pressure : undefined,
-                        time: ev.timeStamp
-                    })
-                }
+                if (events.length === 0) events = [e]
 
                 // 最後のイベントを正規化座標に変換（lasso selection, eraser 用）
                 const lastEvent = events[events.length - 1]
@@ -1064,23 +1081,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     return
                 }
 
-                if (tool === 'pen' && isDrawingInternal && e.buttons !== 0) {
-                    // 長押しキャンセル判定（移動があれば）
-                    checkLongPressMove(normalizedPoint)
-
-
-                    // Coalesced Events を常にバッチ処理（1点でも）
-                    drawBatch(batchPoints)
-
-                    // CRITICAL: Update lastDrawnPointRef AFTER drawBatch completes
-                    // to avoid ref changing while drawBatch is processing
-                    if (batchPoints.length > 0) {
-                        lastDrawnPointRef.current = batchPoints[batchPoints.length - 1]
-                    }
-                } else if (tool === 'eraser') {
-                    if (e.buttons === 1) {
-                        queueErasePoint(x, y)
-                    }
+                if (tool === 'eraser') {
                     // マウスの消しゴムカーソル更新
                     setEraserCursorPos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
                 } else if (tool === 'none' && e.buttons === 1) {
@@ -1092,6 +1093,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 // タッチはonTouchEndで処理
                 if (e.pointerType === 'touch') return
 
+                strokeInput.onPointerUp(e)
+
                 // リリースキャプチャ
                 if ((e.currentTarget as Element).hasPointerCapture(e.pointerId)) {
                     (e.currentTarget as Element).releasePointerCapture(e.pointerId)
@@ -1102,20 +1105,16 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     endDrag()
                     return
                 }
-                if (tool === 'eraser') finishErasing()
                 // 長押しキャンセル
                 // 長押しキャンセル
                 cancelLongPress()
-                stopDrawing() // Re-enabled: Essential for resetting stroke state
-                lastDrawnPointRef.current = null // CRITICAL: Reset batch connection point
                 stopPanning()
                 // ここで判定しても良いが、Global MouseUpが動いているならそちらに任せる？
                 // captureしていればGlobal MouseUpより確実にここで取れる。
                 checkAndFinishSwipe()
             }}
-            onPointerCancel={() => {
-                if (tool === 'eraser') finishErasing()
-            }}
+            onPointerCancel={strokeInput.onPointerCancel}
+            onLostPointerCapture={strokeInput.onLostPointerCapture}
             onPointerLeave={(e) => {
                 // Clear eraser cursor when stylus leaves hover range
                 if (tool === 'eraser' && e.pointerType === 'pen') {
@@ -1123,6 +1122,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 }
             }}
             onTouchStart={(e) => {
+                if (strokeInput.onTouchStart(e)) return
                 // @ts-ignore
                 const hasStylus = Array.from(e.touches).some(t => t.touchType === 'stylus')
 
@@ -1209,6 +1209,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 }
             }}
             onTouchMove={(e) => {
+                if (strokeInput.onTouchMove(e)) return
                 const rect = containerRef.current?.getBoundingClientRect()
                 if (!rect) return
 
@@ -1345,6 +1346,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 }
             }}
             onTouchEnd={(e) => {
+                if (strokeInput.onTouchEnd(e)) return
                 if (e.touches.length < 2) setIsPinching(false)
                 // Stylus チェック（念のため）
                 if (e.touches.length > 0) {
@@ -1405,12 +1407,11 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 // 長押しキャンセル
                 // 長押しキャンセル
                 cancelLongPress()
-                stopDrawing() // Re-enabled: Essential for resetting stroke state
-                lastDrawnPointRef.current = null // CRITICAL: Reset batch connection point
                 stopPanning()
                 checkAndFinishSwipe()
             }}
-            onTouchCancel={() => {
+            onTouchCancel={(e) => {
+                if (strokeInput.onTouchCancel(e)) return
                 setIsPinching(false)
                 gestureRef.current = null
                 twoFingerTapRef.current = null
