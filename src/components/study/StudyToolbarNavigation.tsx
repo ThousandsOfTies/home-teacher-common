@@ -1,5 +1,6 @@
 import React from 'react'
 import { FiHome } from 'react-icons/fi'
+import { StrokeInputDiagnostics } from './StrokeInputDiagnostics'
 
 export interface BreadcrumbItem {
     label: string
@@ -41,6 +42,7 @@ export function StudyToolbarNavigation({
     activeTab, toggleActiveTab, labels,
 }: StudyToolbarNavigationProps) {
     return <>
+        <StrokeInputDiagnostics />
         <div className="toolbar-view-controls">
             <button
                 className={`tab-switcher-btn ${pageViewControlsEnabled && !isSplitView ? 'active' : ''}`}

@@ -790,6 +790,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     })
 
     const strokeInput = useStrokeInput({
+        eventTargetRef: containerRef,
         enabled: (tool === 'pen' || tool === 'eraser') && !isCtrlPressed,
         touchDrawing: false,
         onStart: point => {

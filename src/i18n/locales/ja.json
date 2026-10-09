@@ -856,6 +856,17 @@
         "otherTitle": "データ保護について",
         "other": "重要なデータは定期的にバックアップしてください。ブラウザによっては、ストレージ不足時にデータが削除される可能性があります。"
     },
+    "strokeDiagnostics": {
+        "title": "ペン入力の記録",
+        "version": "版 {{version}}",
+        "counts": "開始受信：ペン {{pen}}・Touch {{touch}}／描画開始 {{started}}",
+        "local": "端末内だけに記録します。数回描いてから記録をコピーしてください。",
+        "reset": "記録を消す",
+        "copy": "記録をコピー",
+        "copied": "コピーしました",
+        "close": "終了",
+        "report": "ペン入力の記録内容"
+    },
     "snsNames": {
         "niconico": "ニコニコ動画"
     }

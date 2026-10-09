@@ -13,7 +13,12 @@ function load(relative, react = React) {
         compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022,
             jsx: ts.JsxEmit.React, esModuleInterop: true },
     }).outputText
-    vm.runInNewContext(code, { exports, require: name => name === 'react' ? react : require(name) })
+    vm.runInNewContext(code, { exports, require: name => {
+        if (name === 'react') return react
+        // Navigation tests leave the opt-in recorder closed; its event handling is tested in drawing-common.
+        if (name === './StrokeInputDiagnostics') return { StrokeInputDiagnostics: () => null }
+        return require(name)
+    } })
     return exports
 }
 

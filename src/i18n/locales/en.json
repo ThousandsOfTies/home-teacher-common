@@ -853,6 +853,17 @@
         "otherTitle": "About data protection",
         "other": "Back up important data regularly. Some browsers may delete data when storage is low."
     },
+    "strokeDiagnostics": {
+        "title": "Pen input recorder",
+        "version": "Build {{version}}",
+        "counts": "Starts received: pen {{pen}}, Touch {{touch}} / strokes started {{started}}",
+        "local": "Recorded only on this device. Draw a few strokes, then copy the record.",
+        "reset": "Clear record",
+        "copy": "Copy record",
+        "copied": "Copied",
+        "close": "Stop",
+        "report": "Pen input record"
+    },
     "snsNames": {
         "niconico": "Niconico"
     }
