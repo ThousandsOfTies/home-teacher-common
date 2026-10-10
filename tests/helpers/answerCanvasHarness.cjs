@@ -13,6 +13,7 @@ function load(file, adapters = {}) {
 const drawingRoot = path.join(__dirname, '../../../drawing-common/src')
 const geometry = load(path.join(drawingRoot, 'geometry/viewport.ts'))
 const { drawStationaryStroke } = load(path.join(drawingRoot, 'rendering/drawStationaryStroke.ts'))
+const { resizeCanvasForDisplay, getCanvasLogicalSize } = load(path.join(drawingRoot, 'rendering/canvasResolution.ts'))
 const { CanvasUndoHistory } = load(path.join(drawingRoot, 'history/CanvasUndoHistory.ts'), { Uint32Array, Uint8ClampedArray })
 
 function answerWheelHarness() {
@@ -81,4 +82,5 @@ function answerPinchHarness(file) {
   }
 }
 
-module.exports = { answerWheelHarness, answerPinchHarness, CanvasUndoHistory, drawStationaryStroke }
+module.exports = { answerWheelHarness, answerPinchHarness, CanvasUndoHistory, drawStationaryStroke,
+  resizeCanvasForDisplay, getCanvasLogicalSize }
