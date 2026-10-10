@@ -209,7 +209,6 @@
 .canvas-layer {
   position: relative;
   transform-origin: 0 0;
-  will-change: transform;
 }
 
 .pdf-canvas {

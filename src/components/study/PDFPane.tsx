@@ -7,6 +7,7 @@ import { DrawingPath, DrawingCanvas, useDrawing, useStrokeInput, useZoomPan, doP
 import { INITIAL_PDF_RENDER_SCALE, MAX_PDF_RENDER_SCALE } from '../../constants/pdf'
 import { isIOSLikeDevice } from '../../utils/platform'
 import { useWheelPageNavigation } from '../../hooks/pdf/useWheelPageNavigation'
+import { usePDFDrawingResolution } from '../../hooks/pdf/usePDFDrawingResolution'
 import './StudyPanel.css'
 import { ICON_SVG } from '../../constants/icons'
 import { StudyRegionMarker } from './StudyRegionMarker'
@@ -773,6 +774,9 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         }
     })
 
+    const drawingBitmapSize = usePDFDrawingResolution(canvasSize, zoom,
+        isPinching || isPanning || isDrawingInternal || erasingPaths !== null)
+
     // Lasso Selection Hook (長押しベース)
     const {
         selectionState,
@@ -922,9 +926,9 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
             }
 
             // PDF背景が非表示の場合（B面など）、pdfCanvasはパフォーマンスのため1x1に縮小されている。
-            // その場合、合成キャンバスのサイズは描画キャンバス（高解像度）に合わせる。
-            const targetWidth = hidePdfBackground && hasDrawingCanvas ? drawingCanvas!.width : pdfCanvas.width
-            const targetHeight = hidePdfBackground && hasDrawingCanvas ? drawingCanvas!.height : pdfCanvas.height
+            // 表示用の線だけを高解像度化しても、キャプチャーには従来のPDF描画サイズを使う。
+            const targetWidth = hidePdfBackground && hasDrawingCanvas ? (bitmapCanvasSize?.width ?? drawingCanvas!.width) : pdfCanvas.width
+            const targetHeight = hidePdfBackground && hasDrawingCanvas ? (bitmapCanvasSize?.height ?? drawingCanvas!.height) : pdfCanvas.height
 
             // 合成用の一時キャンバスを作成
             const compositeCanvas = document.createElement('canvas')
@@ -957,7 +961,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         getContainerRect: () => containerRef.current?.getBoundingClientRect() || null,
         getPdfCanvas: () => canvasRef.current
 
-    }), [splitMode, fitToScreen, resetZoom, resetOverscroll, setZoom, setPanOffset, zoom, panOffset, handleUndo, pdfDoc, canvasSize])
+    }), [splitMode, fitToScreen, resetZoom, resetOverscroll, setZoom, setPanOffset, zoom, panOffset, handleUndo, pdfDoc, canvasSize, bitmapCanvasSize])
 
     // Eraser cursor state
     const [eraserCursorPos, setEraserCursorPos] = React.useState<{ x: number, y: number } | null>(null)
@@ -1427,6 +1431,9 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     style={{
                         transform: `translate(${panOffset.x + overscroll.x}px, ${panOffset.y + overscroll.y + wheelNavigation.offset}px) scale(${zoom})`,
                         transformOrigin: '0 0',
+                        // Cache the layer only during navigation; a permanent hint can
+                        // leave Safari stretching an older image even after a sharper repaint.
+                        willChange: isPinching || isPanning || wheelNavigation.tracking || wheelNavigation.covered ? 'transform' : 'auto',
                         // ピンチ/パン操作中、または初期表示時（トランジション有効化前）は無効化
                         transition: (isPinching || isPanning || gestureRef.current || wheelNavigation.tracking || wheelNavigation.covered || !isTransitionEnabled) ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
                         opacity: isLayoutReady && !wheelNavigation.covered ? 1 : 0,
@@ -1487,8 +1494,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     {(hidePdfBackground || tool !== 'none' || drawingPaths.length > 0) && <DrawingCanvas
                         key={`drawing-${pageNum}`}
                         ref={drawingCanvasRef}
-                        width={bitmapCanvasSize?.width || 300}
-                        height={bitmapCanvasSize?.height || 150}
+                        width={drawingBitmapSize?.width || bitmapCanvasSize?.width || 300}
+                        height={drawingBitmapSize?.height || bitmapCanvasSize?.height || 150}
                         coordinateWidth={canvasSize?.width || 300}
                         coordinateHeight={canvasSize?.height || 150}
                         className="drawing-canvas"
