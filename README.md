@@ -17,6 +17,7 @@ TutoTuto・DoriDori・CopiCopiの共通UI、PDF表示、保存、認証を提供
 
 - インポートは `@home-teacher/common/components/...`、`hooks/...`、`utils/...` などを使用します。
 - `VITE_INDEXED_DB_NAME` はアプリ側で必ず指定します。共通の既定DB名はありません。
+- 本番のAPI接続先は各アプリの `VITE_API_URL` で指定します。未設定時に他アプリのAPIへ接続する既定値はありません。
 - 3アプリのDB名はそれぞれ `TutoTutoDB`、`DoriDoriDB`、`CopiCopiDB` です。
 - 共通文言は [src/i18n/locales](src/i18n/locales) の `ja.json` / `en.json`、アプリ固有の文言は各アプリの翻訳ファイルへ置きます。
 
