@@ -72,6 +72,22 @@ function harness(file, overrides = {}) {
 const tick = async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve() }
 const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} != ${expected}`)
 
+test('tool transitions cannot activate incompatible tools together', () => {
+  const state = harness('useStudyToolMode.ts')
+  let mode = state.render('useStudyToolMode', 'select-pdf')
+  for (const tool of ['pen', 'eraser', 'text', 'select-pdf', 'select-result', 'none']) {
+    mode.setTool(tool)
+    mode = state.render('useStudyToolMode', 'select-pdf')
+    assert.equal(mode.tool, tool)
+    assert.equal([mode.isDrawingMode, mode.isEraserMode, mode.isTextMode,
+      mode.isSelectionMode, mode.isGradingCaptureMode].filter(Boolean).length, tool === 'none' ? 0 : 1)
+  }
+  assert.equal(state.api.studyToolForPanel('answer', 'pen'), 'pen')
+  assert.equal(state.api.studyToolForPanel('answer', 'text'), 'text')
+  assert.equal(state.api.studyToolForPanel('pdf', 'pen'), 'select-pdf')
+  assert.equal(state.api.studyToolForPanel('grading', 'text'), 'select-result')
+})
+
 test('overlay touch selects in container coordinates and forwards raw pinch requests to the chosen pane', () => {
   const state = harness('useStudyOverlayTouch.ts'), container = new Surface(), touched = [], updates = [], cancelled = [], pinchStates = []
   const panes = ['A', 'B'].map(name => ({
