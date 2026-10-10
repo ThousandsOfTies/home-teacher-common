@@ -1,69 +1,8 @@
 
 import { AVAILABLE_MODELS, DEFAULT_MODEL_ID, SUBJECTS } from '../constants/grading'
 
-/**
- * ============================================================================
- * 🔒 CRITICAL CONFIGURATION - DO NOT MODIFY WITHOUT READING
- * ============================================================================
- * 
- * For AI Agents: この設定は本番環境の基盤です。変更前に必ず確認してください。
- * See: /.agent/workflows/architecture-rules.md
- * 
- * PRODUCTION_API_URL を変更すると:
- * - GitHub Pages での採点機能が停止します
- * - 解答登録機能が停止します
- * - すべての API 呼び出しが失敗します
- * 
- * 変更が必要な場合（Cloud Run の URL が変わった場合のみ）:
- * 1. この定数を更新
- * 2. .github/workflows/deploy.yml の VITE_API_URL も同時に更新
- * 3. server/index.ts の CORS 設定も確認
- * ============================================================================
- */
-const PRODUCTION_API_URL = 'https://hometeacher-api-736494768812.asia-northeast1.run.app'
-
-/**
- * 環境を自動検出して適切な API URL を返す
- * 
- * 優先順位:
- * 1. 環境変数 VITE_API_URL（ビルド時に deploy.yml で注入）
- * 2. GitHub Pages の自動検出（*.github.io）
- * 3. 本番環境フォールバック（localhost 以外）
- * 4. ローカル開発用 localhost（開発時のみ）
- * 
- * この関数のロジックを変更する場合は、必ず GitHub Pages で動作確認してください。
- */
-const getApiBaseUrl = (): string => {
-  // 1. First, check environment variable (set during build in deploy.yml)
-  const envUrl = import.meta.env.VITE_API_URL
-  if (envUrl) {
-    console.log('🌐 API Base URL (from env):', envUrl)
-    return envUrl
-  }
-
-  // 2. Auto-detect GitHub Pages deployment
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname
-
-    // If running on GitHub Pages, use production API
-    if (hostname === 'thousandsofties.github.io' || hostname.endsWith('.github.io')) {
-      console.log('🌐 API Base URL (GitHub Pages auto-detect):', PRODUCTION_API_URL)
-      return PRODUCTION_API_URL
-    }
-
-    // If not localhost and not GitHub Pages, still use production (safer default)
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      console.log('🌐 API Base URL (production fallback):', PRODUCTION_API_URL)
-      return PRODUCTION_API_URL
-    }
-  }
-
-  // 3. Fallback to localhost only for local development
-  console.log('🌐 API Base URL (localhost dev):', 'http://localhost:3003')
-  return 'http://localhost:3003'
-}
-
-const API_BASE_URL = getApiBaseUrl()
+import { getApiBaseUrl } from './apiConfig'
+import { normalizeGradeResponse } from './gradingResponse'
 
 export interface ModelInfo {
   id: string
@@ -113,7 +52,7 @@ export interface GradeResponse {
 export type TeacherMode = 'kind' | 'balanced' | 'strict'
 
 export const getAvailableModels = async (): Promise<AvailableModelsResponse> => {
-  const response = await fetch(`${API_BASE_URL}/api/models`)
+  const response = await fetch(`${getApiBaseUrl()}/api/models`)
   if (!response.ok) {
     throw new Error(`Failed to fetch models: ${response.status}`)
   }
@@ -141,7 +80,7 @@ export const gradeWork = async (
   panesReversed: boolean = false
 ): Promise<GradeResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/grade-work`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/grade-work`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -162,7 +101,7 @@ export const gradeWork = async (
       throw new Error(errorData.error || `HTTP Error: ${response.status}`)
     }
 
-    const result = await response.json()
+    const result = normalizeGradeResponse(await response.json())
     console.log(`✅ Grading Result:`, result)
     return result
   } catch (error) {
@@ -183,7 +122,7 @@ export const askQuestion = async (
   language: string = 'ja',
 ): Promise<GradeResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/ask-question`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/ask-question`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -197,7 +136,7 @@ export const askQuestion = async (
       const errorData = await response.json().catch(() => ({}))
       throw new Error(errorData.error || `HTTP Error: ${response.status}`)
     }
-    return await response.json() as GradeResponse
+    return normalizeGradeResponse(await response.json())
   } catch (error) {
     console.error('質問への回答に失敗しました:', error)
     return {
@@ -242,11 +181,10 @@ export interface DetectSubjectResponse {
  * Get available subjects from the server
  */
 export const getSubjects = async (): Promise<SubjectsResponse> => {
+  if (import.meta.env.VITE_USE_LOCAL_SUBJECTS_ONLY === 'true') return { subjects: SUBJECTS, default: 'math' }
   try {
-    if (import.meta.env.VITE_USE_LOCAL_SUBJECTS_ONLY === 'true') {
-      throw new Error('App configured to use local fallback for subjects');
-    }
-    const response = await fetch(`${API_BASE_URL}/api/subjects`)
+
+    const response = await fetch(`${getApiBaseUrl()}/api/subjects`)
 
     if (!response.ok) {
       console.warn('⚠️ /api/subjects endpoint missing or error, using fallback list')
@@ -255,9 +193,7 @@ export const getSubjects = async (): Promise<SubjectsResponse> => {
 
     return await response.json()
   } catch (error) {
-    if (import.meta.env.VITE_USE_LOCAL_SUBJECTS_ONLY !== 'true') {
-      console.warn('⚠️ Server subjects not available, using localized fallback')
-    }
+    console.warn('⚠️ Server subjects not available, using localized fallback')
     // Fallback: If server is not ready, return static list
     return {
       subjects: SUBJECTS,
@@ -271,7 +207,7 @@ export const getSubjects = async (): Promise<SubjectsResponse> => {
  */
 export const detectSubject = async (croppedImageData: string): Promise<DetectSubjectResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/detect-subject`, {
+    const response = await fetch(`${getApiBaseUrl()}/api/detect-subject`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

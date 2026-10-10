@@ -770,6 +770,9 @@
         }
     },
     "errors": {
+        "apiNotConfigured": "サーバーの接続先が設定されていません。",
+        "apiInvalidUrl": "サーバーの接続先の設定が正しくありません。",
+        "invalidGradingResponse": "採点結果の形式が正しくありません。もう一度お試しください。",
         "databaseDelete": "データベースの削除に失敗しました",
         "databaseBusy": "データベースが使用中のため削除できませんでした",
         "databaseOpen": "IndexedDBを開けませんでした",

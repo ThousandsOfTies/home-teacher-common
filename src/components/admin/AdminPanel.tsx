@@ -31,6 +31,7 @@ import { VscDatabase } from 'react-icons/vsc';
 import { MdNewReleases, MdHistory, MdNotificationsNone, MdAccessTime, MdOutlineCollections, MdBalance } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { getSubjects, SubjectInfo } from '../../services/api';
+import { getApiBaseUrl } from '../../services/apiConfig';
 
 interface AdminPanelProps {
   onSelectPDF: (record: PDFFileRecord) => void;
@@ -41,6 +42,7 @@ interface AdminPanelProps {
   storageIconSrc?: string;
   historyVariant?: 'timeline' | 'progress';
   settingsVariant?: 'links' | 'teachers';
+  billingVariant: 'tutotuto' | 'copicopi';
   guideVariant?: 'study' | 'copy';
   maxPDFFileSizeMB?: number;
   checkPDFTextOnImport?: boolean;
@@ -57,6 +59,7 @@ export default function AdminPanel({
   storageIconSrc,
   historyVariant = 'timeline',
   settingsVariant = 'links',
+  billingVariant,
   guideVariant = 'study',
   maxPDFFileSizeMB = 100,
   checkPDFTextOnImport = false,
@@ -214,7 +217,7 @@ export default function AdminPanel({
       // Update Firestore if premium
       if (isPremium && auth.currentUser) {
         const token = await auth.currentUser.getIdToken();
-        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3003'}/api/update-sns-time`, {
+        await fetch(`${getApiBaseUrl()}/api/update-sns-time`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1684,7 +1687,7 @@ export default function AdminPanel({
             >
               ✕
             </button>
-            <ParentSettings variant={settingsVariant === 'teachers' ? 'copicopi' : 'tutotuto'} />
+            <ParentSettings variant={billingVariant} />
           </div>
         </div>
       )}

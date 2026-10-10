@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { auth } from '../../lib/firebase'; // needed to get the token
+import { getApiBaseUrl } from '../../services/apiConfig';
 
 interface ParentSettingsProps {
     variant?: 'tutotuto' | 'copicopi';
@@ -36,7 +37,7 @@ export const ParentSettings: React.FC<ParentSettingsProps> = ({ variant = 'tutot
         try {
             setIsUpdating(true);
             const token = await auth.currentUser?.getIdToken();
-            const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3003'}/api/create-checkout-session`;
+            const apiUrl = `${getApiBaseUrl()}/api/create-checkout-session`;
             const baseUrl = getBaseUrl();
             const response = await fetch(apiUrl, {
                 method: 'POST',
@@ -58,7 +59,7 @@ export const ParentSettings: React.FC<ParentSettingsProps> = ({ variant = 'tutot
         try {
             setIsUpdating(true);
             const token = await auth.currentUser?.getIdToken();
-            const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3003'}/api/create-portal-session`;
+            const apiUrl = `${getApiBaseUrl()}/api/create-portal-session`;
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },

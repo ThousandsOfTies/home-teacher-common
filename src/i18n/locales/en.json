@@ -767,6 +767,9 @@
         }
     },
     "errors": {
+        "apiNotConfigured": "The server connection is not configured.",
+        "apiInvalidUrl": "The server connection setting is invalid.",
+        "invalidGradingResponse": "The grading response has an invalid format. Please try again.",
         "databaseDelete": "Could not delete the database",
         "databaseBusy": "Could not delete the database because it is in use",
         "databaseOpen": "Could not open IndexedDB",
