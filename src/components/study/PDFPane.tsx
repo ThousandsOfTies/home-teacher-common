@@ -141,7 +141,6 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         startPanning,
         doPanning,
         stopPanning,
-        resetZoom,
         setZoom,
         setPanOffset,
         fitToScreen,
@@ -233,24 +232,24 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     // 初回フィット完了フラグ（ズームレベル保持のため、ページ変更後はfitToScreenしない）
     const initialFitDoneRef = useRef(false)
 
+    // Initial layout, reset and the pager button share the same fit command.
+    // useZoomPan reads logical paper dimensions internally, never bitmap pixels.
+    const fitPageToScreen = React.useCallback(() => {
+        if (!canvasRef.current || !containerRef.current) return
+        const containerH = containerRef.current.clientHeight
+        const effectiveH = containerH > window.innerHeight ? window.innerHeight - 120 : containerH
+        fitToScreen(effectiveH, splitMode ? { fitToHeight: true, alignLeft: true } : undefined)
+    }, [fitToScreen, splitMode])
+
     // splitMode変更時は再フィットを実行
     useEffect(() => {
         if (!canvasRef.current || !containerRef.current || !canvasSize) return
 
         // console.log('📏 PDFPane: splitMode変更、再フィット実行', {splitMode})
 
-        const containerH = containerRef.current.clientHeight
-        const maxH = window.innerHeight - 120
-        const effectiveH = (containerH > window.innerHeight) ? maxH : containerH
-
-        fitToScreen(
-            canvasSize.width,
-            canvasSize.height,
-            effectiveH,
-            splitMode ? { fitToHeight: true, alignLeft: true } : undefined
-        )
+        fitPageToScreen()
         setIsLayoutReady(true)
-    }, [canvasSize, splitMode, fitToScreen])
+    }, [canvasSize, fitPageToScreen])
 
     // RAFキャンセル用ref
     const rafIdRef = useRef<number | null>(null)
@@ -329,19 +328,10 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 }
 
                 try {
-                    const containerH = containerRef.current.clientHeight
-                    const maxH = window.innerHeight - 120
-                    const effectiveH = (containerH > window.innerHeight) ? maxH : containerH
-
                     // 初回のみfitToScreen、以降はズームレベルを維持
                     if (!initialFitDoneRef.current) {
                         // console.log('📏 PDFPane: 初回フィット実行', { containerH, effectiveH, splitMode })
-                        fitToScreen(
-                            effectiveMetrics.layoutWidth,
-                            effectiveMetrics.layoutHeight,
-                            effectiveH,
-                            splitMode ? { fitToHeight: true, alignLeft: true } : undefined
-                        )
+                        fitPageToScreen()
                         initialFitDoneRef.current = true
                     } else {
                         // console.log('📏 PDFPane: ズームレベル維持（ページ変更）')
@@ -879,21 +869,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
 
 
     useImperativeHandle(ref, () => ({
-        resetZoom: () => {
-            if (canvasSize && containerRef.current) {
-                const containerH = containerRef.current.clientHeight
-                const maxH = window.innerHeight - 120
-                const effectiveH = (containerH > window.innerHeight) ? maxH : containerH
-                fitToScreen(
-                    canvasSize.width,
-                    canvasSize.height,
-                    effectiveH,
-                    splitMode ? { fitToHeight: true, alignLeft: true } : undefined
-                )
-            } else {
-                resetZoom()
-            }
-        },
+        resetZoom: fitPageToScreen,
         zoomIn: () => { setZoom(prev => prev * 1.2) },
         zoomOut: () => { setZoom(prev => prev / 1.2) },
         undo: handleUndo,
@@ -950,7 +926,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         getContainerRect: () => containerRef.current?.getBoundingClientRect() || null,
         getPdfCanvas: () => canvasRef.current
 
-    }), [splitMode, fitToScreen, resetZoom, resetOverscroll, setZoom, setPanOffset, handleUndo, pdfDoc, canvasSize, bitmapCanvasSize, getMinimumZoom, getViewport, applyPinch])
+    }), [fitPageToScreen, resetOverscroll, setZoom, setPanOffset, handleUndo, pdfDoc, bitmapCanvasSize, getMinimumZoom, getViewport, applyPinch])
 
     // Eraser cursor state
     const [eraserCursorPos, setEraserCursorPos] = React.useState<{ x: number, y: number } | null>(null)
@@ -1601,19 +1577,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         {/* Fit Screen */}
                         <button
                             className="page-nav-button"
-                            onClick={() => {
-                                if (canvasRef.current && containerRef.current) {
-                                    const containerH = containerRef.current.clientHeight
-                                    const maxH = window.innerHeight - 120
-                                    const effectiveH = (containerH > window.innerHeight) ? maxH : containerH
-                                    fitToScreen(
-                                        canvasRef.current.width,
-                                        canvasRef.current.height,
-                                        effectiveH,
-                                        splitMode ? { fitToHeight: true, alignLeft: true } : undefined
-                                    )
-                                }
-                            }}
+                            onClick={fitPageToScreen}
                             title={t('pdfNavigation.fit')}
                              style={{ marginBottom: '8px', borderRadius: '4px' }}
                         >
