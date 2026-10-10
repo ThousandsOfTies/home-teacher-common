@@ -76,6 +76,7 @@ export interface PDFPaneHandle {
     pdfDoc: any | null
     // Pinch zoom control methods
     getZoom: () => number
+    getMinimumZoom: () => number
     setZoomValue: (zoom: number) => void
     setPinchActive: (active: boolean) => void
     getPanOffset: () => { x: number, y: number }
@@ -144,7 +145,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         setPanOffset,
         fitToScreen,
         applyPanLimit,
-        getFitToScreenZoom,
+        getMinimumZoom,
+        clampZoom,
         overscroll,
         setOverscroll,
         resetOverscroll
@@ -891,8 +893,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 resetZoom()
             }
         },
-        zoomIn: () => { setZoom(prev => Math.min(prev * 1.2, 5.0)) },
-        zoomOut: () => { setZoom(prev => Math.max(prev / 1.2, 0.1)) },
+        zoomIn: () => { setZoom(prev => clampZoom(prev * 1.2)) },
+        zoomOut: () => { setZoom(prev => clampZoom(prev / 1.2)) },
         undo: handleUndo,
         // PDFキャンバスと描画キャンバスを合成して返す
         getCanvas: () => {
@@ -935,7 +937,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         get pdfDoc() { return pdfDoc },
         // Pinch zoom control methods
         getZoom: () => zoom,
-        setZoomValue: (newZoom: number) => { setZoom(Math.min(Math.max(newZoom, 0.1), 5.0)) },
+        getMinimumZoom,
+        setZoomValue: (newZoom: number) => { setZoom(clampZoom(newZoom)) },
         setPinchActive: (active: boolean) => {
             setIsPinching(active)
             if (active) resetOverscroll()
@@ -945,7 +948,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         getContainerRect: () => containerRef.current?.getBoundingClientRect() || null,
         getPdfCanvas: () => canvasRef.current
 
-    }), [splitMode, fitToScreen, resetZoom, resetOverscroll, setZoom, setPanOffset, zoom, panOffset, handleUndo, pdfDoc, canvasSize, bitmapCanvasSize])
+    }), [splitMode, fitToScreen, resetZoom, resetOverscroll, setZoom, setPanOffset, zoom, panOffset, handleUndo, pdfDoc, canvasSize, bitmapCanvasSize, getMinimumZoom, clampZoom])
 
     // Eraser cursor state
     const [eraserCursorPos, setEraserCursorPos] = React.useState<{ x: number, y: number } | null>(null)
@@ -1246,9 +1249,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
 
                         // 1. Calculate New Zoom
                         const scale = dist / startDist
-                        // 動的な最小倍率（Fitサイズ）を取得して制限を適用
-                        const dynamicMinZoom = getFitToScreenZoom()
-                        const newZoom = Math.min(Math.max(startZoom * scale, dynamicMinZoom), 5.0)
+                        const newZoom = clampZoom(startZoom * scale)
 
                         // 2. Calculate New Pan (Keep content under center stationary)
                         const startCenterRelX = startCenter.x - rect.left

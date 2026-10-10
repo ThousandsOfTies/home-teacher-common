@@ -73,7 +73,7 @@ const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-9,
 
 test('overlay touch selects in container coordinates, pinches the chosen pane and cancels selection', () => {
   const state = harness('useStudyOverlayTouch.ts'), container = new Surface(), touched = [], updates = [], cancelled = [], pinchStates = []
-  const panes = ['A', 'B'].map(name => ({ getZoom: () => 1, getPanOffset: () => ({ x: 0, y: 0 }),
+  const panes = ['A', 'B'].map(name => ({ getZoom: () => 1, getMinimumZoom: () => 0.1, getPanOffset: () => ({ x: 0, y: 0 }),
     getContainerRect: () => ({ left: name === 'A' ? 10 : 510, top: 20 }),
     setPinchActive: active => pinchStates.push([name, active]),
     setZoomValue: value => updates.push([name, 'zoom', value]), setPanOffsetValue: value => updates.push([name, 'pan', value]) }))
@@ -104,7 +104,7 @@ test('overlay touch selects in container coordinates, pinches the chosen pane an
 test('coincident fingers do not produce NaN zoom, and pinch zoom keeps the anchor within limits', () => {
   const state = harness('useStudyOverlayTouch.ts'), updates = []
   const handlers = state.render('useStudyOverlayTouch', { containerRef: { current: new Surface() }, getTargetPane: () => 'A',
-    getPane: () => ({ getZoom: () => 1, getPanOffset: () => ({ x: 0, y: 0 }), getContainerRect: () => ({ left: 0, top: 0 }),
+    getPane: () => ({ getZoom: () => 1, getMinimumZoom: () => 0.1, getPanOffset: () => ({ x: 0, y: 0 }), getContainerRect: () => ({ left: 0, top: 0 }),
       setPinchActive() {}, setZoomValue: value => updates.push(value), setPanOffsetValue: () => {} }), cancelSelection() {} })
   const event = distance => ({ touches: [{ clientX: 0, clientY: 0 }, { clientX: distance, clientY: 0 }], preventDefault() {} })
   handlers.handleOverlayTouchStart(event(0)); handlers.handleOverlayTouchMove(event(100))
@@ -115,7 +115,7 @@ test('coincident fingers do not produce NaN zoom, and pinch zoom keeps the ancho
 
 test('pinch state ends when one finger lifts, and cancellation or unmount cannot leave the pane pinching', () => {
   const state = harness('useStudyOverlayTouch.ts'), changes = [], singleMoves = [], cancelled = []
-  const pane = { getZoom: () => 1, getPanOffset: () => ({ x: 0, y: 0 }),
+  const pane = { getZoom: () => 1, getMinimumZoom: () => 0.1, getPanOffset: () => ({ x: 0, y: 0 }),
     getContainerRect: () => ({ left: 0, top: 0 }), setZoomValue() {}, setPanOffsetValue() {},
     setPinchActive: active => changes.push(active) }
   const handlers = state.render('useStudyOverlayTouch', { containerRef: { current: new Surface() },
@@ -138,6 +138,34 @@ test('pinch state ends when one finger lifts, and cancellation or unmount cannot
   handlers.handleOverlayTouchStart(event([first, second]))
   state.unmount()
   assert.deepEqual(changes, [true, false, true, false, true, false])
+})
+
+test('repeated overlay pinches use the target pane fit limit and preserve the anchor at that limit', () => {
+  const state = harness('useStudyOverlayTouch.ts')
+  const panes = [0.45, 0.7].map((minimum, index) => ({
+    zoom: 2, pan: { x: 40, y: 30 },
+    getZoom() { return this.zoom }, getMinimumZoom: () => minimum,
+    getPanOffset() { return this.pan }, getContainerRect: () => ({ left: index * 500, top: 0 }),
+    setPinchActive() {}, setZoomValue(value) { this.zoom = value }, setPanOffsetValue(value) { this.pan = value },
+  }))
+  const handlers = state.render('useStudyOverlayTouch', { containerRef: { current: new Surface() },
+    getTargetPane: x => x < 500 ? 'A' : 'B', getPane: name => panes[name === 'A' ? 0 : 1], cancelSelection() {} })
+  const event = (left, gap) => ({ touches: [
+    { clientX: left + 150 - gap / 2, clientY: 100 },
+    { clientX: left + 150 + gap / 2, clientY: 100 },
+  ], preventDefault() {} })
+  for (let index = 0; index < panes.length; index++) {
+    const pane = panes[index], minimum = pane.getMinimumZoom()
+    for (let gesture = 0; gesture < 20; gesture++) {
+      handlers.handleOverlayTouchStart(event(index * 500, 100))
+      handlers.handleOverlayTouchMove(event(index * 500, 1))
+      handlers.handleOverlayTouchEnd({ touches: [] })
+      near(pane.zoom, minimum)
+      near((150 - pane.pan.x) / pane.zoom, 55)
+      near((100 - pane.pan.y) / pane.zoom, 35)
+    }
+  }
+  near(panes[0].zoom, 0.45); near(panes[1].zoom, 0.7)
 })
 
 test('answer wheel accumulates bursts, normalizes line/page deltas, and ignores active editors', () => {

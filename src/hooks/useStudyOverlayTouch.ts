@@ -55,7 +55,7 @@ export function useStudyOverlayTouch({ containerRef, getTargetPane, getPane, can
       const pane = getPane(gesture.targetPane)
       const bounds = pane?.getContainerRect()
       if (!pane || !bounds) return
-      const view = pinchViewport(gesture, touchPair(event.touches), bounds, 0.1)
+      const view = pinchViewport(gesture, touchPair(event.touches), bounds, pane.getMinimumZoom())
       if (view) {
         pane.setZoomValue(view.zoom)
         pane.setPanOffsetValue(view.panOffset)
