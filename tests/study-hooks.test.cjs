@@ -56,6 +56,9 @@ function harness(file, overrides = {}) {
     },
   }
   const storage = new Map(), document = new Surface(), window = new Surface()
+  window.location = { hostname: 'example.test' }
+  window.setTimeout = callback => { const id = ++timerId; timers.set(id, callback); return id }
+  window.clearTimeout = id => timers.delete(id)
   class Element { closest() { return this.editor ? this : null } }
   const api = moduleAt(path.join(__dirname, '../src/hooks', file), {
     react, '@thousands-of-ties/drawing-common': geometry, ...overrides,
@@ -72,6 +75,95 @@ function harness(file, overrides = {}) {
 }
 const tick = async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve() }
 const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} != ${expected}`)
+
+function voiceHarness(options = {}) {
+  const instances = [], drafts = [], committed = [], cancelled = []
+  const state = harness('useVoiceInput.ts', {
+    '../contexts/AuthContext': { useAuth: () => ({ userData: { isPremium: options.premium !== false } }) },
+    '../utils/indexedDB': { getAppSettings: async () => ({ isPremium: options.localPremium === true }) },
+  })
+  class Recognition {
+    constructor() { instances.push(this); this.started = 0; this.stopped = 0; this.aborted = 0 }
+    start() { this.started++ }
+    stop() { this.stopped++; if (options.synchronousEnd) this.onend?.() }
+    abort() { this.aborted++ }
+  }
+  state.window.webkitSpeechRecognition = Recognition
+  if (options.local) state.window.location.hostname = 'localhost'
+  const args = { initialText: options.initialText ?? '', language: options.language ?? 'en',
+    onCommit: text => committed.push(text), onCancel: () => cancelled.push(true), onDraftChange: text => drafts.push(text) }
+  const view = () => state.render('useVoiceInput', args)
+  const result = (recognition, parts, resultIndex = 0) => recognition.onresult?.({ resultIndex,
+    results: parts.map(([transcript, isFinal]) => ({ 0: { transcript }, isFinal })) })
+  return { state, args, instances, drafts, committed, cancelled, view, result }
+}
+
+test('voice input starts once, appends only changed final results and commits once after graceful stop', () => {
+  const h = voiceHarness({ initialText: 'Question' }), commands = h.view()
+  commands.startVoice(); commands.startVoice()
+  assert.equal(h.instances.length, 1)
+  const recognition = h.instances[0]
+  assert.equal(recognition.lang, 'en-US')
+  recognition.onstart()
+  assert.equal(h.view().phase, 'listening')
+  h.result(recognition, [['hello', true], ['world', false]])
+  assert.equal(h.view().shownText, 'Question hello world')
+  h.result(recognition, [['hello', true], ['world', true]], 1)
+  assert.equal(h.view().shownText, 'Question hello world')
+  assert.equal(h.drafts.at(-1), 'Question hello world')
+  h.view().stopVoice()
+  assert.equal(h.view().phase, 'stopping')
+  recognition.onend()
+  assert.equal(h.view().phase, 'idle')
+  h.view().finish(false); h.view().finish(false)
+  assert.deepEqual(h.committed, ['Question hello world'])
+  assert.equal(recognition.onresult, null)
+})
+
+test('voice errors, stopping timeout, stale callbacks and unmount release recognition without losing text', () => {
+  const h = voiceHarness({ language: 'ja' })
+  h.view().startVoice()
+  const first = h.instances[0], staleResult = first.onresult
+  h.result(first, [['途中', false]])
+  first.onerror({ error: 'not-allowed' })
+  assert.equal(h.view().errorKey, 'voice.permission')
+  assert.equal(h.view().shownText, '途中')
+  assert.equal(first.aborted, 1)
+  staleResult({ resultIndex: 0, results: [{ 0: { transcript: '古い結果' }, isFinal: true }] })
+  assert.equal(h.view().shownText, '途中')
+  h.view().startVoice()
+  const second = h.instances[1]
+  h.result(second, [['続き', false]])
+  h.view().stopVoice(); h.state.tick()
+  assert.equal(h.view().shownText, '途中続き')
+  assert.equal(h.view().phase, 'idle')
+  h.view().startVoice()
+  const third = h.instances[2]
+  h.state.unmount()
+  assert.equal(third.aborted, 1)
+  assert.equal(third.onresult, null)
+  assert.deepEqual(h.committed, [])
+})
+
+test('voice availability respects Premium and local settings; synchronous stop and language changes keep the saved text', async () => {
+  const h = voiceHarness({ premium: false, local: true, localPremium: true, synchronousEnd: true, language: 'ja' })
+  h.view().startVoice()
+  assert.equal(h.instances.length, 0)
+  await tick()
+  h.view().startVoice()
+  assert.equal(h.instances[0].lang, 'ja-JP')
+  h.result(h.instances[0], [['日本語', true]])
+  h.view().stopVoice()
+  assert.equal(h.view().phase, 'idle')
+  h.args.language = 'en'
+  assert.equal(h.view().shownText, '日本語')
+  h.view().startVoice()
+  assert.equal(h.instances[1].lang, 'en-US')
+  h.view().finish(true)
+  assert.deepEqual(h.cancelled, [true])
+  h.state.tick()
+  assert.deepEqual(h.committed, [])
+})
 
 test('rectangle mouse/touch commands finish the latest coordinates once and cancel every part of the selection', () => {
   const state = harness('useRectangleSelection.ts'), container = new Surface()
