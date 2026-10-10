@@ -331,13 +331,13 @@ test('cancellation before the cover is painted still releases the appended snaps
 
 function snapshotAdapters({ ready = true, renderPromise = Promise.resolve() } = {}) {
     let rendered = 0, cancelled = 0, drawn = 0
-    const canvas = (preview = false) => ({
+    const canvas = (preview = false, drawing = false) => ({
         width: 8000, height: 4000, style: { width: '600px', height: '800px' },
         dataset: { rendered: ready ? 'true' : 'false' },
-        classList: { contains: () => preview },
+        classList: { contains: name => name === 'pdf-page-preview' ? preview : name === 'drawing-canvas' && drawing },
         getContext: () => ({ drawImage() {} }), remove() { this.removed = true },
     })
-    const originals = [canvas(true), canvas(), canvas()]
+    const originals = [canvas(true), canvas(), canvas(false, true)]
     const copies = originals.map(() => canvas())
     const clone = {
         style: {}, prepend(target) { this.target = target }, setAttribute() {}, remove() { this.removed = true },
@@ -358,7 +358,7 @@ function snapshotAdapters({ ready = true, renderPromise = Promise.resolve() } = 
     const snapshots = load('utils/pdfPageTurnSnapshot.ts', {
         '../components/study/components/PDFPagePreview': { drawPreviewPaths: () => drawn++ },
     }, { document: { createElement: () => canvas() } })
-    return { snapshots, clone, copies, rendered: () => rendered, cancelled: () => cancelled, drawn: () => drawn,
+    return { snapshots, clone, copies, originals, rendered: () => rendered, cancelled: () => cancelled, drawn: () => drawn,
         options: { layer, pdfDoc, targetPage: 1, direction: -1, canvasSize: { width: 600, height: 800 },
             renderScale: 2, paths: [], signal: new AbortController().signal } }
 }
@@ -378,6 +378,22 @@ test('transition snapshots reuse ready previews, preserve logical dimensions and
     app.snapshots.disposePageTurnSnapshot(result.layer)
     assert.equal(app.clone.removed, true)
     assert.equal(result.layer.target.width, 1)
+})
+
+test('page-turn covers reveal capture ink and retain independent region markers without doubling their zoom', async () => {
+    const app = snapshotAdapters()
+    app.originals[2].style.visibility = 'hidden'
+    app.copies[2].style.visibility = 'hidden'
+    const markerCopy = { style: { transform: 'translate(10px, 20px) scale(2)', opacity: '0', visibility: 'hidden' } }
+    const overlay = { style: { transform: markerCopy.style.transform }, cloneNode: () => markerCopy }
+    app.clone.append = value => { app.clone.markers = value }
+    await app.snapshots.createPageTurnSnapshot({ ...app.options, snapshotOverlays: [overlay] })
+    assert.equal(app.copies[2].style.visibility, 'visible')
+    assert.equal(app.originals[2].style.visibility, 'hidden')
+    assert.equal(app.clone.markers, markerCopy)
+    assert.equal(markerCopy.style.transform, 'none')
+    assert.equal(markerCopy.style.visibility, 'visible')
+    assert.equal(overlay.style.transform, 'translate(10px, 20px) scale(2)')
 })
 
 test('an unready adjacent preview renders only the target page and cancels its work on abort', async () => {

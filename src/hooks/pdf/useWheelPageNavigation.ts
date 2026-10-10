@@ -8,6 +8,7 @@ interface WheelPageNavigationOptions {
     enabled: boolean
     containerRef: RefObject<HTMLDivElement>
     layerRef: RefObject<HTMLDivElement>
+    markerLayerRef?: RefObject<HTMLDivElement>
     /** A containing surface can receive wheel events over sibling selection/text overlays. */
     eventTargetRef?: RefObject<HTMLDivElement>
     pdfDoc: any
@@ -105,6 +106,7 @@ export const useWheelPageNavigation = (options: WheelPageNavigationOptions) => {
         try {
             const snapshot = await createPageTurnSnapshot({
                 layer: current.layerRef.current, pdfDoc: current.pdfDoc,
+                snapshotOverlays: current.markerLayerRef?.current ? [current.markerLayerRef.current] : [],
                 targetPage: turn.targetPage, direction, canvasSize: current.canvasSize,
                 renderScale: current.renderScale,
                 paths: current.pathsByPage?.get(turn.targetPage) ?? [],

@@ -20,6 +20,7 @@ export const disposePageTurnSnapshot = (layer: HTMLElement) => {
 /** Keep the two visible pages stable until the newly selected page has rendered. */
 export const createPageTurnSnapshot = async (options: {
     layer: HTMLElement
+    snapshotOverlays?: HTMLElement[]
     pdfDoc: any
     targetPage: number
     direction: PageTurnDirection
@@ -68,7 +69,15 @@ export const createPageTurnSnapshot = async (options: {
         sourceCanvases.forEach((source, index) => {
             const destination = copiedCanvases[index]
             if (source.classList.contains('pdf-page-preview')) destination.remove()
-            else copyCanvas(source, destination)
+            else {
+                copyCanvas(source, destination)
+                if (source.classList.contains('drawing-canvas')) destination.style.visibility = 'visible'
+            }
+        })
+        options.snapshotOverlays?.forEach(overlay => {
+            const copy = overlay.cloneNode(true) as HTMLElement
+            Object.assign(copy.style, { transform: 'none', opacity: '1', visibility: 'visible' })
+            snapshot!.append(copy)
         })
         const top = direction === 1 ? canvasSize.height + PAGE_GAP : -viewport.height - PAGE_GAP
         const left = (canvasSize.width - viewport.width) / 2

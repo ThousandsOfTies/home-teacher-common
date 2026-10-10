@@ -3,11 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { PDFFileRecord } from '../../utils/indexedDB'
 import PDFCanvas, { PDFRenderMetrics } from './components/PDFCanvas'
 import { PDFPagePreview, type PreviewStrokeRenderer } from './components/PDFPagePreview'
-import { DrawingPath, DrawingCanvas, useDrawing, useStrokeInput, useZoomPan, doPathsIntersect, useLassoSelection, DrawingCanvasHandle } from '@thousands-of-ties/drawing-common'
+import { DrawingPath, DrawingCanvas, DrawingViewport, useDrawing, useStrokeInput, useZoomPan, doPathsIntersect, useLassoSelection, DrawingCanvasHandle } from '@thousands-of-ties/drawing-common'
 import { INITIAL_PDF_RENDER_SCALE, MAX_PDF_RENDER_SCALE } from '../../constants/pdf'
 import { isIOSLikeDevice } from '../../utils/platform'
 import { useWheelPageNavigation } from '../../hooks/pdf/useWheelPageNavigation'
-import { usePDFDrawingResolution } from '../../hooks/pdf/usePDFDrawingResolution'
 import './StudyPanel.css'
 import { ICON_SVG } from '../../constants/icons'
 import { StudyRegionMarker } from './StudyRegionMarker'
@@ -125,9 +124,12 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     const containerRef = useRef<HTMLDivElement>(null)
     const wrapperRef = useRef<HTMLDivElement>(null)
     const pageLayerRef = useRef<HTMLDivElement>(null)
+    const markerLayerRef = useRef<HTMLDivElement>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const drawingCanvasRef = useRef<DrawingCanvasHandle>(null)
     const [previewPath, setPreviewPath] = useState<DrawingPath | null>(null)
+    const getRasterCanvas = React.useCallback(() =>
+        containerRef.current?.querySelector<HTMLCanvasElement>('.drawing-canvas:not([aria-hidden])') ?? null, [])
 
     // ズーム/パン
     const {
@@ -222,21 +224,6 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
 
     // レイアウト準備完了フラグ（ジャンプ防止用）
     const [isLayoutReady, setIsLayoutReady] = React.useState(false)
-
-    // トランジション有効化フラグ（初期表示時のアニメーション防止）
-    const [isTransitionEnabled, setIsTransitionEnabled] = React.useState(false)
-
-    // レイアウト確定後、少し待ってからトランジションを有効化
-    useEffect(() => {
-        if (isLayoutReady) {
-            const timer = setTimeout(() => {
-                setIsTransitionEnabled(true)
-            }, 100) // 100ms待機して確実に初期描画を終わらせる
-            return () => clearTimeout(timer)
-        } else {
-            setIsTransitionEnabled(false)
-        }
-    }, [isLayoutReady])
 
     // 初回フィット完了フラグ（ズームレベル保持のため、ページ変更後はfitToScreenしない）
     const initialFitDoneRef = useRef(false)
@@ -774,9 +761,6 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         }
     })
 
-    const drawingBitmapSize = usePDFDrawingResolution(canvasSize, zoom,
-        isPinching || isPanning || isDrawingInternal || erasingPaths !== null)
-
     // Lasso Selection Hook (長押しベース)
     const {
         selectionState,
@@ -850,7 +834,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
 
     const wheelNavigation = useWheelPageNavigation({
         enabled: wheelPageNavigation && !hidePdfBackground,
-        containerRef, layerRef: pageLayerRef, eventTargetRef: wheelEventTargetRef,
+        containerRef, layerRef: pageLayerRef, markerLayerRef, eventTargetRef: wheelEventTargetRef,
         pdfDoc, pageNum, numPages, canvasSize, renderScale: adaptiveRenderScale,
         zoom, panOffset, splitMode, ready: isLayoutReady,
         busy: isPanning || isPinching || isDrawingInternal || !!selectionState?.isDragging,
@@ -978,6 +962,17 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     //         isLayoutReady
     //     })
     // }, [zoom, panOffset, numPages, isLayoutReady])
+
+    // Only the PDF bitmap is CSS-scaled. Ink is painted at viewport resolution,
+    // and both projections use the same immediate viewport coordinates.
+    const pageLayerStyle: React.CSSProperties = {
+        transform: `translate(${panOffset.x + overscroll.x}px, ${panOffset.y + overscroll.y + wheelNavigation.offset}px) scale(${zoom})`,
+        transformOrigin: '0 0',
+        willChange: isPinching || isPanning || wheelNavigation.tracking || wheelNavigation.covered ? 'transform' : 'auto',
+        transition: 'none',
+        opacity: isLayoutReady && !wheelNavigation.covered ? 1 : 0,
+        visibility: isLayoutReady && !wheelNavigation.covered ? 'visible' : 'hidden',
+    }
 
     return (
         <div
@@ -1428,17 +1423,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 <div
                     className="canvas-layer"
                     ref={pageLayerRef}
-                    style={{
-                        transform: `translate(${panOffset.x + overscroll.x}px, ${panOffset.y + overscroll.y + wheelNavigation.offset}px) scale(${zoom})`,
-                        transformOrigin: '0 0',
-                        // Cache the layer only during navigation; a permanent hint can
-                        // leave Safari stretching an older image even after a sharper repaint.
-                        willChange: isPinching || isPanning || wheelNavigation.tracking || wheelNavigation.covered ? 'transform' : 'auto',
-                        // ピンチ/パン操作中、または初期表示時（トランジション有効化前）は無効化
-                        transition: (isPinching || isPanning || gestureRef.current || wheelNavigation.tracking || wheelNavigation.covered || !isTransitionEnabled) ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
-                        opacity: isLayoutReady && !wheelNavigation.covered ? 1 : 0,
-                        visibility: isLayoutReady && !wheelNavigation.covered ? 'visible' : 'hidden'
-                    }}
+                    style={pageLayerStyle}
                 >
                     {!hidePdfBackground && previewLayouts.map(preview => (
                         <PDFPagePreview
@@ -1466,6 +1451,53 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             onPageRendered={handlePageRendered}
                         />
                     </div>
+                    {hidePdfBackground && <div className="drawing-paper" aria-hidden="true" style={{
+                        position: 'absolute', top: 0, left: 0, backgroundColor: 'white', pointerEvents: 'none',
+                        width: `${canvasSize?.width || 300}px`, height: `${canvasSize?.height || 150}px`,
+                    }} />}
+                    {(hidePdfBackground || tool !== 'none' || drawingPaths.length > 0) && <DrawingCanvas
+                        key={`drawing-${pageNum}`}
+                        ref={drawingCanvasRef}
+                        width={bitmapCanvasSize?.width || 300}
+                        height={bitmapCanvasSize?.height || 150}
+                        coordinateWidth={canvasSize?.width || 300}
+                        coordinateHeight={canvasSize?.height || 150}
+                        className="drawing-canvas"
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: `${canvasSize?.width || 300}px`,
+                            height: `${canvasSize?.height || 150}px`,
+                            pointerEvents: 'none',
+                            visibility: 'hidden'
+                        }}
+                        tool={tool === 'none' ? 'pen' : tool}
+                        color={color}
+                        size={size}
+                        opacity={opacity}
+                        strokeStyle={strokeStyle}
+                        eraserSize={eraserSize}
+                        paths={displayDrawingPaths}
+                        previewPath={displayPreviewPath}
+                        isCtrlPressed={isCtrlPressed}
+                        stylusOnly={false}
+                        selectionState={selectionState}
+                        interactionMode='display-only'
+                        isDrawingExternal={isDrawingInternal}
+                        onPathAdd={() => { }} // Display only - PDFPane handles path saving
+                    />}
+                </div>
+                {canvasSize && (hidePdfBackground || tool !== 'none' || drawingPaths.length > 0) && <DrawingViewport
+                    paper={canvasSize} zoom={zoom}
+                    offset={{ x: panOffset.x + overscroll.x, y: panOffset.y + overscroll.y + wheelNavigation.offset }}
+                    paths={displayDrawingPaths} previewPath={displayPreviewPath} selectionState={selectionState}
+                    navigating={isPinching || isPanning || !!gestureRef.current || wheelNavigation.tracking}
+                    getRasterCanvas={getRasterCanvas} rasterSize={bitmapCanvasSize}
+                    style={{ visibility: pageLayerStyle.visibility }}
+                />}
+                <div ref={markerLayerRef} style={{ ...pageLayerStyle, position: 'absolute', top: 0, left: 0,
+                    zIndex: 20, pointerEvents: 'none' }}>
                     {canvasSize && onRegionMarkerClick && regionMarkers.filter(marker => marker.region.pageNumber === pageNum).map((marker, index) => (
                         <StudyRegionMarker
                             key={`${marker.id}-${index}`}
@@ -1491,37 +1523,6 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             }}
                         />
                     ))}
-                    {(hidePdfBackground || tool !== 'none' || drawingPaths.length > 0) && <DrawingCanvas
-                        key={`drawing-${pageNum}`}
-                        ref={drawingCanvasRef}
-                        width={drawingBitmapSize?.width || bitmapCanvasSize?.width || 300}
-                        height={drawingBitmapSize?.height || bitmapCanvasSize?.height || 150}
-                        coordinateWidth={canvasSize?.width || 300}
-                        coordinateHeight={canvasSize?.height || 150}
-                        className="drawing-canvas"
-                        style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: `${canvasSize?.width || 300}px`,
-                            height: `${canvasSize?.height || 150}px`,
-                            pointerEvents: 'none'
-                        }}
-                        tool={tool === 'none' ? 'pen' : tool}
-                        color={color}
-                        size={size}
-                        opacity={opacity}
-                        strokeStyle={strokeStyle}
-                        eraserSize={eraserSize}
-                        paths={displayDrawingPaths}
-                        previewPath={displayPreviewPath}
-                        isCtrlPressed={isCtrlPressed}
-                        stylusOnly={false}
-                        selectionState={selectionState}
-                        interactionMode='display-only'
-                        isDrawingExternal={isDrawingInternal}
-                        onPathAdd={() => { }} // Display only - PDFPane handles path saving
-                    />}
                 </div>
                 <div
                     ref={wheelNavigation.overlayRef}
