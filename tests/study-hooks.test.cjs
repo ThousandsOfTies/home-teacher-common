@@ -206,22 +206,26 @@ test('repeated overlay pinches and direct zoom commands share the real viewport 
 
 test('answer wheel accumulates bursts, normalizes line/page deltas, and ignores active editors', () => {
   const state = harness('useAnswerWheel.ts'), surface = new Surface(), ref = { current: surface }
-  let zoom = 1, panOffset = { x: 0, y: 0 }
-  state.render('useAnswerWheel', ref, { zoom, panOffset, setZoom: next => { zoom = next }, setPanOffset: next => { panOffset = next } })
+  const controller = zoomHarness({ zoomOptions: { minimumZoom: 0.2, constrainPan: false, nativeWheel: false } }).view()
+  state.render('useAnswerWheel', ref, controller)
   surface.emit('wheel', { deltaY: -1, ctrlKey: true })
   surface.emit('wheel', { deltaY: -1, ctrlKey: true })
+  const { zoom } = controller.getViewport()
+  let { panOffset } = controller.getViewport()
   near(zoom, 1.21)
   near(panOffset.x, 90 - 90 * zoom); near(panOffset.y, 80 - 80 * zoom)
   surface.emit('wheel', { deltaY: 2, deltaMode: 1 })
+  panOffset = controller.getViewport().panOffset
   near(panOffset.y, 80 - 80 * zoom - 32)
   surface.emit('wheel', { deltaY: 1, deltaMode: 2 })
+  panOffset = controller.getViewport().panOffset
   near(panOffset.y, 80 - 80 * zoom - 832)
   const before = panOffset
   assert.equal(surface.emit('wheel', { buttons: 1 }).defaultPrevented, false)
   assert.equal(surface.emit('wheel', { defaultPrevented: true }).stopped, undefined)
   const editor = new state.Element(); editor.editor = true
   assert.equal(surface.emit('wheel', { target: editor }).defaultPrevented, false)
-  assert.equal(panOffset, before)
+  assert.deepEqual(controller.getViewport().panOffset, before)
   state.unmount()
   assert.equal(surface.listeners.get('wheel').size, 0)
 })

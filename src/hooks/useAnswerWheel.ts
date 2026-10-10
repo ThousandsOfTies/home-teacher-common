@@ -1,7 +1,11 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import { zoomAtPoint, type Viewport, type Point } from '@thousands-of-ties/drawing-common'
+import type { Viewport, Point } from '@thousands-of-ties/drawing-common'
 
-type Options = Viewport & { setZoom: (zoom: number) => void; setPanOffset: (pan: Point) => void }
+type Options = {
+  getViewport: () => Viewport
+  zoomAt: (zoom: (previous: number) => number, anchor: Point) => unknown
+  setPanOffset: (pan: Point) => unknown
+}
 
 export function useAnswerWheel(containerRef: RefObject<HTMLElement>, options: Options) {
   const optionsRef = useRef(options)
@@ -19,19 +23,15 @@ export function useAnswerWheel(containerRef: RefObject<HTMLElement>, options: Op
       if (!Number.isFinite(deltaY) || deltaY === 0) return
       event.preventDefault()
       event.stopPropagation()
-      const current = optionsRef.current
-      let next: Viewport
+      const commands = optionsRef.current
       if (event.ctrlKey || event.metaKey) {
         const bounds = container.getBoundingClientRect()
-        next = zoomAtPoint(current, { x: event.clientX - bounds.left, y: event.clientY - bounds.top },
-          Math.min(Math.max(deltaY < 0 ? current.zoom * 1.1 : current.zoom / 1.1, 0.2), 5))
-        current.setZoom(next.zoom)
+        commands.zoomAt(previous => deltaY < 0 ? previous * 1.1 : previous / 1.1,
+          { x: event.clientX - bounds.left, y: event.clientY - bounds.top })
       } else {
-        next = { zoom: current.zoom, panOffset: { ...current.panOffset, y: current.panOffset.y - deltaY } }
+        const current = commands.getViewport()
+        commands.setPanOffset({ ...current.panOffset, y: current.panOffset.y - deltaY })
       }
-      // Wheel bursts can precede React's next render.
-      optionsRef.current = { ...current, ...next }
-      current.setPanOffset(next.panOffset)
     }
     container.addEventListener('wheel', handleWheel, { passive: false })
     return () => container.removeEventListener('wheel', handleWheel)

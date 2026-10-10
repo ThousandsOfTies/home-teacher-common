@@ -2,6 +2,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const vm = require('node:vm')
 const ts = require('typescript')
+const { harness: zoomHarness } = require('../../../drawing-common/tests/helpers/zoom-pan-harness.cjs')
 
 function load(file, adapters = {}) {
   const exports = {}
@@ -18,18 +19,22 @@ const { CanvasUndoHistory } = load(path.join(drawingRoot, 'history/CanvasUndoHis
 
 function answerWheelHarness() {
   class Element { constructor(control = false) { this.control = control } closest() { return this.control ? this : null } }
-  const viewportRef = {}, updates = []
+  const controller = zoomHarness({ zoomOptions: { minimumZoom: 0.2, constrainPan: false, nativeWheel: false } }).view()
+  const viewportRef = { get current() { return controller.getViewport() } }, updates = []
   let listener
   const container = { clientHeight: 500, getBoundingClientRect: () => ({ left: 100, top: 80 }),
     addEventListener(type, callback) { listener = callback }, removeEventListener() {} }
   const { useAnswerWheel } = load(path.join(__dirname, '../../src/hooks/useAnswerWheel.ts'), {
     Element,
     require: id => id === 'react' ? {
-      useRef(value) { viewportRef.current = value; return viewportRef }, useEffect(callback) { callback() },
+      useRef(value) { return { current: value } }, useEffect(callback) { callback() },
     } : geometry,
   })
-  useAnswerWheel({ current: container }, { zoom: 1, panOffset: { x: 0, y: 0 },
-    setZoom: value => updates.push(['zoom', value]), setPanOffset: value => updates.push(['pan', value]) })
+  useAnswerWheel({ current: container }, {
+    getViewport: controller.getViewport,
+    zoomAt: (value, anchor) => { const next = controller.zoomAt(value, anchor); updates.push(['zoom', next.zoom]) },
+    setPanOffset: value => { controller.setPanOffset(value); updates.push(['pan', value]) },
+  })
   return { viewportRef, updates, control: () => new Element(true),
     send(options = {}) {
       let prevented = false, stopped = false
@@ -67,6 +72,14 @@ function answerPinchHarness(file) {
     setIsPinching: value => { state.isPinching = value },
     setZoom: value => { state.zoom = value }, setPanOffset: value => { state.panOffset = value },
   }
+  const viewport = zoomHarness({ zoomOptions: { minimumZoom: 0.2, constrainPan: false, nativeWheel: false } })
+  viewport.pane.getBoundingClientRect = () => ({ left: 0, top: 0 })
+  const controller = viewport.view()
+  state.getViewport = controller.getViewport
+  state.applyPinch = (gesture, pair) => {
+    const next = controller.applyPinch(gesture, pair)
+    state.zoom = next.zoom; state.panOffset = next.panOffset
+  }
   const context = vm.createContext(state)
   const evaluate = expression => {
     if (!expression) throw new Error('Missing pinch handler or viewport transition')
@@ -83,4 +96,4 @@ function answerPinchHarness(file) {
 }
 
 module.exports = { answerWheelHarness, answerPinchHarness, CanvasUndoHistory, drawStationaryStroke,
-  resizeCanvasForDisplay, getCanvasLogicalSize }
+  resizeCanvasForDisplay, getCanvasLogicalSize, viewportCursorPosition: geometry.viewportCursorPosition }
