@@ -42,6 +42,7 @@ function harness(file, overrides = {}) {
   let cursor = 0, timerId = 0
   const cells = [], effects = [], timers = new Map()
   const react = {
+    useCallback(callback) { return callback },
     useRef(value) { const index = cursor++; cells[index] ??= { current: value }; return cells[index] },
     useState(initial) {
       const index = cursor++
@@ -71,6 +72,29 @@ function harness(file, overrides = {}) {
 }
 const tick = async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve() }
 const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} != ${expected}`)
+
+test('rectangle mouse/touch commands finish the latest coordinates once and cancel every part of the selection', () => {
+  const state = harness('useRectangleSelection.ts'), container = new Surface()
+  const commands = state.render('useRectangleSelection', { current: container })
+  commands.beginAt(310, 220)
+  commands.moveAt(110, 120)
+  assert.deepEqual({ ...commands.finish() }, { x: 100, y: 100, width: 200, height: 100 })
+  assert.equal(commands.finish(), null)
+  assert.equal(commands.startRef.current, null)
+  commands.begin(10, 20)
+  commands.move(13, 25)
+  assert.equal(commands.finish(), null)
+  assert.equal(commands.rectRef.current, null)
+  commands.beginAt(110, 120)
+  commands.moveAt(999, 999, { left: 10, top: 20, right: 400, bottom: 500 })
+  assert.deepEqual({ ...commands.rectRef.current }, { x: 100, y: 100, width: 290, height: 380 })
+  commands.cancel()
+  commands.moveAt(210, 220)
+  assert.equal(commands.finish(), null)
+  assert.equal(commands.activeRef.current, false)
+  assert.equal(commands.startRef.current, null)
+  assert.equal(commands.rectRef.current, null)
+})
 
 test('tool transitions cannot activate incompatible tools together', () => {
   const state = harness('useStudyToolMode.ts')
