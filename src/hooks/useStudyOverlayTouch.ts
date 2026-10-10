@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject, type TouchEvent } from 'react'
-import { pinchViewport, touchPair, type PinchGesture } from '@thousands-of-ties/drawing-common'
+import { touchPair, type PinchGesture } from '@thousands-of-ties/drawing-common'
 import type { PDFPaneHandle } from '../components/study/PDFPane'
 
 type Pane = 'A' | 'B'
@@ -52,14 +52,7 @@ export function useStudyOverlayTouch({ containerRef, getTargetPane, getPane, can
     const gesture = gestureRef.current
     if (event.touches.length >= 2 && gesture) {
       event.preventDefault()
-      const pane = getPane(gesture.targetPane)
-      const bounds = pane?.getContainerRect()
-      if (!pane || !bounds) return
-      const view = pinchViewport(gesture, touchPair(event.touches), bounds, pane.getMinimumZoom())
-      if (view) {
-        pane.setZoomValue(view.zoom)
-        pane.setPanOffsetValue(view.panOffset)
-      }
+      getPane(gesture.targetPane)?.applyPinch(gesture, touchPair(event.touches))
       return
     }
     // Do not turn the remaining finger into a new selection after a pinch.

@@ -134,7 +134,7 @@ function harness({ enabled = true, left = 0, right = 800, snapshot, surface } = 
         pdfDoc: {}, pageNum: 2, numPages: 10, canvasSize: { width: 600, height: 800 },
         renderScale: 1, zoom: 1, panOffset: { x: 100, y: 100 }, splitMode: false, ready: true, busy: false,
         onPageChange: page => { pages.push(page); options.pageNum = page },
-        onViewportChange: (zoom, pan) => views.push({ zoom, pan }),
+        onViewportChange: (zoom, pan, paperSize) => views.push({ zoom, pan, paperSize }),
     }
     let result
     const render = () => {
@@ -261,6 +261,8 @@ test('a different paper size slides to its fitted destination and a missing bitm
     assert.equal(app.views[0].zoom, 0.65)
     assert.equal(app.views[0].pan.x, 10)
     assert.equal(app.views[0].pan.y, 305)
+    assert.equal(app.views[0].paperSize.width, 1200)
+    assert.equal(app.views[0].paperSize.height, 600)
     assert.equal(app.render().covered, true)
     app.advance(8000)
     assert.equal(app.mainLayer.style.visibility, 'hidden')

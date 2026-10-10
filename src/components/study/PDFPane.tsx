@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { PDFFileRecord } from '../../utils/indexedDB'
 import PDFCanvas, { PDFRenderMetrics } from './components/PDFCanvas'
 import { PDFPagePreview, type PreviewStrokeRenderer } from './components/PDFPagePreview'
-import { DrawingPath, DrawingCanvas, DrawingViewport, useDrawing, useStrokeInput, useZoomPan, doPathsIntersect, useLassoSelection, DrawingCanvasHandle } from '@thousands-of-ties/drawing-common'
+import { DrawingPath, DrawingCanvas, DrawingViewport, useDrawing, useStrokeInput, useZoomPan, doPathsIntersect, useLassoSelection, DrawingCanvasHandle, touchPair, type PinchGesture } from '@thousands-of-ties/drawing-common'
 import { INITIAL_PDF_RENDER_SCALE, MAX_PDF_RENDER_SCALE } from '../../constants/pdf'
 import { isIOSLikeDevice } from '../../utils/platform'
 import { useWheelPageNavigation } from '../../hooks/pdf/useWheelPageNavigation'
@@ -78,6 +78,7 @@ export interface PDFPaneHandle {
     getZoom: () => number
     getMinimumZoom: () => number
     setZoomValue: (zoom: number) => void
+    applyPinch: (gesture: PinchGesture, pair: ReturnType<typeof touchPair>) => void
     setPinchActive: (active: boolean) => void
     getPanOffset: () => { x: number, y: number }
     setPanOffsetValue: (offset: { x: number, y: number }) => void
@@ -146,7 +147,9 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         fitToScreen,
         applyPanLimit,
         getMinimumZoom,
-        clampZoom,
+        getViewport,
+        restoreViewport,
+        applyPinch,
         overscroll,
         setOverscroll,
         resetOverscroll
@@ -841,10 +844,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         zoom, panOffset, splitMode, ready: isLayoutReady,
         busy: isPanning || isPinching || isDrawingInternal || !!selectionState?.isDragging,
         pathsByPage: drawingPathsByPage, drawPreviewStroke, onPageChange,
-        onViewportChange: (newZoom, newPan) => {
-            resetOverscroll()
-            setZoom(newZoom)
-            setPanOffset(newPan)
+        onViewportChange: (newZoom, newPan, paperSize) => {
+            restoreViewport({ zoom: newZoom, panOffset: newPan }, paperSize)
         },
     })
 
@@ -893,8 +894,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 resetZoom()
             }
         },
-        zoomIn: () => { setZoom(prev => clampZoom(prev * 1.2)) },
-        zoomOut: () => { setZoom(prev => clampZoom(prev / 1.2)) },
+        zoomIn: () => { setZoom(prev => prev * 1.2) },
+        zoomOut: () => { setZoom(prev => prev / 1.2) },
         undo: handleUndo,
         // PDFキャンバスと描画キャンバスを合成して返す
         getCanvas: () => {
@@ -936,19 +937,20 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         },
         get pdfDoc() { return pdfDoc },
         // Pinch zoom control methods
-        getZoom: () => zoom,
+        getZoom: () => getViewport().zoom,
         getMinimumZoom,
-        setZoomValue: (newZoom: number) => { setZoom(clampZoom(newZoom)) },
+        setZoomValue: (newZoom: number) => { setZoom(newZoom) },
+        applyPinch,
         setPinchActive: (active: boolean) => {
             setIsPinching(active)
             if (active) resetOverscroll()
         },
-        getPanOffset: () => panOffset,
+        getPanOffset: () => getViewport().panOffset,
         setPanOffsetValue: (offset: { x: number, y: number }) => { setPanOffset(offset) },
         getContainerRect: () => containerRef.current?.getBoundingClientRect() || null,
         getPdfCanvas: () => canvasRef.current
 
-    }), [splitMode, fitToScreen, resetZoom, resetOverscroll, setZoom, setPanOffset, zoom, panOffset, handleUndo, pdfDoc, canvasSize, bitmapCanvasSize, getMinimumZoom, clampZoom])
+    }), [splitMode, fitToScreen, resetZoom, resetOverscroll, setZoom, setPanOffset, handleUndo, pdfDoc, canvasSize, bitmapCanvasSize, getMinimumZoom, getViewport, applyPinch])
 
     // Eraser cursor state
     const [eraserCursorPos, setEraserCursorPos] = React.useState<{ x: number, y: number } | null>(null)
@@ -1159,8 +1161,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     // Store initial gesture state
                     gestureRef.current = {
                         type: 'pinch',
-                        startZoom: zoom,
-                        startPan: { ...panOffset },
+                        startZoom: getViewport().zoom,
+                        startPan: getViewport().panOffset,
                         startDist: dist,
                         startCenter: center,
                         rect
@@ -1203,8 +1205,8 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     twoFingerTapRef.current = null
                     gestureRef.current = {
                         type: 'pan',
-                        startZoom: zoom,
-                        startPan: { ...panOffset },
+                        startZoom: getViewport().zoom,
+                        startPan: getViewport().panOffset,
                         startDist: 0,
                         startCenter: { x: t.clientX, y: t.clientY },
                         rect
@@ -1229,14 +1231,6 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                         const t1 = e.touches[0]
                         const t2 = e.touches[1]
 
-                        const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY)
-                        const center = {
-                            x: (t1.clientX + t2.clientX) / 2,
-                            y: (t1.clientY + t2.clientY) / 2
-                        }
-
-                        const { startZoom, startPan, startDist, startCenter } = gestureRef.current
-
                         // 2本指タップ判定の無効化（移動量が大きい場合）
                         if (twoFingerTapRef.current) {
                             const d1 = Math.hypot(t1.clientX - twoFingerTapRef.current.startPos[0].x, t1.clientY - twoFingerTapRef.current.startPos[0].y)
@@ -1247,33 +1241,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             }
                         }
 
-                        // 1. Calculate New Zoom
-                        const scale = dist / startDist
-                        const newZoom = clampZoom(startZoom * scale)
-
-                        // 2. Calculate New Pan (Keep content under center stationary)
-                        const startCenterRelX = startCenter.x - rect.left
-                        const startCenterRelY = startCenter.y - rect.top
-
-                        const contentX = (startCenterRelX - startPan.x) / startZoom
-                        const contentY = (startCenterRelY - startPan.y) / startZoom
-
-                        const centerRelX = center.x - rect.left
-                        const centerRelY = center.y - rect.top
-
-                        const newPanX = centerRelX - (contentX * newZoom)
-                        const newPanY = centerRelY - (contentY * newZoom)
-
-                        // パン制限を適用
-                        const limitedOffset = applyPanLimit({ x: newPanX, y: newPanY }, newZoom)
-
-                        // オーバースクロール計算 (Pinch/2-Finger Pan)
-                        const OVERSCROLL_RESISTANCE = 0.6
-                        const diffY = (newPanY - limitedOffset.y) * OVERSCROLL_RESISTANCE
-                        setOverscroll({ x: 0, y: diffY })
-
-                        setZoom(newZoom)
-                        setPanOffset(limitedOffset)
+                        applyPinch(gestureRef.current, touchPair(e.touches))
                     }
                 } else if (e.touches.length === 1) {
                     // --- Handle Single Touch ---

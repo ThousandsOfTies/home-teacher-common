@@ -24,7 +24,7 @@ interface WheelPageNavigationOptions {
     pathsByPage?: ReadonlyMap<number, DrawingPath[]>
     drawPreviewStroke?: PreviewStrokeRenderer
     onPageChange: (page: number) => void
-    onViewportChange: (zoom: number, pan: { x: number; y: number }) => void
+    onViewportChange: (zoom: number, pan: { x: number; y: number }, paperSize: { width: number; height: number }) => void
 }
 
 type Turn = {
@@ -158,7 +158,8 @@ export const useWheelPageNavigation = (options: WheelPageNavigationOptions) => {
                     if (pending.current !== turn) return
                     turn.phase = 'rendering'
                     setOffset(0)
-                    latest.current.onViewportChange(destinationZoom, destinationPan)
+                    latest.current.onViewportChange(destinationZoom, destinationPan,
+                        { width: snapshot.width, height: snapshot.height })
                     latest.current.onPageChange(turn.targetPage)
                     // Rendering failures must not leave a frozen overlay on screen.
                     turn.timer = setTimeout(() => clearTurn(), 8000)
