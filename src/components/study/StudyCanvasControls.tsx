@@ -34,16 +34,18 @@ export function StudyCanvasControls({
         size: tool === 'eraser' ? eraserSize : penSize,
     })
 
-    return <aside className={`study-canvas-controls${showOpacity ? ' has-opacity' : ''}`}
+    return <aside className={`study-canvas-controls${opacity ? ' supports-opacity' : ''}`}
         aria-label={t('studyCanvasControls.title')} data-wheel-panel-navigation-ignore
         onPointerDown={event => event.stopPropagation()}
         onMouseDown={event => event.stopPropagation()}
         onTouchStart={event => event.stopPropagation()}>
         {tool && <div className="study-canvas-adjustments" role="group" aria-label={sizeLabel}>
             <label className="study-canvas-slider" title={sizeValue}>
-                {tool === 'eraser' ? <BiEraser aria-hidden="true" />
-                    : <span className="study-canvas-size-preview" aria-hidden="true"
-                        style={{ width: 5 + penSize, height: 5 + penSize }} />}
+                <span className="study-canvas-slider-icon" aria-hidden="true">
+                    {tool === 'eraser' ? <BiEraser />
+                        : <span className="study-canvas-size-preview"
+                            style={{ width: 5 + penSize, height: 5 + penSize }} />}
+                </span>
                 {tool === 'eraser' ? <input type="range" min="0" max={ERASER_SIZE_OPTIONS.length - 1} step="1"
                     value={Math.max(0, ERASER_SIZE_OPTIONS.indexOf(eraserSize as typeof ERASER_SIZE_OPTIONS[number]))}
                     aria-label={sizeLabel} aria-valuetext={sizeValue}
@@ -54,7 +56,7 @@ export function StudyCanvasControls({
                 <output>{tool === 'eraser' ? eraserSize : penSize}</output>
             </label>
             {showOpacity && <label className="study-canvas-slider" title={t('studyCanvasControls.opacityValue', { value: opacity.value })}>
-                <FiDroplet aria-hidden="true" />
+                <span className="study-canvas-slider-icon" aria-hidden="true"><FiDroplet /></span>
                 <input type="range" min="10" max="100" step="1" value={opacity.value}
                     aria-label={t('studyCanvasControls.opacity')}
                     aria-valuetext={t('studyCanvasControls.opacityValue', { value: opacity.value })}

@@ -15,7 +15,9 @@
 }
 
 .study-canvas-adjustments {
-    flex: 0 1 auto;
+    /* One size slider fills the same frame as CopiCopi's two brush sliders. */
+    flex: 0 1 480px;
+    height: 480px;
     min-height: 0;
     width: 100%;
     display: flex;
@@ -48,15 +50,21 @@
     padding-top: 10px;
 }
 
-.study-canvas-slider svg,
-.study-canvas-size-preview {
+.study-canvas-slider-icon {
     flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+}
+
+.study-canvas-slider-icon svg {
     width: 20px;
     height: 20px;
 }
 
 .study-canvas-size-preview {
-    margin: 2.5px 0;
     border-radius: 50%;
     background: #34473c;
 }
@@ -138,9 +146,9 @@
 .study-canvas-tab-separator { color: #879c8e; }
 
 @media (max-height: 480px) {
-    .study-canvas-controls.has-opacity { width: 108px; }
-    .study-canvas-controls.has-opacity .study-canvas-adjustments { flex-direction: row; }
-    .study-canvas-controls.has-opacity .study-canvas-slider + .study-canvas-slider {
+    .study-canvas-controls.supports-opacity { width: 108px; }
+    .study-canvas-controls.supports-opacity .study-canvas-adjustments { flex-direction: row; }
+    .study-canvas-controls.supports-opacity .study-canvas-slider + .study-canvas-slider {
         border-top: 0;
         border-left: 1px solid rgba(78, 103, 89, 0.16);
         padding-top: 0;
