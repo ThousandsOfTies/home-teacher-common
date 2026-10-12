@@ -1,4 +1,19 @@
 {
+    "studyCanvasControls": {
+        "title": "描画と表示の調整",
+        "views": "画面表示切替",
+        "penSize": "ペンの太さ",
+        "penValue": "ペンの太さ：{{size}}px",
+        "eraserSize": "消しゴムの大きさ",
+        "eraserValue": "消しゴムの大きさ：{{size}}px",
+        "opacity": "ペンの濃さ",
+        "opacityValue": "濃さ：{{value}}%",
+        "single": "単画面に切り替え",
+        "switch": "A/Bを切り替え",
+        "split": "分割表示に切り替え",
+        "swap": "A/Bを左右で入れ替え",
+        "pdfOnly": "画面表示切替はPDF画面で使えます"
+    },
     "pdfEditor": {
         "home": "ホームに戻る",
         "subject": "教科",

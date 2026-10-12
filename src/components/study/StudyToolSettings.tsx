@@ -4,8 +4,6 @@ import { BiEraser } from 'react-icons/bi'
 
 export type TextDirection = 'horizontal' | 'vertical-rl' | 'vertical-lr'
 
-const ERASER_SIZE_OPTIONS = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100] as const
-
 interface ToolButtonProps {
     active: boolean
     popupVisible: boolean
@@ -13,28 +11,11 @@ interface ToolButtonProps {
     title: string
 }
 
-interface StudyEraserToolProps extends ToolButtonProps {
-    size: number
-    setSize: (size: number) => void
-    sizeLabel: string
-}
-
-export function StudyEraserTool({ active, popupVisible, onClick, title, size, setSize, sizeLabel }: StudyEraserToolProps) {
-    return <div style={{ position: 'relative' }}>
-        <button onClick={onClick} className={active ? 'active' : ''} title={title}>
-            <BiEraser size={20} className="icon-scale-13" />
-        </button>
-        {active && popupVisible && <div className="tool-popup">
-            <div className="popup-row">
-                <label>{sizeLabel}</label>
-                <input type="range" min="0" max={ERASER_SIZE_OPTIONS.length - 1} step="1"
-                    value={Math.max(0, ERASER_SIZE_OPTIONS.indexOf(size as typeof ERASER_SIZE_OPTIONS[number]))}
-                    onChange={event => setSize(ERASER_SIZE_OPTIONS[Number(event.target.value)])}
-                    style={{ width: '100px' }} aria-valuetext={`${size}px`} />
-                <span>{size}px</span>
-            </div>
-        </div>}
-    </div>
+export function StudyEraserTool({ active, onClick, title }: Omit<ToolButtonProps, 'popupVisible'>) {
+    return <button type="button" onClick={onClick} className={active ? 'active' : ''}
+        title={title} aria-label={title} aria-pressed={active}>
+        <BiEraser size={20} className="icon-scale-13" />
+    </button>
 }
 
 interface StudyTextToolProps extends ToolButtonProps {

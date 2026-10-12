@@ -1,4 +1,19 @@
 {
+    "studyCanvasControls": {
+        "title": "Drawing and view controls",
+        "views": "View switching",
+        "penSize": "Pen width",
+        "penValue": "Pen width: {{size}}px",
+        "eraserSize": "Eraser size",
+        "eraserValue": "Eraser size: {{size}}px",
+        "opacity": "Pen opacity",
+        "opacityValue": "Opacity: {{value}}%",
+        "single": "Switch to single view",
+        "switch": "Switch between A and B",
+        "split": "Switch to split view",
+        "swap": "Swap A and B sides",
+        "pdfOnly": "View switching is available on the PDF screen"
+    },
     "pdfEditor": {
         "home": "Back to home",
         "subject": "Subject",
