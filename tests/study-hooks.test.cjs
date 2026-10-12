@@ -363,6 +363,38 @@ test('split resizing uses the current container, persists a clamped ratio and re
   assert.equal(state.document.listeners.get('touchmove').size, 0)
 })
 
+test('page view commands retain the reading apps B-tab policy and delegate swaps only in split view', () => {
+  const state = harness('useStudyPageView.ts'), swaps = []
+  const options = { initialView: { mode: 'single', activeTab: 'B' }, splitActiveTab: 'B',
+    onSwapPanes: () => swaps.push('swap') }
+  const render = () => state.render('useStudyPageView', options)
+  let view = render()
+  assert.equal(view.isSplitView, false); assert.equal(view.activeTab, 'B')
+  view.toggleActiveTab(); view = render(); assert.equal(view.activeTab, 'A')
+  view.toggleSplitView(); view = render()
+  assert.equal(view.isSplitView, true); assert.equal(view.activeTab, 'B'); assert.equal(swaps.length, 0)
+  view.toggleSplitView(); view.toggleSplitView()
+  assert.deepEqual(swaps, ['swap', 'swap'])
+  view.showTab('A'); view = render()
+  assert.equal(view.isSplitView, true); assert.equal(view.activeTab, 'A')
+  view.toggleActiveTab(); view = render()
+  assert.equal(view.isSplitView, false); assert.equal(view.activeTab, 'B')
+})
+
+test('drawing app keeps its active pane when entering/leaving split and rapid commands use the latest view', () => {
+  const state = harness('useStudyPageView.ts'), swaps = []
+  const options = { initialView: { mode: 'split', activeTab: 'A' }, onSwapPanes: () => swaps.push('swap') }
+  const render = () => state.render('useStudyPageView', options)
+  let view = render()
+  view.toggleActiveTab(); view.toggleActiveTab(); view.toggleSplitView(); view.toggleSplitView()
+  view = render()
+  assert.equal(view.isSplitView, true); assert.equal(view.activeTab, 'B')
+  assert.deepEqual(swaps, ['swap'])
+  view.toggleActiveTab(); view = render()
+  assert.equal(view.isSplitView, false); assert.equal(view.activeTab, 'B')
+  view.toggleActiveTab(); view = render(); assert.equal(view.activeTab, 'A')
+})
+
 test('page navigation flushes the leaving page, rejects invalid pages, and debounces page-position writes', () => {
   const writes = [], flushes = [], options = []
   const state = harness('useStudyPDFPages.ts', {
@@ -371,14 +403,39 @@ test('page navigation flushes the leaving page, rejects invalid pages, and debou
   })
   const record = { id: 'book', lastPageNumberA: 1, lastPageNumberB: 2 }
   const render = () => state.render('useStudyPDFPages', record, record.id)
-  let view = render(); view.handlePageAChange(0); view.handlePageBChange(4)
+  let view = render()
+  for (const page of [0, 4, 1.5, NaN, Infinity]) { view.handlePageAChange(page); view.handlePageBChange(page) }
   assert.equal(flushes.length, 0)
   view.handlePageAChange(2); view = render(); view.handlePageAChange(3); render()
   assert.deepEqual(flushes, [['book', 1], ['book', 2]])
   assert.equal(writes.length, 0); state.tick()
   assert.deepEqual(JSON.parse(JSON.stringify(writes)), [['book', { lastPageNumberA: 3 }]])
-  view = render(); view.setPageB(12); render(); options.at(-1).onLoadSuccess(3)
-  assert.equal(render().pageB, 1)
+  view = render(); view.swapPages(); view = render()
+  assert.equal(view.pageA, 2); assert.equal(view.pageB, 3)
+  assert.deepEqual(flushes.slice(-2), [['book', 3], ['book', 2]])
+  state.tick()
+  assert.deepEqual(JSON.parse(JSON.stringify(writes.at(-1))), ['book', { lastPageNumberA: 2, lastPageNumberB: 3 }])
+  view.handlePageAChange(1); view.swapPages(); view = render()
+  assert.equal(view.pageA, 3); assert.equal(view.pageB, 1)
+  state.unmount()
+})
+
+test('saved out-of-range page positions recover together and equal-page swaps do not flush or write', () => {
+  const writes = [], flushes = [], options = []
+  const state = harness('useStudyPDFPages.ts', {
+    '../utils/indexedDB': { flushDrawingSaves: async (...args) => flushes.push(args), updatePDFRecord: async (...args) => writes.push(args) },
+    './pdf/usePDFRenderer': { usePDFRenderer: (record, config) => { options.push(config); return { numPages: 3, pdfDoc: {}, isLoading: false } } },
+  })
+  const record = { id: 'book', lastPageNumberA: 12, lastPageNumberB: -2 }
+  const render = () => state.render('useStudyPDFPages', record, record.id)
+  render(); options.at(-1).onLoadSuccess(3)
+  let view = render(); assert.equal(view.pageA, 1); assert.equal(view.pageB, 1)
+  state.tick()
+  assert.deepEqual(JSON.parse(JSON.stringify(writes)), [['book', { lastPageNumberA: 1, lastPageNumberB: 1 }]])
+  const before = flushes.length
+  view.swapPages(); view.handlePageAChange(1); view.handlePageBChange(1)
+  render(); state.tick()
+  assert.equal(flushes.length, before); assert.equal(writes.length, 1)
   state.unmount()
 })
 

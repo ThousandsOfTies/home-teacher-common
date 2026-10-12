@@ -1,7 +1,5 @@
 import React, { useEffect, useRef } from 'react'
 import { FiHome } from 'react-icons/fi'
-import { StrokeInputDiagnostics } from './StrokeInputDiagnostics'
-import { StudyViewControls, type StudyViewControlsProps } from './StudyViewControls'
 import './StudyToolbarNavigation.css'
 
 export interface BreadcrumbItem {
@@ -14,7 +12,6 @@ export interface BreadcrumbItem {
 interface StudyToolbarNavigationProps {
     onBack?: () => void
     breadcrumbs?: BreadcrumbItem[]
-    viewControls?: StudyViewControlsProps
     labels: {
         home: string
     }
@@ -22,7 +19,7 @@ interface StudyToolbarNavigationProps {
 
 /** Keep navigation mounted across PDF, answer and teacher panels to preserve layout. */
 export function StudyToolbarNavigation({
-    onBack, breadcrumbs, viewControls, labels,
+    onBack, breadcrumbs, labels,
 }: StudyToolbarNavigationProps) {
     const breadcrumbsRef = useRef<HTMLDivElement>(null)
     const currentIndex = breadcrumbs?.findIndex(crumb => crumb.isCurrent) ?? -1
@@ -46,10 +43,8 @@ export function StudyToolbarNavigation({
     }, [currentIndex, currentLabel, breadcrumbs?.length, hasHome])
 
     return <>
-        <StrokeInputDiagnostics />
-        {viewControls && <StudyViewControls {...viewControls} />}
         {onBack && <div className="study-toolbar-navigation">
-            <button type="button" onClick={onBack} title={labels.home} aria-label={labels.home}
+            <button type="button" className="study-toolbar-home" onClick={onBack} title={labels.home} aria-label={labels.home}
                 style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                 <FiHome size={20} />
             </button>

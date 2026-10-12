@@ -3,6 +3,7 @@ import { SubjectInfo } from '../../services/api';
 import { MdCleaningServices, MdContrast, MdLightbulbOutline } from 'react-icons/md';
 import { FiArrowLeft } from 'react-icons/fi';
 import { useTranslation } from 'react-i18next';
+import './EditorToolbar.css';
 
 interface EditorToolbarProps {
     onBack?: () => void;
@@ -57,7 +58,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
     const language = i18n.language.startsWith('ja') ? 'ja' : 'en';
 
     return (
-        <div className="toolbar editor-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', backgroundColor: '#f5f6fa', borderBottom: '1px solid #dcdde1', flexWrap: 'nowrap', overflowX: 'auto' }}>
+        <div className="editor-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', backgroundColor: '#f5f6fa', borderBottom: '1px solid #dcdde1', flexWrap: 'nowrap', overflowX: 'auto' }}>
 
             {/* Left Area: Back & Pagination */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>

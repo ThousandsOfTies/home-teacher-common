@@ -26,6 +26,7 @@ function load(relative, react = React) {
         // Navigation tests leave the opt-in recorder closed; its event handling is tested in drawing-common.
         if (name === './StrokeInputDiagnostics') return { StrokeInputDiagnostics: () => null }
         if (name === './StudyViewControls') return load('components/study/StudyViewControls.tsx')
+        if (name === './StudyToolbarNavigation') return load('components/study/StudyToolbarNavigation.tsx')
         return require(name)
     } })
     return exports
@@ -37,6 +38,7 @@ const { StudyToolbarNavigation } = load('components/study/StudyToolbarNavigation
 const { StudyEraserTool, StudyTextTool } = load('components/study/StudyToolSettings.tsx')
 const { StudyCanvasControls } = load('components/study/StudyCanvasControls.tsx')
 const { StudyViewControls } = load('components/study/StudyViewControls.tsx')
+const { StudyToolbarFrame } = load('components/study/StudyToolbarFrame.tsx')
 const noop = () => {}
 
 function nodes(tree, predicate) {
@@ -91,6 +93,19 @@ const viewProps = { pageViewControlsEnabled: true, isSplitView: false, activeTab
     toggleActiveTab: noop, toggleSplitView: noop }
 const canvasProps = { tool: 'pen', penSize: 3, setPenSize: noop,
     eraserSize: 20, setEraserSize: noop }
+
+test('toolbar frame composes view controls, navigation and app tools in that order across panel modes', () => {
+    for (const enabled of [true, false]) {
+        const html = renderToStaticMarkup(StudyToolbarFrame({ ...navigationProps, homeLabel: 'Home',
+            viewControls: { ...viewProps, pageViewControlsEnabled: enabled },
+            children: React.createElement('button', { 'data-app-tool': true }, 'App tool') }))
+        assert.ok(html.indexOf('study-view-controls') < html.indexOf('study-toolbar-navigation'))
+        assert.ok(html.indexOf('study-toolbar-navigation') < html.indexOf('study-toolbar-tools'))
+        assert.ok(html.includes('data-app-tool="true"'))
+        assert.equal((html.match(/disabled=""/g) ?? []).length, enabled ? 0 : 2)
+        assert.equal((html.match(/aria-label="Home"/g) ?? []).length, 1)
+    }
+})
 
 test('shared toolbar view controls retain actions and disable them outside the PDF', () => {
     const actions = []
