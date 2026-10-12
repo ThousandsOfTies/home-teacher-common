@@ -31,6 +31,8 @@ interface PDFPaneBaseProps {
     pdfDoc: any // pdfjsLib.PDFDocumentProxy | null
     pageNum: number
     onPageChange: (page: number) => void
+    /** Prepare this hidden page after the visible pane has rendered. */
+    preloadPageNum?: number
 
     // 描画ツール
     drawingPaths: DrawingPath[]
@@ -93,6 +95,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         pdfDoc,
         pageNum,
         onPageChange,
+        preloadPageNum,
         drawingPaths,
         drawingPathsByPage,
         drawPreviewStroke,
@@ -1393,6 +1396,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             renderScale={adaptiveRenderScale}
                             renderContent={!hidePdfBackground}
                             pageNum={pageNum}
+                            preloadPageNum={preloadPageNum}
                             onPageRendered={handlePageRendered}
                         />
                     </div>

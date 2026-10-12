@@ -6,6 +6,7 @@ import * as pdfjsLib from 'pdfjs-dist'
 import { PDFFileRecord, fetchPDFData, fetchPDFRange } from '../../utils/indexedDB'
 import { isIOSLikeDevice } from '../../utils/platform'
 import { LARGE_PDF_THRESHOLD_BYTES, PDFBlobRangeTransport, getRangePDFDocument } from '../../utils/pdfRange'
+import { clearPDFPagePreload } from '../../utils/pdfPagePreload'
 
 // PDF.jsのworkerを設定（ローカルファイルを使用、Safari/Edge対応）
 // PDF.jsのworkerを設定
@@ -166,6 +167,7 @@ export const usePDFRenderer = (
       isActive = false
       rangeTransport?.abort()
       if (timeoutId !== null) window.clearTimeout(timeoutId)
+      if (loadedPdf) clearPDFPagePreload(loadedPdf)
       if (loadingTask) {
         loadingTask.destroy().catch(() => { })
       }
