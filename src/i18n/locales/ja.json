@@ -1,6 +1,6 @@
 {
     "studyCanvasControls": {
-        "title": "描画と表示の調整",
+        "title": "描画の調整",
         "views": "画面表示切替",
         "penSize": "ペンの太さ",
         "penValue": "ペンの太さ：{{size}}px",

@@ -25,14 +25,18 @@ function load(relative, react = React) {
         if (name.endsWith('.css')) return {}
         // Navigation tests leave the opt-in recorder closed; its event handling is tested in drawing-common.
         if (name === './StrokeInputDiagnostics') return { StrokeInputDiagnostics: () => null }
+        if (name === './StudyViewControls') return load('components/study/StudyViewControls.tsx')
         return require(name)
     } })
     return exports
 }
 
-const { StudyToolbarNavigation } = load('components/study/StudyToolbarNavigation.tsx')
+const { StudyToolbarNavigation } = load('components/study/StudyToolbarNavigation.tsx', {
+    ...React, useRef: () => ({ current: null }), useEffect: () => {},
+})
 const { StudyEraserTool, StudyTextTool } = load('components/study/StudyToolSettings.tsx')
 const { StudyCanvasControls } = load('components/study/StudyCanvasControls.tsx')
+const { StudyViewControls } = load('components/study/StudyViewControls.tsx')
 const noop = () => {}
 
 function nodes(tree, predicate) {
@@ -83,22 +87,24 @@ test('navigation delegates actions and renders cover content only when provided 
     assert.ok(!plainHTML.includes('settings') && !plainHTML.includes('<img'))
 })
 
-const canvasProps = { pageViewControlsEnabled: true, isSplitView: false, activeTab: 'A',
-    toggleActiveTab: noop, toggleSplitView: noop, tool: 'pen', penSize: 3, setPenSize: noop,
+const viewProps = { pageViewControlsEnabled: true, isSplitView: false, activeTab: 'A',
+    toggleActiveTab: noop, toggleSplitView: noop }
+const canvasProps = { tool: 'pen', penSize: 3, setPenSize: noop,
     eraserSize: 20, setEraserSize: noop }
 
-test('shared canvas controls retain view actions in every tool and disable them outside the PDF', () => {
+test('shared toolbar view controls retain actions and disable them outside the PDF', () => {
     const actions = []
-    const props = { ...canvasProps, toggleActiveTab: () => actions.push('tab'), toggleSplitView: () => actions.push('split') }
+    const props = { ...viewProps, toggleActiveTab: () => actions.push('tab'), toggleSplitView: () => actions.push('split') }
     for (const tool of ['pen', 'eraser', null]) {
-        const buttons = nodes(StudyCanvasControls({ ...props, tool }), node => node.type === 'button')
+        const buttons = nodes(StudyViewControls(props), node => node.type === 'button')
         assert.deepEqual(buttons.map(button => button.props.className), ['tab-switcher-btn', 'split-view-btn'])
         for (const button of buttons) button.props.onClick()
-        const disabled = nodes(StudyCanvasControls({ ...props, tool, pageViewControlsEnabled: false }), node => node.type === 'button')
+        const disabled = nodes(StudyViewControls({ ...props, pageViewControlsEnabled: false }), node => node.type === 'button')
         assert.ok(disabled.every(button => button.props.disabled && button.props['aria-pressed'] === false))
+        assert.equal(nodes(StudyCanvasControls({ ...canvasProps, tool }), node => node.type === 'button').length, 0)
     }
     assert.deepEqual(actions, ['tab', 'split', 'tab', 'split', 'tab', 'split'])
-    const splitButtons = nodes(StudyCanvasControls({ ...props, isSplitView: true }), node => node.type === 'button')
+    const splitButtons = nodes(StudyViewControls({ ...props, isSplitView: true }), node => node.type === 'button')
     assert.equal(splitButtons[0].props['aria-label'], '単画面に切り替え')
     assert.equal(splitButtons[1].props['aria-label'], 'A/Bを左右で入れ替え')
 })

@@ -1,0 +1,51 @@
+.study-view-controls {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Keep the canvas button design even when an app applies generic toolbar styles. */
+.toolbar .study-view-controls button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    box-sizing: border-box;
+    border: 1px solid #b8c9be;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.96);
+    color: #33443a;
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: none;
+}
+
+.toolbar .study-view-controls button[aria-pressed='true'] {
+    border-color: #66bb6a;
+    background: #d4ead9;
+}
+
+.toolbar .study-view-controls button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.toolbar .study-view-controls svg {
+    width: 22px;
+    height: 22px;
+}
+
+.study-view-active-tab {
+    color: #377a50;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.study-view-tab-separator { color: #879c8e; }

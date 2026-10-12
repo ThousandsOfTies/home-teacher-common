@@ -1,16 +1,11 @@
 import { useTranslation } from 'react-i18next'
 import { BiEraser } from 'react-icons/bi'
-import { FiColumns, FiDroplet, FiRepeat } from 'react-icons/fi'
+import { FiDroplet } from 'react-icons/fi'
 import './StudyCanvasControls.css'
 
 const ERASER_SIZE_OPTIONS = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100] as const
 
 interface StudyCanvasControlsProps {
-    pageViewControlsEnabled: boolean
-    isSplitView: boolean
-    activeTab: 'A' | 'B'
-    toggleActiveTab: () => void
-    toggleSplitView: () => void
     tool: 'pen' | 'eraser' | null
     penSize: number
     setPenSize: (size: number) => void
@@ -20,15 +15,12 @@ interface StudyCanvasControlsProps {
     opacity?: { value: number; onChange: (value: number) => void }
 }
 
-/** Mounted outside the sliding panels so changing tools or screens cannot move the view buttons. */
+/** Mounted outside the sliding panels to keep the drawing adjustments in one place. */
 export function StudyCanvasControls({
-    pageViewControlsEnabled, isSplitView, activeTab, toggleActiveTab, toggleSplitView,
     tool, penSize, setPenSize, eraserSize, setEraserSize, opacity,
 }: StudyCanvasControlsProps) {
     const { t } = useTranslation()
     const showOpacity = tool === 'pen' && opacity !== undefined
-    const switchLabel = t(isSplitView ? 'studyCanvasControls.single' : 'studyCanvasControls.switch')
-    const splitLabel = t(isSplitView ? 'studyCanvasControls.swap' : 'studyCanvasControls.split')
     const sizeLabel = t(tool === 'eraser' ? 'studyCanvasControls.eraserSize' : 'studyCanvasControls.penSize')
     const sizeValue = t(tool === 'eraser' ? 'studyCanvasControls.eraserValue' : 'studyCanvasControls.penValue', {
         size: tool === 'eraser' ? eraserSize : penSize,
@@ -64,21 +56,5 @@ export function StudyCanvasControls({
                 <output>{opacity.value}%</output>
             </label>}
         </div>}
-        <div className="study-canvas-view-controls" role="group" aria-label={t('studyCanvasControls.views')}>
-            <button type="button" className="tab-switcher-btn"
-                onClick={toggleActiveTab} disabled={!pageViewControlsEnabled}
-                aria-label={switchLabel} aria-pressed={pageViewControlsEnabled && !isSplitView}
-                title={pageViewControlsEnabled ? switchLabel : t('studyCanvasControls.pdfOnly')}>
-                <span className={activeTab === 'A' ? 'study-canvas-active-tab' : undefined}>A</span>
-                <span className="study-canvas-tab-separator" aria-hidden="true">/</span>
-                <span className={activeTab === 'B' ? 'study-canvas-active-tab' : undefined}>B</span>
-            </button>
-            <button type="button" className="split-view-btn"
-                onClick={toggleSplitView} disabled={!pageViewControlsEnabled}
-                aria-label={splitLabel} aria-pressed={pageViewControlsEnabled && isSplitView}
-                title={pageViewControlsEnabled ? splitLabel : t('studyCanvasControls.pdfOnly')}>
-                {isSplitView ? <FiRepeat aria-hidden="true" /> : <FiColumns aria-hidden="true" />}
-            </button>
-        </div>
     </aside>
 }

@@ -1,6 +1,6 @@
 {
     "studyCanvasControls": {
-        "title": "Drawing and view controls",
+        "title": "Drawing controls",
         "views": "View switching",
         "penSize": "Pen width",
         "penValue": "Pen width: {{size}}px",
