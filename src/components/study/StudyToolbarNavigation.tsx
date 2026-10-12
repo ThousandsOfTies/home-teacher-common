@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react'
-import { FiHome } from 'react-icons/fi'
+import { FiChevronRight, FiHome } from 'react-icons/fi'
 import './StudyToolbarNavigation.css'
 
 export interface BreadcrumbItem {
@@ -33,8 +33,11 @@ export function StudyToolbarNavigation({
         const revealCurrent = () => {
             const viewport = strip.getBoundingClientRect()
             const item = current.getBoundingClientRect()
+            const separatorLeft = current.previousElementSibling?.getBoundingClientRect().left ?? item.left
+            // Reveal the separator with its crumb when both fit in the viewport.
+            const left = item.right - separatorLeft <= viewport.width ? separatorLeft : item.left
             if (item.right > viewport.right) strip.scrollLeft += item.right - viewport.right
-            else if (item.left < viewport.left) strip.scrollLeft += item.left - viewport.left
+            else if (left < viewport.left) strip.scrollLeft += left - viewport.left
         }
         revealCurrent()
         const observer = new ResizeObserver(revealCurrent)
@@ -50,7 +53,7 @@ export function StudyToolbarNavigation({
             </button>
             {breadcrumbs && breadcrumbs.length > 0 && <div className="study-toolbar-breadcrumbs" ref={breadcrumbsRef}>
                 {breadcrumbs.map((crumb, index) => <React.Fragment key={index}>
-                    <span aria-hidden="true" style={{ color: '#bbb', fontSize: '13px', flexShrink: 0 }}>›</span>
+                    <FiChevronRight className="study-toolbar-separator" aria-hidden="true" />
                     <span
                         onClick={crumb.isCurrent ? undefined : crumb.onClick}
                         title={crumb.content ? crumb.label : undefined}
