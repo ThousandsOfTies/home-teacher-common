@@ -1,4 +1,5 @@
 .study-toolbar {
+    --study-view-control-height: 48px;
     display: flex;
     align-items: center;
     gap: 0.5rem;

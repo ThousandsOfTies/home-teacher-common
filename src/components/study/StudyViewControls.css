@@ -11,7 +11,7 @@
     justify-content: center;
     gap: 4px;
     width: 48px;
-    height: 48px;
+    height: var(--study-view-control-height, 48px);
     padding: 0;
     box-sizing: border-box;
     border: 1px solid #b8c9be;
