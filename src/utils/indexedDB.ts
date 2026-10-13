@@ -335,6 +335,12 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(SNS_STORE_NAME)) {
         const snsStore = db.createObjectStore(SNS_STORE_NAME, { keyPath: 'id' });
         snsStore.createIndex('createdAt', 'createdAt', { unique: false });
+        // App-provided defaults apply only when the SNS store is first created.
+        // Existing selections, including an explicitly empty selection, stay intact.
+        const defaultLinks = import.meta.env.VITE_DEFAULT_SNS_LINKS as Omit<SNSLinkRecord, 'createdAt'>[] | undefined;
+        for (const link of defaultLinks ?? []) {
+          snsStore.add({ ...link, createdAt: Date.now() });
+        }
       }
 
       // 採点履歴用オブジェクトストアが存在しない場合は作成
