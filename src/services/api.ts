@@ -1,8 +1,46 @@
 
 import { AVAILABLE_MODELS, DEFAULT_MODEL_ID, SUBJECTS } from '../constants/grading'
+import i18n from '../i18n'
+import { auth } from '../lib/firebase'
 
 import { getApiBaseUrl } from './apiConfig'
 import { normalizeGradeResponse } from './gradingResponse'
+
+const apiErrorKeys = new Map([
+  ['AUTH_REQUIRED', 'apiAuthRequired'],
+  ['RATE_LIMITED', 'apiRateLimited'],
+  ['SERVICE_UNAVAILABLE', 'apiServiceUnavailable'],
+  ['INVALID_IMAGE', 'apiInvalidImage'],
+  ['INVALID_AI_RESPONSE', 'apiInvalidAiResponse'],
+  ['AI_TIMEOUT', 'apiAiTimeout'],
+  ['AI_UNAVAILABLE', 'apiAiUnavailable'],
+])
+
+async function aiRequestHeaders(language?: string): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const user = auth.currentUser
+  if (user) {
+    try {
+      const token = await user.getIdToken()
+      if (!token) throw new Error()
+      headers.Authorization = `Bearer ${token}`
+    } catch {
+      // Do not send an unauthenticated request or expose a token provider's error details.
+      throw new Error(i18n.t('errors.apiAuthFailed', { lng: language, ns: 'translation' }))
+    }
+  }
+  return headers
+}
+
+function apiErrorMessage(data: unknown, status: number, language: string): string {
+  if (data && typeof data === 'object') {
+    const { code, error } = data as { code?: unknown, error?: unknown }
+    const key = typeof code === 'string' ? apiErrorKeys.get(code) : undefined
+    if (key) return i18n.t(`errors.${key}`, { lng: language, ns: 'translation' })
+    if (typeof error === 'string' && error) return error
+  }
+  return `HTTP Error: ${status}`
+}
 
 export interface ModelInfo {
   id: string
@@ -82,9 +120,7 @@ export const gradeWork = async (
   try {
     const response = await fetch(`${getApiBaseUrl()}/api/grade-work`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await aiRequestHeaders(language),
       body: JSON.stringify({
         croppedImageData,
         // Omit the default selection so the API controls the deployed default.
@@ -98,7 +134,7 @@ export const gradeWork = async (
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.error || `HTTP Error: ${response.status}`)
+      throw new Error(apiErrorMessage(errorData, response.status, language))
     }
 
     const result = normalizeGradeResponse(await response.json())
@@ -124,7 +160,7 @@ export const askQuestion = async (
   try {
     const response = await fetch(`${getApiBaseUrl()}/api/ask-question`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await aiRequestHeaders(language),
       body: JSON.stringify({
         questionImageData,
         parentResult,
@@ -134,7 +170,7 @@ export const askQuestion = async (
     })
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.error || `HTTP Error: ${response.status}`)
+      throw new Error(apiErrorMessage(errorData, response.status, language))
     }
     return normalizeGradeResponse(await response.json())
   } catch (error) {
@@ -209,9 +245,7 @@ export const detectSubject = async (croppedImageData: string): Promise<DetectSub
   try {
     const response = await fetch(`${getApiBaseUrl()}/api/detect-subject`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await aiRequestHeaders(),
       body: JSON.stringify({
         image: croppedImageData
       }),
