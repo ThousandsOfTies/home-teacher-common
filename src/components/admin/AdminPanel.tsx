@@ -118,6 +118,11 @@ export default function AdminPanel({
   const [showParentSettings, setShowParentSettings] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+  const [notificationTestPending, setNotificationTestPending] = useState(false);
+  const [notificationTestMessage, setNotificationTestMessage] = useState<
+    'testSent' | 'permissionDenied' | 'permissionNotGranted' | 'unsupported' | 'install' | 'testFailed' | null
+  >(null);
+  const [notificationTestError, setNotificationTestError] = useState<string | null>(null);
   const [showStorageInfo, setShowStorageInfo] = useState(false);
   const [snsTimeLimit, setSnsTimeLimit] = useState<number>(60); // デフォルト60分
   const [snsTimeLimitInput, setSnsTimeLimitInput] = useState<string>('60'); // 入力フィールド用
@@ -246,36 +251,45 @@ export default function AdminPanel({
 
   // 通知許可をリクエスト
   const requestNotificationPermission = async () => {
-    // PWAとしてインストールされているかチェック（iOS/iPadOSでは必須）
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-      || (window.navigator as any).standalone
-      || document.referrer.includes('android-app://');
-
-    if (!('Notification' in window)) {
-      if (!isStandalone) {
-        alert(t('notifications.install'));
-      } else {
-        alert(t('notifications.unsupported'));
-      }
-      return false;
-    }
-
+    setNotificationTestPending(true);
+    setNotificationTestMessage(null);
+    setNotificationTestError(null);
     try {
-      const permission = await Notification.requestPermission();
-      setNotificationPermission(permission);
+      // PWAとしてインストールされているかチェック（iOS/iPadOSでは必須）
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || (window.navigator as any).standalone
+        || document.referrer.includes('android-app://');
 
-      if (permission === 'granted') {
-        // テスト通知を送信
-        await showBrowserNotification(APP_NAME, {
-          body: t('notifications.enabled'),
-          icon: new URL('app.png', new URL(import.meta.env.BASE_URL, window.location.origin)).href
-        });
+      if (!('Notification' in window)) {
+        setNotificationTestMessage(isStandalone ? 'unsupported' : 'install');
+        return false;
       }
-      return permission === 'granted';
+
+      // Ask only while undecided. An existing denial needs device/browser settings.
+      const permission = Notification.permission === 'default'
+        ? await Notification.requestPermission()
+        : Notification.permission;
+      setNotificationPermission(permission);
+      if (permission !== 'granted') {
+        setNotificationTestMessage(permission === 'denied' ? 'permissionDenied' : 'permissionNotGranted');
+        return false;
+      }
+
+      const shown = await showBrowserNotification(APP_NAME, {
+        body: t('notifications.testBody'),
+        icon: new URL('app.png', new URL(import.meta.env.BASE_URL, window.location.origin)).href
+      });
+      // API success means the device accepted the request, not that a banner appeared.
+      setNotificationTestMessage(shown ? 'testSent' : 'testFailed');
+      if (!shown) setNotificationPermission(Notification.permission);
+      return shown;
     } catch (error) {
       console.error('通知許可のリクエストに失敗しました:', error);
-      alert(t('notifications.permissionFailed'));
+      setNotificationTestMessage('testFailed');
+      setNotificationTestError(error instanceof Error ? `${error.name}: ${error.message}` : String(error));
       return false;
+    } finally {
+      setNotificationTestPending(false);
     }
   };
 
@@ -542,7 +556,12 @@ export default function AdminPanel({
                   </label>
 
                   {/* トグルスイッチ */}
-                  <div
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={notificationEnabled}
+                    aria-label={t('snsSettings.notificationEnable')}
+                    disabled={notificationTestPending}
                     onClick={async () => {
                       const newValue = !notificationEnabled;
                       if (newValue) {
@@ -561,7 +580,9 @@ export default function AdminPanel({
                       borderRadius: '12px',
                       position: 'relative',
                       transition: 'background-color 0.2s ease',
-                      cursor: 'pointer',
+                      cursor: notificationTestPending ? 'wait' : 'pointer',
+                      border: 'none',
+                      padding: 0,
                       flexShrink: 0
                     }}
                   >
@@ -576,13 +597,40 @@ export default function AdminPanel({
                       transition: 'left 0.2s ease',
                       boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
                     }} />
-                  </div>
+                  </button>
                 </div>
 
-                {/* 通知許可状態の警告表示 (必要な場合のみ) */}
-                {notificationEnabled && notificationPermission === 'denied' && (
-                  <div style={{ marginTop: '8px', fontSize: '11px', color: '#e74c3c' }}>
-                    {t('notifications.blocked')}</div>
+                <div style={{ marginTop: '8px', fontSize: '12px', color: '#4b5563' }}>
+                  {t('notifications.permissionStatus', {
+                    state: t(`notifications.permissionStates.${'Notification' in window ? notificationPermission : 'unsupported'}`)
+                  })}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { void requestNotificationPermission(); }}
+                  disabled={notificationTestPending}
+                  style={{ marginTop: '8px', padding: '6px 10px', cursor: notificationTestPending ? 'wait' : 'pointer' }}
+                >
+                  {t(notificationTestPending ? 'notifications.testPending' : 'notifications.testButton')}
+                </button>
+                {notificationPermission === 'denied' && !notificationTestMessage && (
+                  <div style={{ marginTop: '8px', fontSize: '12px', color: '#b91c1c' }}>
+                    {t('notifications.permissionDenied', { app: APP_NAME })}
+                  </div>
+                )}
+                <div role="status" aria-live="polite" aria-atomic="true">
+                  {notificationTestMessage && (
+                    <p style={{ margin: '8px 0 0', fontSize: '12px', lineHeight: 1.6,
+                      whiteSpace: 'pre-line', color: notificationTestMessage === 'testSent' ? '#166534' : '#b91c1c' }}>
+                      {t(`notifications.${notificationTestMessage}`, { app: APP_NAME })}
+                    </p>
+                  )}
+                </div>
+                {notificationTestError && (
+                  <details style={{ marginTop: '8px', fontSize: '12px' }}>
+                    <summary>{t('notifications.failureDetails')}</summary>
+                    <p style={{ overflowWrap: 'anywhere' }}>{notificationTestError}</p>
+                  </details>
                 )}
               </div>
 

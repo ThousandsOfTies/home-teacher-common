@@ -55,7 +55,8 @@ test('a worker failure can fall back to desktop, and total failure is reported t
   await assert.rejects(mobile.show('Time is up'), error);
 });
 
-test('the settings switch can enable notifications on mobile without calling the desktop constructor', async () => {
+function settingsHarness({ permission = 'granted', requestResult = 'granted', workerError,
+  stalePermission = false, supported = true, standalone = true } = {}) {
   const component = fs.readFileSync(new URL('../src/components/admin/AdminPanel.tsx', import.meta.url), 'utf8');
   const ast = ts.createSourceFile('AdminPanel.tsx', component, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   let initializer;
@@ -68,22 +69,94 @@ test('the settings switch can enable notifications on mobile without calling the
   const code = ts.transpileModule('const run = ' + initializer.getText(ast), {
     compilerOptions: { target: ts.ScriptTarget.ES2022 },
   }).outputText.replace('import.meta.env.BASE_URL', "'/TutoTuto/'").replace(/export\s*\{\s*\};?/g, '');
-  const sent = [], permissions = [], alerts = [];
+  const sent = [], permissions = [], messages = [], errors = [], pending = [], permissionRequests = [];
   class Notification {
-    static permission = 'granted';
-    static requestPermission = async () => 'granted';
-    constructor() { assert.fail('Mobile settings must not use new Notification'); }
+    static permission = permission;
+    static requestPermission = async () => {
+      permissionRequests.push(true);
+      if (!stalePermission) Notification.permission = requestResult;
+      return requestResult;
+    };
+    constructor() { throw new TypeError('Mobile notification constructor is unsupported'); }
   }
-  const context = vm.createContext({ window: { Notification, location: { origin: 'https://example.test' },
-    matchMedia: () => ({ matches: true }) }, navigator: { serviceWorker: { getRegistration: async () => ({ active: {},
-    showNotification: async (title, options) => sent.push({ title, options }) }) } }, Notification, URL,
+  const context = vm.createContext({ window: { ...(supported ? { Notification } : {}),
+    navigator: { standalone }, location: { origin: 'https://example.test' },
+    matchMedia: () => ({ matches: standalone }) }, document: { referrer: '' },
+    navigator: { serviceWorker: { getRegistration: async () => ({ active: {},
+      showNotification: async (title, options) => { if (workerError) throw workerError; sent.push({ title, options }); }
+    }) } }, Notification, URL,
     APP_NAME: 'TutoTuto', t: key => key, setNotificationPermission: value => permissions.push(value),
-    alert: message => alerts.push(message), console });
+    setNotificationTestMessage: value => messages.push(value), setNotificationTestError: value => errors.push(value),
+    setNotificationTestPending: value => pending.push(value), console: { error() {} } });
   vm.runInContext(source, context);
-  const requestPermission = vm.runInContext(code + '\nrun', context);
-  assert.equal(await requestPermission(), true);
-  assert.deepEqual(permissions, ['granted']);
-  assert.equal(sent.length, 1);
-  assert.equal(sent[0].options.icon, 'https://example.test/TutoTuto/app.png');
-  assert.equal(alerts.length, 0);
+  return { run: vm.runInContext(code + '\nrun', context), sent, permissions, messages, errors, pending, permissionRequests };
+}
+
+test('the settings switch tests an existing mobile permission without requesting it again', async () => {
+  const h = settingsHarness();
+  assert.equal(await h.run(), true);
+  assert.deepEqual(h.permissions, ['granted']);
+  assert.equal(h.sent.length, 1);
+  assert.equal(h.sent[0].options.icon, 'https://example.test/TutoTuto/app.png');
+  assert.equal(h.sent[0].options.body, 'notifications.testBody');
+  assert.deepEqual(h.permissionRequests, []);
+  assert.deepEqual(h.messages, [null, 'testSent']);
+  assert.deepEqual(h.pending, [true, false]);
+});
+
+test('the settings switch cannot enable notifications after a silent false delivery result', async () => {
+  const h = settingsHarness({ permission: 'default', stalePermission: true });
+  assert.equal(await h.run(), false);
+  assert.deepEqual(h.permissions, ['granted', 'default']);
+  assert.deepEqual(h.sent, []);
+  assert.deepEqual(h.messages, [null, 'testFailed']);
+  assert.deepEqual(h.pending, [true, false]);
+});
+
+test('an existing denial explains how to recover instead of silently leaving the switch off', async () => {
+  const h = settingsHarness({ permission: 'denied' });
+  assert.equal(await h.run(), false);
+  assert.deepEqual(h.permissions, ['denied']);
+  assert.deepEqual(h.messages, [null, 'permissionDenied']);
+  assert.deepEqual(h.permissionRequests, []);
+  assert.deepEqual(h.sent, []);
+  assert.deepEqual(h.pending, [true, false]);
+});
+
+test('an undecided permission prompts directly and sends a test only after permission is granted', async () => {
+  const h = settingsHarness({ permission: 'default' });
+  assert.equal(await h.run(), true);
+  assert.deepEqual(h.permissionRequests, [true]);
+  assert.deepEqual(h.permissions, ['granted']);
+  assert.equal(h.sent.length, 1);
+  assert.deepEqual(h.messages, [null, 'testSent']);
+});
+
+test('dismissing or denying the permission prompt never reports a notification as sent', async () => {
+  for (const result of ['default', 'denied']) {
+    const h = settingsHarness({ permission: 'default', requestResult: result });
+    assert.equal(await h.run(), false);
+    assert.deepEqual(h.sent, []);
+    assert.deepEqual(h.messages, [null, result === 'denied' ? 'permissionDenied' : 'permissionNotGranted']);
+    assert.deepEqual(h.pending, [true, false]);
+  }
+});
+
+test('a failed mobile delivery leaves the switch off and exposes the actual failure for diagnosis', async () => {
+  const h = settingsHarness({ workerError: new Error('Notification service is unavailable') });
+  assert.equal(await h.run(), false);
+  assert.deepEqual(h.messages, [null, 'testFailed']);
+  assert.match(h.errors.at(-1), /Notification service is unavailable/);
+  assert.deepEqual(h.pending, [true, false]);
+});
+
+test('unsupported browsing modes explain installation requirements without calling notification APIs', async () => {
+  for (const standalone of [true, false]) {
+    const h = settingsHarness({ supported: false, standalone });
+    assert.equal(await h.run(), false);
+    assert.deepEqual(h.messages, [null, standalone ? 'unsupported' : 'install']);
+    assert.deepEqual(h.permissionRequests, []);
+    assert.deepEqual(h.sent, []);
+    assert.deepEqual(h.pending, [true, false]);
+  }
 });

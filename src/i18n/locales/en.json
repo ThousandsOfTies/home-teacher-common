@@ -548,7 +548,22 @@
         "install": "To use notifications, add this app to your home screen.\n\nSteps:\n1. Tap the Safari share button (↑)\n2. Select “Add to Home Screen”\n3. Open the app from the home screen icon",
         "enabled": "Notifications are enabled! We will notify you when time is up.",
         "permissionFailed": "Could not enable notifications. Add this app to your home screen and try again.",
-        "blocked": "⚠️ Browser notifications are blocked. Please check your settings."
+        "blocked": "⚠️ Browser notifications are blocked. Please check your settings.",
+        "permissionStatus": "Device notification permission: {{state}}",
+        "permissionStates": {
+            "granted": "Allowed",
+            "denied": "Blocked",
+            "default": "Not yet allowed",
+            "unsupported": "Unavailable in this browsing mode"
+        },
+        "testButton": "Test notification",
+        "testPending": "Sending…",
+        "testBody": "This is a test notification. Time-limit notifications use the same method.",
+        "testSent": "The device accepted the notification request. If no banner appears, check your device's notification settings, Focus or Do Not Disturb, and notification center.",
+        "permissionDenied": "Notifications are blocked on this device. Allow notifications for {{app}} in your device or browser settings.",
+        "permissionNotGranted": "Notifications have not been allowed yet. Select “Test notification” and allow them when prompted.",
+        "testFailed": "Could not send the notification. Update the app to the latest version and try again.",
+        "failureDetails": "Error details"
     },
     "languages": {
         "ja": "日本語",
