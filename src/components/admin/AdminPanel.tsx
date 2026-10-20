@@ -32,6 +32,7 @@ import { MdNewReleases, MdHistory, MdNotificationsNone, MdAccessTime, MdOutlineC
 import { useTranslation } from 'react-i18next';
 import { getSubjects, SubjectInfo } from '../../services/api';
 import { getApiBaseUrl } from '../../services/apiConfig';
+import { showBrowserNotification } from '../../utils/browserNotifications.js';
 
 interface AdminPanelProps {
   onSelectPDF: (record: PDFFileRecord) => void;
@@ -256,7 +257,7 @@ export default function AdminPanel({
       } else {
         alert(t('notifications.unsupported'));
       }
-      return;
+      return false;
     }
 
     try {
@@ -265,14 +266,16 @@ export default function AdminPanel({
 
       if (permission === 'granted') {
         // テスト通知を送信
-        new Notification(APP_NAME, {
+        await showBrowserNotification(APP_NAME, {
           body: t('notifications.enabled'),
-          icon: '/pwa-192x192.png'
+          icon: new URL('app.png', new URL(import.meta.env.BASE_URL, window.location.origin)).href
         });
       }
+      return permission === 'granted';
     } catch (error) {
       console.error('通知許可のリクエストに失敗しました:', error);
       alert(t('notifications.permissionFailed'));
+      return false;
     }
   };
 
@@ -543,9 +546,8 @@ export default function AdminPanel({
                     onClick={async () => {
                       const newValue = !notificationEnabled;
                       if (newValue) {
-                        await requestNotificationPermission();
-                        // ユーザーが拒否した場合はONにしない
-                        if (Notification.permission === 'granted') {
+                        // 許可または通知の送信に失敗した場合はONにしない。
+                        if (await requestNotificationPermission()) {
                           setNotificationEnabled(true);
                         }
                       } else {
