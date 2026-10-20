@@ -559,11 +559,15 @@
         "testButton": "Test notification",
         "testPending": "Sending…",
         "testBody": "This is a test notification. Time-limit notifications use the same method.",
-        "testSent": "The device accepted the notification request. If no banner appears, check your device's notification settings, Focus or Do Not Disturb, and notification center.",
+        "testSent": "The device accepted the notification request. If no notification appears, first check Do Not Disturb or another Focus mode.",
         "permissionDenied": "Notifications are blocked on this device. Allow notifications for {{app}} in your device or browser settings.",
         "permissionNotGranted": "Notifications have not been allowed yet. Select “Test notification” and allow them when prompted.",
         "testFailed": "Could not send the notification. Update the app to the latest version and try again.",
-        "failureDetails": "Error details"
+        "failureDetails": "Error details",
+        "helpTitle": "If notifications do not appear",
+        "helpFocus": "Do Not Disturb or another Focus mode can hide banners even when notifications arrive. Turn that mode off or allow notifications from {{app}} in that mode.",
+        "helpPermission": "In your device or browser notification settings, check that notifications and banners are allowed for {{app}}.",
+        "helpCenter": "Check notification center (your notification history) for notifications from {{app}}. On iPhone or iPad, swipe down from the top-left edge while an app is open."
     },
     "languages": {
         "ja": "日本語",

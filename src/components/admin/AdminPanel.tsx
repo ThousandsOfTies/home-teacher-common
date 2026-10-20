@@ -632,6 +632,14 @@ export default function AdminPanel({
                     <p style={{ overflowWrap: 'anywhere' }}>{notificationTestError}</p>
                   </details>
                 )}
+                <details style={{ marginTop: '12px', fontSize: '12px', color: '#374151' }}>
+                  <summary style={{ cursor: 'pointer' }}>{t('notifications.helpTitle')}</summary>
+                  <ol style={{ margin: '8px 0 0', paddingLeft: '20px', lineHeight: 1.7 }}>
+                    <li>{t('notifications.helpFocus', { app: APP_NAME })}</li>
+                    <li>{t('notifications.helpPermission', { app: APP_NAME })}</li>
+                    <li>{t('notifications.helpCenter', { app: APP_NAME })}</li>
+                  </ol>
+                </details>
               </div>
 
               {PREDEFINED_SNS.map((sns) => {
