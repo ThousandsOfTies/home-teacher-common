@@ -13,13 +13,16 @@ type Options = {
 export function useStudyOverlayTouch({ containerRef, getTargetPane, getPane, cancelSelection }: Options) {
   const gestureRef = useRef<(PinchGesture & { targetPane: Pane }) | null>(null)
   const pinchingPaneRef = useRef<PDFPaneHandle | null>(null)
-  const stopPinch = () => {
-    pinchingPaneRef.current?.setPinchActive(false)
+  const stopPinch = (cancelled = true) => {
+    const pane = pinchingPaneRef.current
     pinchingPaneRef.current = null
+    pane?.setPinchActive(false)
+    pane?.finishTouchGesture(cancelled)
   }
 
   useEffect(() => () => {
     pinchingPaneRef.current?.setPinchActive(false)
+    pinchingPaneRef.current?.finishTouchGesture(true)
     pinchingPaneRef.current = null
   }, [])
 
@@ -64,7 +67,7 @@ export function useStudyOverlayTouch({ containerRef, getTargetPane, getPane, can
   }
 
   const handleOverlayTouchEnd = (event: TouchEvent, onTouchEnd?: () => void) => {
-    if (event.touches.length < 2) stopPinch()
+    if (event.touches.length < 2) stopPinch(false)
     if (event.touches.length === 0) {
       gestureRef.current = null
       onTouchEnd?.()

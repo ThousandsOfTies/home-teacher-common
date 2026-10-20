@@ -6,7 +6,7 @@ import { PDFPagePreview, type PreviewStrokeRenderer } from './components/PDFPage
 import { DrawingPath, DrawingCanvas, DrawingViewport, useDrawing, useStrokeInput, useZoomPan, doPathsIntersect, useLassoSelection, DrawingCanvasHandle, touchPair, type PinchGesture } from '@thousands-of-ties/drawing-common'
 import { INITIAL_PDF_RENDER_SCALE, MAX_PDF_RENDER_SCALE } from '../../constants/pdf'
 import { isIOSLikeDevice } from '../../utils/platform'
-import { useWheelPageNavigation } from '../../hooks/pdf/useWheelPageNavigation'
+import { usePDFPageNavigation } from '../../hooks/pdf/usePDFPageNavigation'
 import './StudyPanel.css'
 import { ICON_SVG } from '../../constants/icons'
 import { StudyRegionMarker } from './StudyRegionMarker'
@@ -82,6 +82,8 @@ export interface PDFPaneHandle {
     setZoomValue: (zoom: number) => void
     applyPinch: (gesture: PinchGesture, pair: ReturnType<typeof touchPair>) => void
     setPinchActive: (active: boolean) => void
+    /** Finish a direct or overlay gesture; cancellation must never turn a page. */
+    finishTouchGesture: (cancelled?: boolean) => void
     getPanOffset: () => { x: number, y: number }
     setPanOffsetValue: (offset: { x: number, y: number }) => void
     getContainerRect: () => DOMRect | null
@@ -154,6 +156,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         applyPinch,
         overscroll,
         setOverscroll,
+        getOverscroll,
         resetOverscroll
     } = useZoomPan(containerRef, 0.1, () => { }, canvasRef, { wheelEventTargetRef })
 
@@ -161,12 +164,6 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     const numPages = pdfDoc ? pdfDoc.numPages : 0
 
     // ナビゲーションハンドラ
-    const goToPrevPage = () => {
-        if (pageNum > 1) onPageChange(pageNum - 1)
-    }
-    const goToNextPage = () => {
-        if (pageNum < numPages) onPageChange(pageNum + 1)
-    }
     const goToPrev10Pages = () => {
         onPageChange(Math.max(1, pageNum - 10))
     }
@@ -174,43 +171,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         onPageChange(Math.min(numPages, pageNum + 10))
     }
 
-    // Ref for stable access to overscroll in callbacks
-    const overscrollRef = useRef(overscroll)
-    useEffect(() => {
-        overscrollRef.current = overscroll
-    }, [overscroll])
-
     const SWIPE_THRESHOLD = window.innerHeight * 0.25
-
-    // スワイプ判定と完了処理
-    // useCallbackで定義し、依存配列を空にしてuseEffectから安全に呼べるようにする
-    // （値はrefから取る）
-    const checkAndFinishSwipe = React.useCallback(() => {
-        const currentOverscroll = overscrollRef.current
-
-        if (currentOverscroll.y > SWIPE_THRESHOLD) {
-            if (pageNum > 1) {
-                goToPrevPage()
-            }
-        } else if (currentOverscroll.y < -SWIPE_THRESHOLD) {
-            if (pageNum < numPages) {
-                goToNextPage()
-            }
-        }
-        resetOverscroll()
-    }, [pageNum, numPages, onPageChange, resetOverscroll]) // pageNumなどは変わるので依存に入れる
-
-    // グローバルなMouseUp監視（ドラッグ中に外に出た場合などを救済）
-    useEffect(() => {
-        const handleGlobalMouseUp = () => {
-            if (isPanning) {
-                stopPanning()
-                checkAndFinishSwipe()
-            }
-        }
-        window.addEventListener('mouseup', handleGlobalMouseUp)
-        return () => window.removeEventListener('mouseup', handleGlobalMouseUp)
-    }, [isPanning, checkAndFinishSwipe])
 
     // キャンバスサイズの状態（DrawingCanvas との同期用）
     // PDF原寸の論理サイズと、端末に合わせたbitmapサイズを分離する。
@@ -218,6 +179,14 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     const [bitmapCanvasSize, setBitmapCanvasSize] = React.useState<{ width: number, height: number } | null>(null)
     const [adaptiveRenderScale, setAdaptiveRenderScale] = React.useState(INITIAL_PDF_RENDER_SCALE)
     const [isPinching, setIsPinching] = React.useState(false)
+    const pinchZoomedRef = useRef(false)
+    const applyTouchPinch = React.useCallback((gesture: PinchGesture, pair: ReturnType<typeof touchPair>) => {
+        // A deliberate zoom must not become a page turn when its anchor hits an edge.
+        if (Math.abs(pair.distance - gesture.startDist) > Math.max(20, gesture.startDist * 0.15)) {
+            pinchZoomedRef.current = true
+        }
+        applyPinch(gesture, pair)
+    }, [applyPinch])
     const [previewLayouts, setPreviewLayouts] = React.useState<Array<{
         pageNum: number
         distance: 1 | 2
@@ -347,7 +316,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 setIsLayoutReady(true)
             })
         })
-        wheelNavigation.onPageRendered(pageNum)
+        pageNavigation.onPageRendered(pageNum)
     }
 
     // Keep pinch tracking entirely CSS-driven. Once interaction settles, render
@@ -830,17 +799,49 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         },
     })
 
-    const wheelNavigation = useWheelPageNavigation({
-        enabled: wheelPageNavigation && !hidePdfBackground,
+    const pageNavigation = usePDFPageNavigation({
+        enabled: true,
+        wheelEnabled: wheelPageNavigation && !hidePdfBackground,
+        animate: !hidePdfBackground,
         containerRef, layerRef: pageLayerRef, markerLayerRef, eventTargetRef: wheelEventTargetRef,
         pdfDoc, pageNum, numPages, canvasSize, renderScale: adaptiveRenderScale,
-        zoom, panOffset, splitMode, ready: isLayoutReady,
-        busy: isPanning || isPinching || isDrawingInternal || !!selectionState?.isDragging,
+        zoom, panOffset, getViewport, splitMode, ready: isLayoutReady,
+        busy: isDrawingInternal || !!selectionState?.isDragging,
+        gesturing: isPanning || isPinching,
         pathsByPage: drawingPathsByPage, drawPreviewStroke, onPageChange,
         onViewportChange: (newZoom, newPan, paperSize) => {
             restoreViewport({ zoom: newZoom, panOffset: newPan }, paperSize)
         },
     })
+
+    const goToPrevPage = () => { pageNavigation.turnPage(-1) }
+    const goToNextPage = () => { pageNavigation.turnPage(1) }
+
+    // Detectors hand their completed movement to the same transition as the wheel.
+    const checkAndFinishSwipe = React.useCallback(() => {
+        const { y } = getOverscroll()
+        if (y > SWIPE_THRESHOLD) pageNavigation.turnPage(-1, y)
+        else if (y < -SWIPE_THRESHOLD) pageNavigation.turnPage(1, y)
+        resetOverscroll()
+    }, [getOverscroll, resetOverscroll, SWIPE_THRESHOLD, pageNavigation.turnPage])
+
+    const finishTouchGesture = React.useCallback((cancelled = false) => {
+        setIsPinching(false)
+        if (cancelled || pinchZoomedRef.current) resetOverscroll()
+        else checkAndFinishSwipe()
+        pinchZoomedRef.current = false
+    }, [checkAndFinishSwipe, resetOverscroll])
+
+    useEffect(() => {
+        const handleGlobalMouseUp = () => {
+            if (isPanning) {
+                stopPanning()
+                checkAndFinishSwipe()
+            }
+        }
+        window.addEventListener('mouseup', handleGlobalMouseUp)
+        return () => window.removeEventListener('mouseup', handleGlobalMouseUp)
+    }, [isPanning, checkAndFinishSwipe, stopPanning])
 
     // Undo via Parent
     // Note: PDFPaneHandle.undo calls this.
@@ -919,17 +920,21 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
         getZoom: () => getViewport().zoom,
         getMinimumZoom,
         setZoomValue: (newZoom: number) => { setZoom(newZoom) },
-        applyPinch,
+        applyPinch: applyTouchPinch,
         setPinchActive: (active: boolean) => {
             setIsPinching(active)
-            if (active) resetOverscroll()
+            if (active) {
+                pinchZoomedRef.current = false
+                resetOverscroll()
+            }
         },
+        finishTouchGesture,
         getPanOffset: () => getViewport().panOffset,
         setPanOffsetValue: (offset: { x: number, y: number }) => { setPanOffset(offset) },
         getContainerRect: () => containerRef.current?.getBoundingClientRect() || null,
         getPdfCanvas: () => canvasRef.current
 
-    }), [fitPageToScreen, resetOverscroll, setZoom, setPanOffset, handleUndo, pdfDoc, bitmapCanvasSize, getMinimumZoom, getViewport, applyPinch])
+    }), [fitPageToScreen, resetOverscroll, setZoom, setPanOffset, handleUndo, pdfDoc, bitmapCanvasSize, getMinimumZoom, getViewport, applyTouchPinch, finishTouchGesture])
 
     // Eraser cursor state
     const [eraserCursorPos, setEraserCursorPos] = React.useState<{ x: number, y: number } | null>(null)
@@ -950,12 +955,12 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
     // Only the PDF bitmap is CSS-scaled. Ink is painted at viewport resolution,
     // and both projections use the same immediate viewport coordinates.
     const pageLayerStyle: React.CSSProperties = {
-        transform: `translate(${panOffset.x + overscroll.x}px, ${panOffset.y + overscroll.y + wheelNavigation.offset}px) scale(${zoom})`,
+        transform: `translate(${panOffset.x + overscroll.x}px, ${panOffset.y + overscroll.y + pageNavigation.offset}px) scale(${zoom})`,
         transformOrigin: '0 0',
-        willChange: isPinching || isPanning || wheelNavigation.tracking || wheelNavigation.covered ? 'transform' : 'auto',
+        willChange: isPinching || isPanning || pageNavigation.tracking || pageNavigation.covered ? 'transform' : 'auto',
         transition: 'none',
-        opacity: isLayoutReady && !wheelNavigation.covered ? 1 : 0,
-        visibility: isLayoutReady && !wheelNavigation.covered ? 'visible' : 'hidden',
+        opacity: isLayoutReady && !pageNavigation.covered ? 1 : 0,
+        visibility: isLayoutReady && !pageNavigation.covered ? 'visible' : 'hidden',
     }
 
     return (
@@ -1123,10 +1128,14 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 // 最初のタッチの時間を記録
                 if (e.touches.length === 1) {
                     firstTouchTimeRef.current = Date.now()
+                    pinchZoomedRef.current = false
+                    resetOverscroll()
                 }
 
                 if (e.touches.length === 2) {
                     setIsPinching(true)
+                    pinchZoomedRef.current = false
+                    resetOverscroll()
                     // --- 2-Finger Gesture (Pinch/Pan) ---
                     const t1 = e.touches[0]
                     const t2 = e.touches[1]
@@ -1220,7 +1229,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                             }
                         }
 
-                        applyPinch(gestureRef.current, touchPair(e.touches))
+                        applyTouchPinch(gestureRef.current, touchPair(e.touches))
                     }
                 } else if (e.touches.length === 1) {
                     // --- Handle Single Touch ---
@@ -1356,14 +1365,13 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 // 長押しキャンセル
                 cancelLongPress()
                 stopPanning()
-                checkAndFinishSwipe()
+                if (e.touches.length < 2) finishTouchGesture()
             }}
             onTouchCancel={(e) => {
                 if (strokeInput.onTouchCancel(e)) return
-                setIsPinching(false)
                 gestureRef.current = null
                 twoFingerTapRef.current = null
-                resetOverscroll()
+                finishTouchGesture(true)
                 if (tool === 'eraser') finishErasing()
             }}
         >
@@ -1439,9 +1447,9 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                 </div>
                 {canvasSize && (hidePdfBackground || tool !== 'none' || drawingPaths.length > 0) && <DrawingViewport
                     paper={canvasSize} zoom={zoom}
-                    offset={{ x: panOffset.x + overscroll.x, y: panOffset.y + overscroll.y + wheelNavigation.offset }}
+                    offset={{ x: panOffset.x + overscroll.x, y: panOffset.y + overscroll.y + pageNavigation.offset }}
                     paths={displayDrawingPaths} previewPath={displayPreviewPath} selectionState={selectionState}
-                    navigating={isPinching || isPanning || !!gestureRef.current || wheelNavigation.tracking}
+                    navigating={isPinching || isPanning || !!gestureRef.current || pageNavigation.tracking}
                     getRasterCanvas={getRasterCanvas} rasterSize={bitmapCanvasSize}
                     style={{ visibility: pageLayerStyle.visibility }}
                 />}
@@ -1474,7 +1482,7 @@ export const PDFPane = forwardRef<PDFPaneHandle, PDFPaneProps>((props, ref) => {
                     ))}
                 </div>
                 <div
-                    ref={wheelNavigation.overlayRef}
+                    ref={pageNavigation.overlayRef}
                     aria-hidden="true"
                     style={{ position: 'absolute', inset: 0, zIndex: 30, pointerEvents: 'none' }}
                 />

@@ -36,6 +36,7 @@ function moduleAt(file, dependencies, globals) {
   return exports
 }
 const { harness: zoomHarness } = require('../../drawing-common/tests/helpers/zoom-pan-harness.cjs')
+const { harness: pageHarness } = require('./helpers/pdf-page-navigation-harness.cjs')
 const geometry = moduleAt(path.join(__dirname, '../../drawing-common/src/geometry/viewport.ts'), {}, {})
 
 function harness(file, overrides = {}) {
@@ -209,6 +210,7 @@ test('overlay touch selects in container coordinates and forwards raw pinch requ
   const panes = ['A', 'B'].map(name => ({
     getZoom: () => 1, getPanOffset: () => ({ x: 0, y: 0 }),
     setPinchActive: active => pinchStates.push([name, active]),
+    finishTouchGesture() {},
     applyPinch: (gesture, pair) => updates.push({ name, gesture, pair }),
   }))
   let reversed = false
@@ -243,7 +245,7 @@ test('coincident fingers are ignored and overlay forwards the unbounded request 
   const state = harness('useStudyOverlayTouch.ts'), updates = []
   const handlers = state.render('useStudyOverlayTouch', { containerRef: { current: new Surface() }, getTargetPane: () => 'A',
     getPane: () => ({ getZoom: () => 1, getPanOffset: () => ({ x: 0, y: 0 }),
-      setPinchActive() {}, applyPinch: (gesture, pair) => updates.push({ gesture, pair }) }), cancelSelection() {} })
+      setPinchActive() {}, finishTouchGesture() {}, applyPinch: (gesture, pair) => updates.push({ gesture, pair }) }), cancelSelection() {} })
   const event = distance => ({ touches: [{ clientX: 0, clientY: 0 }, { clientX: distance, clientY: 0 }], preventDefault() {} })
   handlers.handleOverlayTouchStart(event(0)); handlers.handleOverlayTouchMove(event(100))
   assert.equal(updates.length, 0)
@@ -254,9 +256,10 @@ test('coincident fingers are ignored and overlay forwards the unbounded request 
 })
 
 test('pinch state ends when one finger lifts, and cancellation or unmount cannot leave the pane pinching', () => {
-  const state = harness('useStudyOverlayTouch.ts'), changes = [], singleMoves = [], cancelled = []
+  const state = harness('useStudyOverlayTouch.ts'), changes = [], singleMoves = [], cancelled = [], finishes = []
   const pane = { getZoom: () => 1, getMinimumZoom: () => 0.1, getPanOffset: () => ({ x: 0, y: 0 }),
     applyPinch() {},
+    finishTouchGesture: cancelled => finishes.push(cancelled),
     setPinchActive: active => changes.push(active) }
   const handlers = state.render('useStudyOverlayTouch', { containerRef: { current: new Surface() },
     getTargetPane: () => 'A', getPane: () => pane, cancelSelection: () => cancelled.push(true) })
@@ -266,18 +269,22 @@ test('pinch state ends when one finger lifts, and cancellation or unmount cannot
   handlers.handleOverlayTouchEnd(event([first]))
   handlers.handleOverlayTouchMove(event([first]), () => singleMoves.push(true))
   assert.deepEqual(changes, [true, false])
+  assert.deepEqual(finishes, [false])
   assert.deepEqual(singleMoves, [])
   handlers.handleOverlayTouchEnd(event([]))
+  assert.deepEqual(finishes, [false]) // Lifting the remaining finger cannot commit twice.
 
   handlers.handleOverlayTouchStart(event([first, second]))
   handlers.handleOverlayTouchCancel()
   handlers.handleOverlayTouchMove(event([first, second]))
   assert.deepEqual(changes, [true, false, true, false])
+  assert.deepEqual(finishes, [false, true])
   assert.equal(cancelled.length, 3)
 
   handlers.handleOverlayTouchStart(event([first, second]))
   state.unmount()
   assert.deepEqual(changes, [true, false, true, false, true, false])
+  assert.deepEqual(finishes, [false, true, true])
 })
 
 test('repeated overlay pinches and direct zoom commands share the real viewport controller for both paper sizes', () => {
@@ -291,6 +298,7 @@ test('repeated overlay pinches and direct zoom commands share the real viewport 
     getZoom: () => app.view().getViewport().zoom,
     getPanOffset: () => app.view().getViewport().panOffset,
     setPinchActive() {},
+    finishTouchGesture() {},
     applyPinch: (gesture, pair) => app.view().applyPinch(gesture, pair),
   }))
   const handlers = state.render('useStudyOverlayTouch', { containerRef: { current: new Surface() },
@@ -318,6 +326,150 @@ test('repeated overlay pinches and direct zoom commands share the real viewport 
     near(app.view().zoom, minima[index] * 2)
     app.dispose()
   }
+})
+
+// Exercise PDFPane's real gesture commands with the real viewport controller.
+// In particular, do not render between the final movement and finger release.
+function pdfTouchPane({ page = 2, left = 0, zoom } = {}) {
+  const app = zoomHarness({ width: 500, height: 800, left })
+  app.fit()
+  const view = app.view()
+  if (zoom) view.setZoom(zoom)
+  const navigation = pageHarness({ left, right: left + 500, height: 800, pageNum: page, numPages: 4,
+    ...view.getViewport(), getViewport: view.getViewport,
+    onViewportChange: (zoom, panOffset, paperSize) => view.restoreViewport({ zoom, panOffset }, paperSize) })
+  const file = path.join(__dirname, '../src/components/study/PDFPane.tsx')
+  const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const names = ['SWIPE_THRESHOLD', 'goToPrevPage', 'goToNextPage', 'checkAndFinishSwipe', 'applyTouchPinch', 'finishTouchGesture']
+  const commands = new Map()
+  let setPinchActive
+  function visit(node) {
+    if (ts.isVariableDeclaration(node) && names.includes(node.name.getText(source))) {
+      commands.set(node.name.getText(source), node.initializer.getText(source))
+    }
+    if (ts.isPropertyAssignment(node) && node.name.getText(source) === 'setPinchActive') {
+      setPinchActive = node.initializer.getText(source)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  assert.equal(commands.size, names.length)
+  assert.ok(setPinchActive)
+  const code = names.map(name => `const ${name} = ${commands.get(name)};`).join('\n')
+    + `\nconst result = { applyPinch: applyTouchPinch, finishTouchGesture, finishMouseDrag: checkAndFinishSwipe,
+      setPinchActive: ${setPinchActive} };`
+  const pane = vm.runInNewContext(ts.transpileModule(code, {
+    compilerOptions: { target: ts.ScriptTarget.ES2022 },
+  }).outputText + '\nresult', {
+    React: { useCallback: callback => callback }, window: { innerHeight: 1000 },
+    pageNavigation: navigation.render(),
+    getOverscroll: view.getOverscroll, resetOverscroll: view.resetOverscroll,
+    applyPinch: view.applyPinch, setIsPinching() {}, pinchZoomedRef: { current: false },
+  })
+  pane.getZoom = () => view.getViewport().zoom
+  pane.getPanOffset = () => view.getViewport().panOffset
+  return { pane, app, pages: navigation.pages, view, navigation,
+    async complete() {
+      await tick()
+      navigation.render()
+      navigation.frame()
+      navigation.advance(310)
+      navigation.render().onPageRendered(navigation.options.pageNum)
+      navigation.frame(); navigation.frame(); navigation.render()
+    },
+    dispose() { navigation.unmount(); app.dispose() },
+  }
+}
+
+test('two-finger PDF page turns work through the selection/text overlay on either pane', async () => {
+  for (const target of ['A', 'B']) for (const distance of [-550, 550]) {
+    const panes = { A: pdfTouchPane(), B: pdfTouchPane({ left: 510 }) }
+    const state = harness('useStudyOverlayTouch.ts'), cancelled = [], selections = []
+    const handlers = state.render('useStudyOverlayTouch', { containerRef: { current: new Surface() },
+      getTargetPane: x => x < 510 ? 'A' : 'B', getPane: name => panes[name].pane,
+      cancelSelection: () => cancelled.push(true) })
+    const x = target === 'A' ? 250 : 760
+    const points = y => [{ clientX: x - 50, clientY: y }, { clientX: x + 50, clientY: y }]
+    const event = touches => ({ touches, preventDefault() {} })
+    handlers.handleOverlayTouchStart(event(points(450).slice(0, 1)), () => selections.push('start'))
+    handlers.handleOverlayTouchStart(event(points(450)))
+    const moved = points(450 + distance)
+    moved[1].clientX += 15 // Small finger-spacing drift is still a page drag.
+    handlers.handleOverlayTouchMove(event(moved))
+    assert.ok(Math.abs(panes[target].view.getOverscroll().y) > 250)
+    assert.deepEqual(panes[target].pages, [])
+    handlers.handleOverlayTouchEnd(event(points(450 + distance).slice(0, 1)))
+    handlers.handleOverlayTouchMove(event(points(450 + distance).slice(0, 1)), () => selections.push('move'))
+    handlers.handleOverlayTouchEnd(event([]))
+    assert.deepEqual(panes[target].pages, [], 'touch release waits for the same transition as the wheel')
+    assert.equal(panes[target].navigation.snapshotRequests.length, 1)
+    await panes[target].complete()
+    assert.deepEqual(panes[target].pages, [distance < 0 ? 3 : 1])
+    assert.deepEqual(panes[target === 'A' ? 'B' : 'A'].pages, [])
+    assert.deepEqual(selections, ['start'])
+    assert.equal(cancelled.length, 1)
+    near(panes[target].view.getOverscroll().y, 0)
+    state.unmount()
+    Object.values(panes).forEach(pane => pane.dispose())
+  }
+})
+
+test('short drags, page boundaries, zooms, cancelled touches and unmount never turn the PDF', async () => {
+  for (const scenario of [
+    { distance: -50 }, { page: 1, distance: 550 }, { page: 4, distance: -550 },
+    { distance: 0, shiftX: 550 }, { distance: -550, zoom: 2 },
+    { distance: -550, spread: 200 }, { distance: -550, cancel: true }, { distance: -550, unmount: true },
+  ]) {
+    const pdf = pdfTouchPane(scenario), state = harness('useStudyOverlayTouch.ts')
+    const handlers = state.render('useStudyOverlayTouch', { containerRef: { current: new Surface() },
+      getTargetPane: () => 'A', getPane: () => pdf.pane, cancelSelection() {} })
+    const event = (y, spread = 100, shiftX = 0) => ({ touches: [
+      { clientX: 250 - spread / 2 + shiftX, clientY: y }, { clientX: 250 + spread / 2 + shiftX, clientY: y },
+    ], preventDefault() {} })
+    handlers.handleOverlayTouchStart(event(450))
+    handlers.handleOverlayTouchMove(event(450 + scenario.distance, scenario.spread, scenario.shiftX))
+    if (scenario.cancel) handlers.handleOverlayTouchCancel()
+    else if (scenario.unmount) state.unmount()
+    else handlers.handleOverlayTouchEnd({ touches: [] })
+    await pdf.complete()
+    assert.equal(pdf.navigation.snapshotRequests.length, 0)
+    assert.deepEqual(pdf.pages, [], JSON.stringify(scenario))
+    near(pdf.view.getOverscroll().y, 0)
+    if (!scenario.unmount) state.unmount()
+    pdf.dispose()
+  }
+})
+
+test('direct PDF touches share the same page-turn completion as overlays and the wheel', async () => {
+  const pdf = pdfTouchPane(), start = pdf.view.getViewport()
+  const gesture = { startZoom: start.zoom, startPan: start.panOffset,
+    startDist: 100, startCenter: { x: 250, y: 450 } }
+  pdf.pane.setPinchActive(true)
+  pdf.pane.applyPinch(gesture, { distance: 100, center: { x: 250, y: -100 } })
+  pdf.pane.finishTouchGesture()
+  pdf.pane.finishTouchGesture()
+  assert.equal(pdf.navigation.snapshotRequests.length, 1)
+  assert.deepEqual(pdf.pages, [])
+  await pdf.complete()
+  assert.deepEqual(pdf.pages, [3])
+  near(pdf.view.getOverscroll().y, 0)
+  pdf.dispose()
+})
+
+test('Ctrl-mouse drag finishes through the same PDF transition and cannot overlap a touch/wheel turn', async () => {
+  const pdf = pdfTouchPane()
+  pdf.view.startPanningAt(250, 450)
+  pdf.view.panTo(250, -350)
+  assert.ok(pdf.view.getOverscroll().y < -250)
+  pdf.pane.finishMouseDrag()
+  pdf.pane.finishMouseDrag()
+  pdf.pane.finishTouchGesture()
+  pdf.navigation.emit(); pdf.navigation.advance(50); pdf.navigation.emit()
+  assert.equal(pdf.navigation.snapshotRequests.length, 1)
+  assert.deepEqual(pdf.pages, [])
+  await pdf.complete()
+  assert.deepEqual(pdf.pages, [3])
+  pdf.dispose()
 })
 
 test('answer wheel accumulates bursts, normalizes line/page deltas, and ignores active editors', () => {
