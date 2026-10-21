@@ -1384,6 +1384,51 @@ export async function deleteGradingHistory(id: string): Promise<void> {
   }
 }
 
+export interface RequestUsageLogResult {
+  count: number;
+  recorded: boolean;
+}
+
+/** Prune and optionally append timestamps atomically, including across tabs.
+ * A separate settings entry avoids changing the DB schema or saved study data.
+ * The caller owns the period, allowance and feature name.
+ */
+export async function updateRequestUsageLog(
+  feature: string,
+  periodStart: number,
+  periodEnd: number,
+  request?: { timestamp: number; limit: number }
+): Promise<RequestUsageLogResult> {
+  if (!feature || !Number.isFinite(periodStart) || !Number.isFinite(periodEnd) || periodEnd <= periodStart ||
+    (request && (!Number.isFinite(request.timestamp) || request.timestamp < periodStart || request.timestamp >= periodEnd ||
+      !Number.isSafeInteger(request.limit) || request.limit < 0))) {
+    throw new TypeError('Invalid request usage period or allowance');
+  }
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([SETTINGS_STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(SETTINGS_STORE_NAME);
+    const id = `requestUsage:${feature}`;
+    const read = store.get(id);
+    let result: RequestUsageLogResult;
+    transaction.oncomplete = () => resolve(result);
+    transaction.onerror = () => reject(transaction.error ?? new Error('Could not update request usage'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('Request usage transaction aborted'));
+    read.onsuccess = () => {
+      const previous = read.result?.timestamps ?? [];
+      if (!Array.isArray(previous) || previous.some(value => !Number.isFinite(value))) {
+        transaction.abort();
+        return;
+      }
+      const timestamps: number[] = previous.filter(value => value >= periodStart && value < periodEnd);
+      const recorded = !!request && timestamps.length < request.limit;
+      if (recorded) timestamps.push(request!.timestamp);
+      result = { count: timestamps.length, recorded };
+      store.put({ id, timestamps });
+    };
+  });
+}
+
 // アプリ設定を取得
 export async function getAppSettings(): Promise<AppSettings> {
   const db = await openDB();
