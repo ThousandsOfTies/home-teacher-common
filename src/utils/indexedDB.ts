@@ -1389,24 +1389,27 @@ export interface RequestUsageLogResult {
   recorded: boolean;
 }
 
-/** Prune and optionally append timestamps atomically, including across tabs.
+/** Count, optionally prune, and append timestamps atomically across tabs.
  * A separate settings entry avoids changing the DB schema or saved study data.
- * The caller owns the period, allowance and feature name.
+ * The caller owns the period, allowance, cleanup timing and feature name.
+ * Omit the append limit when recording an already completed operation.
  */
 export async function updateRequestUsageLog(
   feature: string,
   periodStart: number,
   periodEnd: number,
-  request?: { timestamp: number; limit: number }
+  request?: { timestamp: number; limit?: number },
+  options: { prune?: boolean } = {}
 ): Promise<RequestUsageLogResult> {
   if (!feature || !Number.isFinite(periodStart) || !Number.isFinite(periodEnd) || periodEnd <= periodStart ||
     (request && (!Number.isFinite(request.timestamp) || request.timestamp < periodStart || request.timestamp >= periodEnd ||
-      !Number.isSafeInteger(request.limit) || request.limit < 0))) {
+      (request.limit !== undefined && (!Number.isSafeInteger(request.limit) || request.limit < 0))))) {
     throw new TypeError('Invalid request usage period or allowance');
   }
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([SETTINGS_STORE_NAME], 'readwrite');
+    const prune = options.prune !== false;
+    const transaction = db.transaction([SETTINGS_STORE_NAME], prune || request ? 'readwrite' : 'readonly');
     const store = transaction.objectStore(SETTINGS_STORE_NAME);
     const id = `requestUsage:${feature}`;
     const read = store.get(id);
@@ -1420,11 +1423,13 @@ export async function updateRequestUsageLog(
         transaction.abort();
         return;
       }
-      const timestamps: number[] = previous.filter(value => value >= periodStart && value < periodEnd);
-      const recorded = !!request && timestamps.length < request.limit;
+      const current: number[] = previous.filter(value => value >= periodStart && value < periodEnd);
+      const timestamps: number[] = prune ? current : [...previous];
+      const recorded = !!request && (request.limit === undefined || current.length < request.limit);
+      const count = current.length + (recorded ? 1 : 0);
       if (recorded) timestamps.push(request!.timestamp);
-      result = { count: timestamps.length, recorded };
-      store.put({ id, timestamps });
+      result = { count, recorded };
+      if (prune || recorded) store.put({ id, timestamps });
     };
   });
 }

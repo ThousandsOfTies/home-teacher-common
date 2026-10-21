@@ -26,6 +26,17 @@ test('concurrent callers cannot spend more than the allowance, even at identical
   assert.equal((await h.entry('settings', 'requestUsage:ai')).timestamps.length, 100)
 })
 
+test('counting and recording completed responses preserve other months until cleanup is explicitly requested', async () => {
+  const h = await requestUsageHarness()
+  await h.entry('settings', null, { id: 'requestUsage:ai', timestamps: [99, 100, 150, 200] })
+  assert.equal((await h.update('ai', 100, 200, undefined, { prune: false })).count, 2)
+  assert.deepEqual((await h.entry('settings', 'requestUsage:ai')).timestamps, [99, 100, 150, 200])
+  assert.equal((await h.update('ai', 100, 200, { timestamp: 170 }, { prune: false })).count, 3)
+  assert.deepEqual((await h.entry('settings', 'requestUsage:ai')).timestamps, [99, 100, 150, 200, 170])
+  assert.equal((await h.update('ai', 100, 200, undefined, { prune: true })).count, 3)
+  assert.deepEqual((await h.entry('settings', 'requestUsage:ai')).timestamps, [100, 150, 170])
+})
+
 test('invalid or failed storage never reports that a request was recorded', async () => {
   const h = await requestUsageHarness()
   await h.entry('settings', null, { id: 'requestUsage:ai', timestamps: ['invalid'] })
