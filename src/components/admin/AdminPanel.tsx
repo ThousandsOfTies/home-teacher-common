@@ -81,6 +81,8 @@ export default function AdminPanel({
     errorMessage: pdfError,
     setErrorMessage: setPdfError,
     loadPDFRecords,
+    fileInputRef,
+    openFilePicker,
     handleFileSelect,
     handleDeleteRecord,
     addPDF
@@ -295,19 +297,36 @@ export default function AdminPanel({
 
   // Merge error messages
   const currentError = errorMessage || pdfError;
+  const fileImportInput = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      data-testid="file-import-input"
+      accept={importMode === 'pdf' ? 'application/pdf' : undefined}
+      multiple
+      hidden
+      disabled={uploading}
+      aria-label={t(importMode === 'pdf' ? 'pdfImport.pdf' : 'pdfImport.images')}
+      onChange={event => void handleFileSelect(event.currentTarget)}
+    />
+  );
 
   if (loading) {
     return (
-      <div className="admin-container">
-        <div className="loading-container">
-          <p>{t('admin.loading')}</p>
+      <>
+        {fileImportInput}
+        <div className="admin-container">
+          <div className="loading-container">
+            <p>{t('admin.loading')}</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
     <>
+      {fileImportInput}
       {uploading && (
         <div style={{
           position: 'fixed',
@@ -1403,7 +1422,7 @@ export default function AdminPanel({
                 {/* Main action */}
                 <button
                   className="add-button"
-                  onClick={() => handleFileSelect(importMode)}
+                  onClick={openFilePicker}
                   style={{
                     flex: 1,
                     margin: 0,

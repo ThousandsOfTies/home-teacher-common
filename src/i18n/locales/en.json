@@ -66,6 +66,7 @@
         "loadFailed": "Could not load the PDF list",
         "addFailed": "Could not add the PDF: {{detail}}",
         "selectFailed": "Could not select files: {{detail}}",
+        "pickerFailed": "Could not open the file picker. Please press the import button again.",
         "deleteFailed": "Could not delete the file",
         "storageFull": "Your device is out of storage. Check Storage usage and delete learning materials you no longer need.",
         "tooManyFiles": "Too many files. You can select up to {{max}} files.\nSelected: {{count}}",

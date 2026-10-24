@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { localizeErrorMessage } from '../../i18n/errorMessages'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getAllPDFRecords, deletePDFRecord, savePDFRecord, generatePDFId, PDFFileRecord } from '../../utils/indexedDB'
 import * as pdfjsLib from 'pdfjs-dist'
 import { detectSubject } from '../../services/api'
@@ -24,6 +24,15 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = fal
   const [uploading, setUploading] = useState(false)
   const [textInspectionProgress, setTextInspectionProgress] = useState<{ checkedPages: number; totalPages: number } | null>(null)
   const [errorMessage, setErrorMessage] = useState<ImportError | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const pickerCleanupRef = useRef<(() => void) | null>(null)
+
+  const clearPickerListeners = () => {
+    pickerCleanupRef.current?.()
+    pickerCleanupRef.current = null
+  }
+
+  useEffect(() => () => pickerCleanupRef.current?.(), [])
 
   const loadPDFRecords = async () => {
     try {
@@ -126,93 +135,18 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = fal
     }
   }
 
-  const handleFileSelect = async (mode: 'pdf' | 'image' = 'pdf') => {
-    setUploading(true)
+  const handleFileSelect = async (input: HTMLInputElement) => {
+    clearPickerListeners()
+    let startedImport = false
     try {
-      let files: File[] = []
+      // Copy before resetting: FileList is live, and the same file must be selectable again.
+      const files = Array.from(input.files ?? [])
+      input.value = ''
+      if (files.length === 0) return
 
-      if ('showOpenFilePicker' in window) {
-        console.log('📂 Using modern file picker API...')
-        try {
-          const pickerOptions: any = { multiple: true }
-          if (mode === 'pdf') {
-            pickerOptions.types = [{ description: t('admin.pdfFiles'), accept: { 'application/pdf': ['.pdf'] } }]
-          }
-          const fileHandles = await (window as any).showOpenFilePicker(pickerOptions)
-          console.log(`📂 File handles received: ${fileHandles.length}`)
-          files = await Promise.all(fileHandles.map((handle: any) => handle.getFile()))
-          console.log(`📂 Files loaded: ${files.length}`)
-
-          if (!files || files.length === 0) {
-            console.log('⚠️ No files selected')
-            setUploading(false)
-            return
-          }
-        } catch (error) {
-          if (error instanceof Error && error.name !== 'AbortError') {
-            console.error('File picker failed:', error)
-          } else {
-            console.log('📂 File picker cancelled by user')
-          }
-          setUploading(false)
-          return
-        }
-      } else {
-        console.log('📂 Using fallback file picker...')
-        const selectedFiles = await new Promise<FileList | null>((resolve) => {
-          const input = document.createElement('input')
-          input.type = 'file'
-          if (mode === 'pdf') {
-            input.accept = 'application/pdf'
-          }
-          input.multiple = true
-
-          let isResolved = false
-
-          // ファイル選択イベント
-          input.onchange = (e) => {
-            if (isResolved) return
-            isResolved = true
-            const selectedFiles = (e.target as HTMLInputElement).files
-            resolve(selectedFiles)
-          }
-
-          // キャンセルイベント（ファイル選択ダイアログを閉じた時）
-          input.oncancel = () => {
-            if (isResolved) return
-            isResolved = true
-            resolve(null)
-          }
-
-          // フォーカスが戻った時の処理
-          // iPadのSafariではonchangeが発火しないことがあるため、
-          // フォーカスハンドラーでinput.filesを直接チェック
-          const handleFocus = () => {
-            setTimeout(() => {
-              if (isResolved) return
-
-              if (!input.files || input.files.length === 0) {
-                isResolved = true
-                resolve(null)
-              } else {
-                // ファイルが選択されているがonchangeが呼ばれていない場合
-                isResolved = true
-                resolve(input.files)
-              }
-            }, 1000) // iPadのために待機時間を延長
-          }
-
-          window.addEventListener('focus', handleFocus, { once: true })
-          input.click()
-        })
-
-        if (!selectedFiles || selectedFiles.length === 0) {
-          setUploading(false)
-          return
-        }
-
-        files = Array.from(selectedFiles)
-      }
+      startedImport = true
+      setErrorMessage(null)
+      setUploading(true)
 
       // ファイル数制限チェック
       const MAX_FILES = 100
@@ -322,7 +256,42 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = fal
     } catch (error) {
       console.error('Failed to select files:', error)
       setErrorMessage({ key: 'pdfImport.selectFailed', values: { detail: error instanceof Error ? error.message : String(error) } })
-      setUploading(false)
+    } finally {
+      if (startedImport) setUploading(false)
+    }
+  }
+
+  const openFilePicker = () => {
+    clearPickerListeners()
+    const input = fileInputRef.current
+    if (!input) {
+      setErrorMessage({ key: 'pdfImport.pickerFailed' })
+      return
+    }
+
+    let focusTimer: number | undefined
+    const handleFocus = () => {
+      // iPad Safari can return files without dispatching change. Give it time to finish.
+      focusTimer = window.setTimeout(() => {
+        void handleFileSelect(input)
+      }, 1000)
+    }
+    const cleanup = () => {
+      window.removeEventListener('focus', handleFocus)
+      input.removeEventListener('cancel', clearPickerListeners)
+      window.clearTimeout(focusTimer)
+    }
+
+    pickerCleanupRef.current = cleanup
+    window.addEventListener('focus', handleFocus, { once: true })
+    input.addEventListener('cancel', clearPickerListeners, { once: true })
+    try {
+      input.click()
+    } catch (error) {
+      clearPickerListeners()
+      if (error instanceof Error && error.name === 'AbortError') return
+      console.error('File picker failed:', error)
+      setErrorMessage({ key: 'pdfImport.pickerFailed' })
     }
   }
 
@@ -348,6 +317,8 @@ export const usePDFRecords = (maxPDFFileSizeMB = 100, checkPDFTextOnImport = fal
           ? { detail: localizeErrorMessage(errorMessage.values.detail, t) } : {}) }),
     setErrorMessage,
     loadPDFRecords,
+    fileInputRef,
+    openFilePicker,
     handleFileSelect,
     handleDeleteRecord,
     addPDF

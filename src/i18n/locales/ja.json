@@ -66,6 +66,7 @@
         "loadFailed": "PDF一覧の読み込みに失敗しました",
         "addFailed": "PDFの追加に失敗しました: {{detail}}",
         "selectFailed": "ファイルの選択に失敗しました: {{detail}}",
+        "pickerFailed": "ファイル選択画面を開けませんでした。もう一度取り込みボタンを押してください。",
         "deleteFailed": "削除に失敗しました",
         "storageFull": "端末の保存領域が足りません。Storageの使用量を確認し、不要な教材を削除してください。",
         "tooManyFiles": "ファイル数が多すぎます。最大{{max}}枚まで選択できます。\n現在: {{count}}枚",
