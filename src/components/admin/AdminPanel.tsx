@@ -45,6 +45,7 @@ interface AdminPanelProps {
   settingsVariant?: 'links' | 'teachers';
   billingVariant: 'tutotuto' | 'copicopi';
   guideVariant?: 'study' | 'copy';
+  pdfCatalog?: { title: string; content: ReactNode };
   maxPDFFileSizeMB?: number;
   checkPDFTextOnImport?: boolean;
   renderPDFStatus?: (record: PDFFileRecord) => ReactNode;
@@ -62,6 +63,7 @@ export default function AdminPanel({
   settingsVariant = 'links',
   billingVariant,
   guideVariant = 'study',
+  pdfCatalog,
   maxPDFFileSizeMB = 100,
   checkPDFTextOnImport = false,
   renderPDFStatus,
@@ -71,6 +73,7 @@ export default function AdminPanel({
   const { t, i18n } = useTranslation();
   const guideKey = guideVariant === 'copy' ? 'howToUseCopi' : 'howToUse';
   const catalogKey = guideVariant === 'copy' ? 'drawingCatalog' : 'drillCatalog';
+  const catalogTitle = pdfCatalog?.title ?? t(`${catalogKey}.title`);
 
   // Custom hooks
   const {
@@ -1410,7 +1413,8 @@ export default function AdminPanel({
                   border: '2px solid #bdc3c7',
                   borderRadius: '8px'
                 }}
-                title={t(`${catalogKey}.title`)}
+                title={catalogTitle}
+                aria-label={catalogTitle}
               >
                 <FaEarthAmericas style={{ fontSize: '28px', width: '28px', height: '28px', color: '#3498db' }} />
                 <div style={{ fontSize: '20px', color: '#95a5a6' }}>→</div>
@@ -1493,7 +1497,7 @@ export default function AdminPanel({
               justifyContent: 'center',
               zIndex: 10000
             }} onClick={() => setShowCatalogPopup(false)}>
-              <div style={{
+              <div role="dialog" aria-modal="true" aria-label={catalogTitle} style={{
                 backgroundColor: 'white',
                 borderRadius: '12px',
                 padding: '20px',
@@ -1516,10 +1520,11 @@ export default function AdminPanel({
                     color: '#7f8c8d'
                   }}
                   title={t('common.close')}
+                  aria-label={t('common.close')}
                 >
                   ✕
                 </button>
-                <DrillCatalog addPDF={addPDF} variant={guideVariant === 'copy' ? 'drawing' : 'study'} />
+                {pdfCatalog?.content ?? <DrillCatalog addPDF={addPDF} variant={guideVariant === 'copy' ? 'drawing' : 'study'} />}
               </div>
             </div>
           )
